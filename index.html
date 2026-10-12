@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>서울의 수수께끼 존재 · The Mysterious Creature of Seoul</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="game"></div>
+<div id="plates"></div>
+<div id="floaters"></div>
+<div id="vignette"></div>
+<div id="fade"></div>
+
+<!-- ============ HUD ============ -->
+<div id="hud" hidden>
+  <div id="pframe" class="frame">
+    <div class="who"><b id="pName"></b><span id="pGear"></span></div>
+    <div class="bar hp"><i id="hpFill"></i><span id="hpTxt"></span></div>
+    <div class="bar hunger"><i id="hgFill"></i><span id="hgTxt"></span></div>
+    <div class="bar xp"><i id="xpFill"></i><span id="xpTxt"></span></div>
+    <div class="row"><span id="money" class="money"></span><span id="buffs"></span></div>
+  </div>
+  <div id="party"></div>
+  <div id="tframe" class="frame" hidden>
+    <div class="who"><b id="tName"></b><span id="tSub"></span></div>
+    <div class="bar mon"><i id="tFill"></i><span id="tTxt"></span></div>
+    <div class="row small" id="tWeak"></div>
+  </div>
+  <div id="clockBox"><div class="clockRow"><div id="mailInd" hidden data-tip="편지가 있어요 · mail waiting at the 우체통 in the station"></div><div id="clock"></div></div><canvas id="minimap" width="170" height="170"></canvas><div id="tracker"></div></div>
+  <div id="actionbar2"><button class="act empty" id="actB5"></button><button class="act empty" id="actB6"></button><button class="act empty" id="actB7"></button><button class="act empty" id="actB8"></button><button class="act empty" id="actB9"></button></div>
+  <div id="actionbar">
+    <button class="act" id="actAttack" data-tip="기본 공격 · basic attack (1)"><kbd>1</kbd><span>⚔</span><small>기본 공격</small><i class="cd" id="atkCd"></i></button>
+    <button class="act" id="actSkill2"><kbd>2</kbd><span>✦</span><small id="s2Name"></small><i class="cd" id="s2Cd"></i></button>
+    <button class="act" id="actSkill3"><kbd>3</kbd><span>✧</span><small id="s3Name"></small><i class="cd" id="s3Cd"></i></button>
+    <button class="act" id="actSkill4"><kbd>4</kbd><span>💤</span><small id="s4Name"></small><i class="cd" id="s4Cd"></i></button>
+    <button class="act" id="actSkill5"><kbd>5</kbd><span>🤐</span><small id="s5Name"></small><i class="cd" id="s5Cd"></i></button>
+    <button class="act empty" id="actB0"></button><button class="act empty" id="actB1"></button><button class="act empty" id="actB2"></button><button class="act empty" id="actB3"></button><button class="act empty" id="actB4"></button>
+    <span class="barGap"></span>
+    <button class="act" id="actFood" data-tip="김밥 먹기 · eat gimbap (F)"><kbd>F</kbd><span>🍙</span><small id="gimbapN">김밥 0</small></button>
+    <button class="act" id="actBike" hidden data-tip="따릉이 타기 / 내리기 · bike on / off (R)"><kbd>R</kbd><span>🚲</span><small>따릉이</small></button>
+    <span class="barGap"></span>
+    <button class="act small" id="actBook" data-tip="스킬 북 · skill book (P)"><kbd>P</kbd><span>📖</span><small>스킬</small></button>
+    <button class="act small" id="actFriends" data-tip="친구 · friends (O)"><kbd>O</kbd><span>👥</span><small>친구</small></button>
+    <button class="act small" id="actQuests" data-tip="퀘스트 · quest log"><kbd>L</kbd><span>📜</span><small>퀘스트</small></button>
+    <button class="act small" id="actAch" data-tip="업적 · achievements"><kbd>Y</kbd><span>🏆</span><small>업적</small></button>
+    <button class="act small" id="actMap" data-tip="지도 · map"><kbd>M</kbd><span>🗺</span><small>지도</small></button>
+    <button class="act" id="actInv" data-tip="인벤토리 · inventory (I)"><kbd>I</kbd><span>🎒</span><small>인벤토리</small></button>
+    <button class="act" id="actChar" data-tip="캐릭터 · character (C)"><kbd>C</kbd><span>👤</span><small>캐릭터</small></button>
+    <button class="act" id="actDeck" data-tip="내 덱 · my deck (K)"><kbd>K</kbd><span>🂠</span><small>덱</small></button>
+  </div>
+  <div id="interact" hidden></div>
+  <div id="toast"></div>
+  <div id="chatLog"></div>
+  <div id="chatBox" hidden><input id="chatInput" maxlength="120" autocomplete="off" placeholder="말하기 · say something (Enter = send, Esc = cancel, /wave /bow)"><button id="emWave" data-tip="손 흔들기 · wave">👋</button><button id="emBow" data-tip="인사 · bow">🙇</button></div>
+  <div id="keys"><span><b>WASD</b> 이동</span><span><b>drag</b> 카메라</span><span><b>Tab</b> 대상</span><span><b>C</b> 캐릭터</span><span><b>1</b> 공격</span><span><b>2 3</b> 스킬</span><span><b>K</b> 덱</span><span><b>I</b> 인벤토리</span><span><b>E</b> 대화</span><span><b>Esc</b> 메뉴</span></div>
+</div>
+
+<!-- ============ ritual ============ -->
+<div id="ritual" hidden>
+  <div class="rstep" id="rStep"></div>
+  <div class="ren" id="rEn"></div>
+  <div class="rslots" id="rSlots"></div>
+  <div class="rcards" id="rCards"></div>
+  <div class="rhint">1–4 카드 고르기 · Esc 취소</div>
+</div>
+
+<div id="reroll" hidden>
+  <div class="rrBox"><div class="rrHead"><b>🔮 다시 굴리기 · reroll</b><span id="rrStones"></span></div>
+    <div id="rrCard"></div>
+    <div class="rrBtns"><button id="rrMod">보너스 다시 · new bonus (🔮 1)</button><button id="rrRar">희귀도 도박 · rarity gamble (🔮 3)</button></div>
+    <p class="rrNote">희귀도: 35% 올라가요, 45% 그대로, 20% 내려가요 · rarity: 35% up, 45% same, 20% down</p>
+    <div id="rrMsg"></div><button id="rrClose">닫기 · close</button></div>
+</div>
+
+<div id="order" hidden>
+  <div class="orCard">
+    <div class="rstep" id="orTitle"></div>
+    <div class="orEn" id="orEn"></div>
+    <div class="orLine" id="orLine"></div>
+    <div class="orTiles" id="orTiles"></div>
+    <div class="orBtns"><button id="orUndo">← 지우기 · undo</button><button id="orQuit">닫기 · close</button></div>
+  </div>
+</div>
+
+<div id="nameBox" hidden>
+  <div class="nbCard"><b>🐾 이름을 지어 주세요 · name your little goblin</b><input id="nbInput" maxlength="10" autocomplete="off"><button id="nbOk">좋아요 · OK</button></div>
+</div>
+
+<div id="memory" hidden>
+  <div class="mmHead"><b>대장간 · 기억의 돌</b><span id="mmInfo"></span><span>⏱ <b id="mmTime">90</b> s · 실수 <b id="mmMiss">0</b> (≤3 → +2, ≤8 → +1)</span><button id="mmQuit">포기 · give up</button></div>
+  <div id="mmGrid"></div>
+</div>
+
+<div id="ink" hidden></div>
+<div id="inviteBox" hidden></div>
+<div id="quiz" hidden>
+  <div class="rstep" id="qzTitle"></div>
+  <div class="qzPrompt" id="qzPrompt"></div>
+  <div class="qzTime"><i id="qzBar"></i></div>
+  <div class="rcards" id="qzOpts"></div>
+  <div class="rhint">1–4</div>
+</div>
+<div id="downed" class="screen dark" hidden><div class="panel center"><h2>쓰러졌어요 · You're down</h2><p>동료가 단어로 살려 줄 수 있어요 · a teammate can revive you with a word challenge.</p><p class="big2"><span id="dnTime">30</span> s</p><button class="big" id="dnNow">역으로 · respawn in the station</button></div></div>
+
+<!-- ============ after-fight: missed words ============ -->
+<div id="after" hidden>
+  <div class="aHead"><b>놓친 단어 · Words you missed</b><button class="x" id="afterClose">✕</button></div>
+  <div id="afterList"></div>
+</div>
+
+<!-- ============ dialogue ============ -->
+<div id="dialog" hidden>
+  <div class="dName" id="dName"></div>
+  <div class="dLine"><div class="dKo" id="dKo"></div><button class="replay" id="dReplay" title="다시 듣기">🔊</button><button class="replay" id="dTrans" hidden title="번역 두루마리 · translate this conversation">📜 <span id="dTransN"></span></button></div>
+  <div class="dEn" id="dEn"></div>
+  <div class="dOpts" id="dOpts"></div>
+</div>
+<div id="menuCard" hidden></div>
+
+<!-- ============ screens ============ -->
+<div id="title" class="screen">
+  <div class="panel center">
+    <div class="eyebrow">Sogang 5A · first playable</div>
+    <h1>서울의 수수께끼 존재</h1>
+    <div class="sub">The Mysterious Creature of Seoul</div>
+    <div class="btns"><button class="big" id="btnContinue" hidden>계속하기 · Continue</button><button class="big" id="btnNew">새 게임 · New game</button></div>
+    <p class="fine">Laptop: WASD to walk, drag the mouse to turn the camera, click a monster or press Tab, then 1 to attack.</p>
+  </div>
+</div>
+
+<div id="classPick" class="screen" hidden>
+  <div class="panel wide">
+    <div class="eyebrow">새 게임 · new game</div>
+    <h2>누구로 살아남을까요? · Choose your class</h2>
+    <div class="bookPick" id="bookPick"></div>
+    <div class="classes" id="classes"></div>
+  </div>
+</div>
+
+<div id="deckPick" class="screen" hidden>
+  <div class="panel wide deck">
+    <div class="deckHead">
+      <div><div class="eyebrow">낯선 사람이 덱을 건넸다 · the stranger hands you a deck</div><h2>단어 열 개를 고르세요 · Pick 10 words</h2></div>
+      <div class="deckBtns"><button id="deckRandom">무작위 10개 · Random 10</button><button id="deckClear">비우기 · Clear</button></div>
+    </div>
+    <div class="chTabs" id="chTabs"></div>
+    <div class="secChips" id="secChips"></div>
+    <div class="wordGrid" id="wordGrid"></div>
+    <div class="tray">
+      <div class="slots" id="traySlots"></div>
+      <div class="trayInfo"><span id="trayCount"></span><span id="trayBonus"></span></div>
+      <button class="big" id="deckDone" disabled>확인 · Done</button>
+    </div>
+  </div>
+</div>
+
+<div id="deckView" class="screen" hidden>
+  <div class="panel wide deckv">
+    <div class="deckHead"><div><div class="eyebrow">덱 · decks (K)</div><h2 id="dvTitle"></h2></div><button class="x" id="dvClose">✕</button></div>
+    <div class="chTabs dvChapters" id="dvChapters"></div>
+    <div class="chTabs" id="dvTabs"></div>
+    <div id="dvInfo" class="dvInfo"></div>
+    <div class="dvCols">
+      <div><h3>이 스킬의 덱 · this skill's deck</h3><div class="dvGrid" id="dvGrid"></div></div>
+      <div><h3>가방 · bag (loose cards)</h3><div class="dvGrid bag" id="dvBag"></div></div>
+    </div>
+    <div class="dvFoot"><button id="dvPick">+ 새 단어 고르기 · pick words for the basic attack</button><div id="dvBonus" class="fine"></div></div>
+  </div>
+</div>
+
+<div id="invView" class="screen" hidden>
+  <div class="panel wide invv">
+    <div class="deckHead"><div><div class="eyebrow">인벤토리 · inventory (I)</div><h2>장비와 가방 · Gear and bag</h2></div><button class="x" id="ivClose">✕</button></div>
+    <div class="ivCols">
+      <div class="ivLeft"><h3>착용 · Wearing</h3><div class="ivSlots" id="ivSlots"></div><p class="fine" id="ivSum"></p><p class="fine">갑옷과 장신구를 누르면 벗어요 · click armour or a trinket to take it off.</p></div>
+      <div class="ivRight"><div class="chTabs" id="ivTabs"></div><div class="ivBag" id="ivBag"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="friendsView" class="screen" hidden>
+  <div class="panel wide frv">
+    <div class="deckHead"><div><div class="eyebrow">친구 · friends (O)</div><h2>친구 · Friends</h2></div><button class="x" id="frClose">✕</button></div>
+    <div class="frMe" id="frMe"></div>
+    <div class="frAdd"><input id="frCode" maxlength="4" autocomplete="off" placeholder="ABCD"><input id="frName" maxlength="12" autocomplete="off" placeholder="이름 · name (optional)"><button id="frAddBtn">추가 · add</button><button id="frRefresh">새로고침 · refresh</button></div>
+    <div class="frList" id="frList"></div>
+  </div>
+</div>
+
+<div id="questView" class="screen" hidden>
+  <div class="panel wide qlv">
+    <div class="deckHead"><div><div class="eyebrow">퀘스트 · quest log</div><h2>할 일 · Quests</h2></div><button class="x" id="qlClose">✕</button></div>
+    <div id="qlActive" class="qlActive"></div>
+    <h3>완료 · Done</h3><div id="qlDone" class="qlDone"></div>
+  </div>
+</div>
+
+<div id="mapView" class="screen" hidden>
+  <div class="panel wide mapv">
+    <div class="deckHead"><div><div class="eyebrow">지도 · map</div><h2 id="mapTitle">홍대</h2></div><button class="x" id="mapClose">✕</button></div>
+    <p id="mapNone" class="fine">지도가 없어요. · You don't have a map of this area yet.</p>
+    <canvas id="bigMap" width="720" height="720"></canvas>
+  </div>
+</div>
+
+<div id="achView" class="screen" hidden>
+  <div class="panel wide achv">
+    <div class="deckHead"><div><div class="eyebrow">업적 · achievements (Y)</div><h2>업적 <small id="achSum"></small></h2></div><button class="x" id="achClose">✕</button></div>
+    <div id="achList" class="achList"></div>
+  </div>
+</div>
+
+<div id="bankView" class="screen" hidden>
+  <div class="panel wide bankv">
+    <div class="deckHead"><div><div class="eyebrow">물품보관함 · lockers (storage)</div><h2>보관함 <small id="bkCount"></small></h2></div><button class="x" id="bkClose">✕</button></div>
+    <p class="fine">누르면 옮겨요 · click to move between your bag and the lockers. Stored cards and gear don't show up in your bag, decks or quests.</p>
+    <div class="dvCols"><div><h3>가방 · bag</h3><div class="dvGrid bag" id="bkBag"></div></div><div><h3>보관함 · lockers</h3><div class="dvGrid bag" id="bkStore"></div></div></div>
+  </div>
+</div>
+
+<div id="mailView" class="screen" hidden>
+  <div class="panel wide mailv">
+    <div class="deckHead"><div><div class="eyebrow">우체통 · mailbox</div><h2>편지 · Mail</h2></div><button class="x" id="mlClose">✕</button></div>
+    <label class="fine"><input type="checkbox" id="mlEnToggle" checked> 영어 번역 보이기 · show the English</label>
+    <div class="mlCols"><div class="mlList" id="mlList"></div><div class="mlRead" id="mlRead"></div></div>
+  </div>
+</div>
+
+<div id="bookView" class="screen" hidden>
+  <div class="panel wide bookv">
+    <div class="deckHead"><div><div class="eyebrow">스킬 북 · skill book (P)</div><h2>스킬 · Skills</h2></div><button class="x" id="bookClose">✕</button></div>
+    <div class="bkBar" id="bkBar"></div>
+    <p class="fine" id="bkHint"></p>
+    <div class="bkList" id="bkList"></div>
+  </div>
+</div>
+
+<div id="charView" class="screen" hidden>
+  <div class="panel wide charv">
+    <div class="deckHead"><div><div class="eyebrow">캐릭터 · character</div><h2 id="cvTitle"></h2></div><button class="x" id="cvClose">✕</button></div>
+    <div id="cvXp"></div>
+    <div class="cvCols">
+      <div><table class="cvStats"><tbody id="cvStats"></tbody></table><p class="fine" id="cvPass"></p>
+      <div id="cvComp"></div></div><div class="cvRight"><h3>단어 · Words</h3><div class="cvWords" id="cvWords"></div><h3>내 덱 · My deck</h3><div class="cvDeck" id="cvDeck"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="menu" class="screen" hidden>
+  <div class="panel center">
+    <h2>일시 정지 · Paused</h2>
+    <label class="setting">소리 · Volume <input type="range" id="vol" min="0" max="1" step="0.05"></label>
+    <label class="setting">영어 자막 · English lines
+      <select id="subs"><option value="auto">3번 들으면 숨기기 · hide after 3 times</option><option value="always">항상 · always</option><option value="never">안 보기 · never</option></select></label>
+    <details class="settings coop" open><summary>같이 하기 · Play together</summary>
+      <label class="setting">내 이름 · your name <input id="coopName" maxlength="12" autocomplete="off" placeholder="Danny"></label>
+      <div class="coopRow"><button id="coopHost">방 만들기 · host a room</button><span id="coopCode" class="coopCode"></span></div>
+      <div class="coopRow" id="coopJoinRow"><input id="coopJoinCode" maxlength="4" autocomplete="off" placeholder="ABCD"><button id="coopJoin">참가 · join</button></div>
+      <div class="fine" id="coopStatus"></div><div class="fine" id="coopPlayers"></div>
+      <button id="coopLeave" hidden>나가기 · leave the room</button>
+    </details>
+    <details class="settings"><summary>설정 · Settings</summary>
+      <label class="setting">음악 · Music <input type="range" id="setMusic" min="0" max="1" step="0.05"></label>
+      <label class="setting">마우스 감도 · Mouse sensitivity <input type="range" id="setSens" min="0.3" max="2" step="0.1"></label>
+      <label class="setting">그래픽 · Graphics <select id="setQuality"><option value="high">높음 · high</option><option value="medium">보통 · medium</option><option value="low">낮음 · low (no shadows)</option></select></label>
+      <div class="keyHead">키 · Keys <button id="keysReset">기본값 · reset</button></div>
+      <div id="keyList" class="keyList"></div>
+      <p class="fine">WASD = 이동 · walk, 1–4 in a ritual = cards (fixed).</p>
+    </details>
+    <div class="btns"><button class="big" id="btnResume">계속 · Resume</button><button id="btnReset">새 게임 · New game</button></div>
+    <div id="resetConfirm" hidden class="confirm">Delete this save and start over? <button id="btnResetYes">네, 삭제 · Yes</button><button id="btnResetNo">아니요 · No</button></div>
+    <p class="fine">Your save stays on this laptop (browser storage).</p>
+  </div>
+</div>
+
+<div id="deathScreen" class="screen dark" hidden><div class="panel center"><h2>정신을 잃었어요…</h2><p>You passed out. Someone carries you to the station. Nothing is lost.</p></div></div>
+
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/jsm/" } }</script>
+<script src="data/words.js"></script>
+<script type="module" src="js/game.js"></script>
+</body>
+</html>
