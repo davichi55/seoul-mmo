@@ -1405,7 +1405,7 @@ function drawMap(ctx, W, H, cx, cz, span, full, areas = Object.keys(MAP_ITEMS)) 
   for (const a of areas) { const sp = MAP_ITEMS[a].spot; ctx.fillStyle = "#2f6db3"; ctx.fillRect(mx(sp.x) - 3, mz(sp.z) - 3, 6, 6); }
   for (const rk of BIKE_RACKS) if (!full || inAreas(rk, areas)) { ctx.fillStyle = "#3bb54a"; ctx.fillRect(mx(rk.x) - 3.5, mz(rk.z) - 3.5, 7, 7); }
   if (full) {
-    ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3; ctx.font = `bold ${Math.round(W / 40)}px "Black Han Sans","Malgun Gothic",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillStyle = "#fff"; ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.lineWidth = 3; ctx.font = `bold ${Math.round(W / 40)}px "Noto Sans KR","Malgun Gothic",sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
     for (const L of M.labels) if (areas.includes(L.area)) { ctx.save(); ctx.translate(mx(L.x), mz(L.z)); if (L.rot) ctx.rotate(L.rot); ctx.strokeText(L.t, 0, 0); ctx.fillText(L.t, 0, 0); ctx.restore(); }
   }
   ctx.font = `bold ${full ? 18 : 12}px sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
@@ -2096,7 +2096,7 @@ function drawDungeonMap(ctx, W, H, cx, cz, span, full, D = DUNGEON, zone = "dung
   const k = Math.min(W, H) / span, mx = x => W / 2 + (x - cx) * k, mz = z => H / 2 + (z - cz) * k;
   ctx.clearRect(0, 0, W, H); ctx.fillStyle = "rgba(20,18,26,.9)"; ctx.fillRect(0, 0, W, H);
   for (const r of D.wrects) { ctx.fillStyle = r.room ? "rgba(120,118,128,.95)" : "rgba(90,88,96,.95)"; ctx.fillRect(mx(r.x0), mz(r.z0), (r.x1 - r.x0) * k, (r.z1 - r.z0) * k); }
-  if (full) { ctx.fillStyle = "#fff"; ctx.font = `bold ${Math.round(W / 40)}px "Black Han Sans",sans-serif`; ctx.textAlign = "center"; for (const r of D.wrects) if (r.name) ctx.fillText(r.name, mx((r.x0 + r.x1) / 2), mz(r.z0) - 6); }
+  if (full) { ctx.fillStyle = "#fff"; ctx.font = `bold ${Math.round(W / 40)}px "Noto Sans KR",sans-serif`; ctx.textAlign = "center"; for (const r of D.wrects) if (r.name) ctx.fillText(r.name, mx((r.x0 + r.x1) / 2), mz(r.z0) - 6); }
   for (const m of D.murals || []) { ctx.fillStyle = "#e0a21c"; ctx.fillRect(mx(m.x) - 3, mz(m.wz) - 3, 6, 6); }
   for (const mo of monsters) if (!mo.dead && mo.zone === zone) { ctx.fillStyle = mo.def.boss ? "#b48cff" : mo.caged ? "#888" : mo.state === "chase" ? "#ff5a4a" : "#e07a6a"; ctx.beginPath(); ctx.arc(mx(mo.pos.x), mz(mo.pos.z), mo.def.boss ? 5 : 3, 0, 7); ctx.fill(); }
   const fx = -Math.sin(player.yaw), fz = -Math.cos(player.yaw), px = mx(player.pos.x), pz = mz(player.pos.z);
@@ -2591,7 +2591,7 @@ function placeRacks() {
   for (const rk of BIKE_RACKS) {
     const g = new THREE.Group(); g.position.set(rk.x, 0, rk.z); scene.add(g);
     const pole = new THREE.Mesh(new THREE.BoxGeometry(.12, 2.4, .12), toon("#3a3a3a")); pole.position.set(-1.6, 1.2, 0); g.add(pole);
-    const c = document.createElement("canvas"); c.width = 256; c.height = 96; const x = c.getContext("2d"); x.fillStyle = "#3bb54a"; x.fillRect(0, 0, 256, 96); x.fillStyle = "#fff"; x.font = `52px "Black Han Sans",sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("따릉이", 128, 52);
+    const c = document.createElement("canvas"); c.width = 256; c.height = 96; const x = c.getContext("2d"); x.fillStyle = "#3bb54a"; x.fillRect(0, 0, 256, 96); x.fillStyle = "#fff"; x.font = `52px "Noto Sans KR",sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("따릉이", 128, 52);
     const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
     const sign = new THREE.Mesh(new THREE.BoxGeometry(1.2, .45, .06), [toon("#3bb54a"), toon("#3bb54a"), toon("#3bb54a"), toon("#3bb54a"), toon("#ffffff", { map: tx }), toon("#ffffff", { map: tx })]); sign.position.set(-1.6, 2.5, 0); g.add(sign);
     const rail = new THREE.Mesh(new THREE.BoxGeometry(2.6, .12, .12), toon("#9aa3a8")); rail.position.set(0, .7, 0); g.add(rail);
@@ -2701,7 +2701,7 @@ function buildCampParts() {
   { const g = campParts[4], c = at(-6, -8);         // bedrolls + the camp flag
     for (let k = 0; k < 3; k++) mk(new THREE.BoxGeometry(1, .15, 2.2), ["#2f7f86", "#e0a21c", "#6a4fa0"][k], c.x + k * 1.4, .08, c.z, g);
     mk(new THREE.CylinderGeometry(.06, .06, 5, 6), "#555", c.x + 5, 2.5, c.z, g);
-    const cv = document.createElement("canvas"); cv.width = 256; cv.height = 128; const x = cv.getContext("2d"); x.fillStyle = "#3a8f4c"; x.fillRect(0, 0, 256, 128); x.fillStyle = "#fff"; x.font = `52px "Black Han Sans",sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("가영 캠프", 128, 66);
+    const cv = document.createElement("canvas"); cv.width = 256; cv.height = 128; const x = cv.getContext("2d"); x.fillStyle = "#3a8f4c"; x.fillRect(0, 0, 256, 128); x.fillStyle = "#fff"; x.font = `52px "Noto Sans KR",sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("가영 캠프", 128, 66);
     const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; const fl = mk(new THREE.PlaneGeometry(1.8, .9), toon("#ffffff", { map: tx, side: THREE.DoubleSide }), c.x + 5.95, 4.4, c.z, g); }
   syncCamp();
 }
@@ -3246,7 +3246,7 @@ function loop(now) {
 
 // ---- boot ---------------------------------------------------------------------------------------------
 async function boot() {
-  try { await Promise.race([document.fonts.load('64px "Black Han Sans"'), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
+  try { await Promise.race([Promise.all([document.fonts.load('64px "Black Han Sans"'), document.fonts.load('700 20px "Noto Sans KR"', '가나다')]), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
   world = buildWorld(scene);
   await loadKayKit();
   placeNPCs(); placeMapItem(); placeRacks(); buildCampParts(); applyQuality(); refreshKeyLabels(); setMusicVolume(SET.music); makeSpawnPoints();
