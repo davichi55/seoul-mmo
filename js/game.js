@@ -19,6 +19,7 @@ const BOOKS = DATA.books || [{ id: "5a", title: "5A", en: "Korean 5A" }];
 // every character studies one book (Danny 2026-10-12); S.chapters = the chapters whose words it sees (drops, quizzes, murals)
 const bookChapters = () => DATA.chapters.filter(c => (c.book || "5a") === S.book);
 const bookWords = () => DATA.words.filter(w => (w.book || "5a") === S.book);
+const pickChapters = () => S.mode === "story" ? bookChapters().filter(c => S.chapters.includes(c.id)) : bookChapters();
 const $ = id => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
 const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -128,7 +129,7 @@ function skillDef(k) { const x = extraDef(k); if (x) return { ...x, key: barKeyL
 
 // ---- save -----------------------------------------------------------------------------------------
 const SAVE_KEY = "seoulmmo_v1";
-const fresh = () => ({ cls: null, cards: [], skillDecks: { basic: [], s2: [], s3: [] }, origin: null, chapters: [], shop: null, items: [], equip: {}, quests: {}, book: "5a", hasMap: false, hasMapApt: false, hasMapRiver: false, mats: {}, snacks: {}, fish: {}, bank: { cards: [], items: [] }, mail: [], ach: {}, killsBy: {}, ate: {}, money: 15000, weapon: 0, hp: null, hunger: 100, time: 9 * 60, buffs: {}, gimbap: 0, stats: {}, heard: {}, subs: "auto", vol: .8, intro: false, kills: 0, level: 1, xp: 0, mastered: [] });
+const fresh = () => ({ cls: null, cards: [], skillDecks: { basic: [], s2: [], s3: [] }, origin: null, chapters: [], shop: null, items: [], equip: {}, quests: {}, book: "5a", mode: "practice", hasMap: false, hasMapApt: false, hasMapRiver: false, mats: {}, snacks: {}, fish: {}, bank: { cards: [], items: [] }, mail: [], ach: {}, killsBy: {}, ate: {}, money: 15000, weapon: 0, hp: null, hunger: 100, time: 9 * 60, buffs: {}, gimbap: 0, stats: {}, heard: {}, subs: "auto", vol: .8, intro: false, kills: 0, level: 1, xp: 0, mastered: [] });
 let S = fresh();
 function load() {
   try {
@@ -144,6 +145,7 @@ function load() {
     }
     for (const k of ["basic", "s2", "s3"]) S.skillDecks[k] = S.skillDecks[k] || [];
     S.book = S.book || "5a";   // saves from before books
+    S.mode = S.mode || "practice";   // saves from before modes keep their chosen chapters
     return true;
   } catch (e) { return false; }
 }
@@ -327,8 +329,9 @@ function skillBlock(k) {          // why a skill can't be used right now (null =
   return null;
 }
 // ---- level + XP (Danny 2026-10-11): XP from kills and from mastering a word; a level = +5% health, +4% damage ----
-const MAX_LEVEL = 20, MASTER_XP = 50;
-const xpNeed = L => 100 + 60 * (L - 1);
+const MAX_LEVEL = 20, MASTER_XP = 15;
+// Danny 2026-10-12: one book should take about 10 hours, a new chapter every 2 levels (8과 at Lv 15)
+const xpNeed = L => Math.round(100 * Math.pow(L, 1.6) / 10) * 10;
 const lvlHp = () => 1 + .05 * (S.level - 1), lvlDmg = () => 1 + .04 * (S.level - 1);
 // monsters far below your level give little XP (no farming the first street), stronger ones give more
 const monsterXp = m => m.def.xp * (1 + .3 * (m.lvl - m.def.lvl)) * Math.max(.2, Math.min(1.5, 1 + .2 * (m.lvl - S.level)));
@@ -337,7 +340,7 @@ function gainXp(n, at) {
   n = Math.round(n); S.xp += n;
   floater(at || player.pos, `+${n} XP`, "#c3b2ff", true, at ? 2 : 3.2);
   while (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) {
-    S.xp -= xpNeed(S.level); S.level++; recalcMax(); player.hp = player.maxHp; learnSkills(true);
+    S.xp -= xpNeed(S.level); S.level++; recalcMax(); player.hp = player.maxHp; learnSkills(true); syncStory(true);
     toast(`레벨 업! Lv ${S.level} · health +5%, damage +4%`); SFX.pickup(); floater(player.pos, "LEVEL UP!", "#ffd23d", false, 3.4);
   }
   save();
@@ -875,13 +878,26 @@ function toStreet() { populateStreet(); player.zone = "street"; player.pos.set(E
 
 // ---- UI: class pick, deck picker, deck view, menu --------------------------------------------------------------
 function showScreen(id) { for (const s of ["title", "classPick", "deckPick", "deckView", "charView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "menu", "bookView", "friendsView"]) $(s).hidden = s !== id; }
-let newBook = "5a";
+let newBook = "5a", newMode = "story";
+const CHAPTER_LVL = i => 1 + 2 * i;   // story mode: 1과 at Lv 1, then one every 2 levels (8과 at Lv 15)
+function syncStory(announce) {
+  if (S.mode !== "story") return;
+  const open = bookChapters().filter((c, i) => S.level >= CHAPTER_LVL(i)).map(c => c.id);
+  const fresh = open.filter(id => !S.chapters.includes(id));
+  S.chapters = open;
+  if (announce) for (const id of fresh) { const c = DATA.chapters.find(x => x.id === id); toast(`📖 새 과가 열렸어요! ${c.title}${c.theme ? " " + c.theme : ""} · a new chapter opened — its words drop now`); logChat("system", `📖 ${c.title} 열림 · chapter opened`); SFX.kill(); }
+}
+function drawModePick() {
+  const M = [["story", "이야기 모드 · Story", "1과부터 시작해서 2레벨마다 새 과가 열려요 · start with 1과, a new chapter every 2 levels"], ["practice", "연습 모드 · Practice", "공부할 과를 직접 골라요 · choose the chapters you want to practise"]];
+  $("modePick").innerHTML = `<span class="fine">모드 · mode</span>` + M.map(([k, t, d]) => `<button class="chip" data-m="${k}" aria-pressed="${k === newMode}" title="${d}">${t}</button>`).join("") + `<span class="fine modeDesc">${M.find(m => m[0] === newMode)[2]}</span>`;
+  $("modePick").querySelectorAll("[data-m]").forEach(x => x.onclick = () => { newMode = x.dataset.m; drawModePick(); });
+}
 function drawBookPick() {
   $("bookPick").innerHTML = `<span class="fine">교재 · textbook</span>` + BOOKS.map(b => `<button class="chip" data-b="${b.id}" aria-pressed="${b.id === newBook}">${b.title} · ${b.en} (${DATA.words.filter(w => (w.book || "5a") === b.id).length} words)</button>`).join("");
   $("bookPick").querySelectorAll("[data-b]").forEach(x => x.onclick = () => { newBook = x.dataset.b; drawBookPick(); });
 }
 function buildClassPick() {
-  drawBookPick();
+  drawBookPick(); drawModePick();
   $("classes").innerHTML = "";
   for (const [k, c] of Object.entries(CLASSES)) {
     const b = document.createElement("button"); b.className = "cls";
@@ -893,14 +909,14 @@ function buildClassPick() {
 let pickSel = [], pickCh = "ch1", pickSecs = null, pickIntro = false;
 function openDeckPicker(intro) {
   pickIntro = intro; pickSel = deckIds("basic"); paused = true;
-  if (!bookChapters().some(c => c.id === pickCh)) { pickCh = (bookChapters().find(c => S.chapters.includes(c.id)) || bookChapters()[0]).id; pickSecs = null; }
+  if (!pickChapters().some(c => c.id === pickCh)) { pickCh = (pickChapters().find(c => S.chapters.includes(c.id)) || pickChapters()[0]).id; pickSecs = null; }
   showScreen("deckPick"); drawDeckPicker();
 }
 function drawDeckPicker() {
   const ch = DATA.chapters.find(c => c.id === pickCh);
   if (!pickSecs || !pickSecs.every(s => ch.sections.some(x => x.id === s))) pickSecs = ch.sections.map(s => s.id);
   $("chTabs").innerHTML = ""; $("secChips").innerHTML = "";
-  for (const c of bookChapters()) { const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", c.id === pickCh); b.textContent = `${c.title} ${c.theme}`; b.onclick = () => { pickCh = c.id; pickSecs = null; drawDeckPicker(); }; $("chTabs").appendChild(b); }
+  for (const c of pickChapters()) { const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", c.id === pickCh); b.textContent = `${c.title} ${c.theme}`; b.onclick = () => { pickCh = c.id; pickSecs = null; drawDeckPicker(); }; $("chTabs").appendChild(b); }
   for (const s of ch.sections) { const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", pickSecs.includes(s.id)); b.textContent = s.title; b.onclick = () => { pickSecs = pickSecs.includes(s.id) ? pickSecs.filter(x => x !== s.id) : [...pickSecs, s.id]; drawDeckPicker(); }; $("secChips").appendChild(b); }
   const g = $("wordGrid"); g.innerHTML = "";
   DATA.words.filter(w => w.ch === pickCh && pickSecs.includes(w.sec)).forEach(w => {
@@ -934,7 +950,7 @@ $("deckDone").onclick = () => {
   const dropped = new Set(S.cards.filter(c => c.gift && !next.includes(c.uid)).map(c => c.uid));   // unused gifts go back to the stranger
   S.cards = S.cards.filter(c => !dropped.has(c.uid));
   S.skillDecks.basic = next;
-  if (!S.origin) { S.origin = deckBonus(pickSel); S.chapters = [...new Set(pickSel.map(id => WORD[id].ch))]; }
+  if (!S.origin) { S.origin = deckBonus(pickSel); if (S.mode !== "story") S.chapters = [...new Set(pickSel.map(id => WORD[id].ch))]; }
   recalcMax(); save(); showScreen(null); paused = false;
   const st = npcs.find(n => n.kind === "stranger");
   showLine(st, "x_good", [{ plr: "p_yes", act: () => { endWith(st, "x_bye"); if (pickIntro) setTimeout(() => toast("출구로 나가서 괴물을 잡으세요 · take the exit up to the street"), 1500); } }]);
@@ -951,6 +967,10 @@ function cardHTML(c, extra = "") {
   return `<div class="dvCard ${extra}" data-uid="${c.uid}" data-tip="${esc(tipCard(c))}" style="border-color:${R.c}"><span class="rar" style="color:${R.c}">${R.ko} · ${R.en}${c.gift ? " · 선물 gift" : ""}</span><b>${w.kr}</b><span class="en">${w.en}</span><span class="mod">${modText(c)}</span><span class="mst">${mastery(c.id).ko} · ${Math.min(st.c, 8)}/8</span></div>`;
 }
 function drawChapterPick() {
+  if (S.mode === "story") {
+    $("dvChapters").innerHTML = `<span class="fine">${(BOOKS.find(b => b.id === S.book) || BOOKS[0]).title} · 이야기 모드 · story mode: 2레벨마다 새 과 · a new chapter every 2 levels (most drops come from the newest one)</span>` + bookChapters().map((c, i) => { const open = S.level >= CHAPTER_LVL(i); return `<span class="chip" aria-pressed="${open}">${open ? "" : "🔒 "}${c.title}${c.theme ? " " + c.theme : ""}${open ? "" : " · Lv " + CHAPTER_LVL(i)}</span>`; }).join("");
+    return;
+  }
   $("dvChapters").innerHTML = `<span class="fine">${(BOOKS.find(b => b.id === S.book) || BOOKS[0]).title} · 단어가 나오는 과 · chapters your words come from (drops, the card trader, quizzes):</span>` + bookChapters().map(c => `<button class="chip" data-ch="${c.id}" aria-pressed="${S.chapters.includes(c.id)}">${c.title}${c.theme ? " " + c.theme : ""}</button>`).join("");
   $("dvChapters").querySelectorAll("[data-ch]").forEach(b => b.onclick = () => {
     const id = b.dataset.ch, on = S.chapters.includes(id);
@@ -1007,12 +1027,21 @@ function monsterPool(kind) {
   const h = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   return DATA.words.filter(w => ch.includes(w.ch)).sort((a, b) => h(kind + a.id) - h(kind + b.id)).slice(0, 15).map(w => w.id);
 }
+function dropChapters() {
+  const ch = S.chapters.length ? S.chapters : bookChapters().map(c => c.id);
+  if (S.mode !== "story" || ch.length < 2) return ch;
+  const order = bookChapters().map(c => c.id).filter(id => ch.includes(id));
+  return Math.random() < .7 ? order.slice(-1) : order.slice(0, -1);
+}
 function dropCard(m) {
   if (Math.random() >= (m.def?.alien || m.def?.boss ? 1 : .45)) return;
-  const owned = [...new Set(S.cards.map(c => c.id))];
-  const id = Math.random() < .5 && owned.length ? pick(owned) : pick(monsterPool(m.kind));
+  const chs = dropChapters(), pool = bookWords().filter(w => chs.includes(w.ch)).map(w => w.id); if (!pool.length) return;
+  const owned = new Set(S.cards.map(c => c.id)), unowned = pool.filter(id => !owned.has(id));
+  const id = unowned.length && Math.random() < .8 ? pick(unowned) : pick(pool);
   if (!id || !WORD[id]) return;
-  const c = newCard(id, m.def?.alien ? Math.max(rollRarity(), rollRarity()) : rollRarity()), R = RARITY[c.rar];
+  // once you own every word of these chapters, duplicates come with better rarity
+  let rar = m.def?.alien ? Math.max(rollRarity(), rollRarity()) : rollRarity(); if (!unowned.length) rar = Math.max(rar, rollRarity());
+  const c = newCard(id, rar), R = RARITY[c.rar];
   S.cards.push(c);
   toast(`카드 획득! [${R.ko}] ${WORD[id].kr} · ${WORD[id].en} → 가방 (K)`);
   floater(m.pos, `🂠 ${WORD[id].kr}`, R.c, false, 2.8);
@@ -1135,6 +1164,7 @@ function openCharView() {
     ["사거리 · Range", `${cd.range} m`],
     ...Object.keys(SLOTS).map(sl => { const it = itemBy(S.equip[sl]); return [SLOTS[sl], it ? `${itemName(it)} (${itemInfo(it)})` : "없음 · none"]; }),
     ["레벨 보너스 · Level bonus", `health +${Math.round((lvlHp() - 1) * 100)}%, damage +${Math.round((lvlDmg() - 1) * 100)}%`],
+    ["모드 · Mode", S.mode === "story" ? `이야기 · story (next chapter at Lv ${(bookChapters().map((c, i) => CHAPTER_LVL(i)).find(l => l > S.level)) || "—"})` : "연습 · practice (you choose the chapters, K)"],
     ["교재 · Textbook", `${(BOOKS.find(x => x.id === S.book) || BOOKS[0]).en} · ${S.chapters.map(id => DATA.chapters.find(c => c.id === id)?.title).filter(Boolean).join(", ")}`],
     ["출신 보너스 · Origin bonus", b.txt],
     [`2 · ${skillDef("s2").ko}`, skillBlock("s2") || "준비됨 · ready"],
@@ -1202,7 +1232,7 @@ $("actDeck").onclick = () => openDeckView();
 // ---- start --------------------------------------------------------------------------------------------
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
-  ensureGear(); ensureFriendCode(); learnSkills(false); syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
+  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
   player.model = kayReady() ? makeKay(S.cls) : makeHero(S.cls); scene.add(player.model.root);
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
@@ -1211,7 +1241,7 @@ function newGame(cls) {
   setTimeout(() => sendMail("역무원", "홍대입구역에 온 것을 환영해요. 배가 고프면 할머니 식당에 가세요. 밤에는 괴물이 많아요. 조심하세요!", "Welcome to Hongik University Station. When you're hungry, go to Grandma's restaurant. There are many monsters at night. Be careful!", { won: 3000 }), 4000);
   for (const k in cds) { cds[k] = 0; comeBacks[k] = []; }
   player.guardUntil = 0;
-  wipe(); S = fresh(); S.cls = cls; S.book = newBook; spawnPlayer(); started = true;
+  wipe(); S = fresh(); S.cls = cls; S.book = newBook; S.mode = newMode; syncStory(false); spawnPlayer(); started = true;
   toStation(); const st = world.npcSpots.stranger; player.pos.set(st.x + 1, 0, st.z + 3.2); player.yaw = 0;
   showScreen(null); $("hud").hidden = false; paused = false;
   const n = npcs.find(x => x.kind === "stranger");
@@ -3270,6 +3300,7 @@ window.__seoul = {
   answer(right = true) { if (!ritual) return; const id = ritual.words[ritual.idx]; const i = ritual.opts.indexOf(id); pickCard(right ? i : (i + 1) % CHOICES); },
   attack: (k = "basic") => startRitual(k),
   setBook(b) { S.book = b; S.chapters = []; }, bookChapters: () => bookChapters(), bookWords: () => bookWords(), setNewBook(b) { newBook = b; },
+  syncStory: () => syncStory(true), xpNeed: L => xpNeed(L), setMode(m) { S.mode = m; syncStory(false); }, setNewMode(m) { newMode = m; },
   giveDeck(ids, k = "basic") { const cs = ids.map(id => newCard(id, 0)); S.cards.push(...cs); S.skillDecks[k] = cs.map(c => c.uid); if (!S.origin) { S.origin = deckBonus(ids); S.chapters = [...new Set(ids.map(id => WORD[id].ch))]; } recalcMax(); },
   drop: m => dropCard(m || { kind: "dokkaebi", pos: player.pos }),
   gear: (kind = "dokkaebi") => { const g = Object.keys(GEAR).find(k => GEAR[k].drop === kind); addItem(g); }, tab: () => cycleTarget(), toStreet: () => toStreet(), toStation: () => toStation(),

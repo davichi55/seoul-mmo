@@ -446,3 +446,7 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 #inviteBox[hidden]{display:none}
 #inviteBox .ib{display:flex;gap:8px;justify-content:center}
 #inviteBox button{background:#2a4a30;color:#eef3ea;border:1px solid #6aa85a;border-radius:8px;padding:7px 14px;cursor:pointer}
+
+/* story / practice mode choice */
+#modePick .modeDesc{flex-basis:100%}
+.dvChapters span.chip{cursor:default}
