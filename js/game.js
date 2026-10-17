@@ -9,6 +9,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, toon } from "./world.js";
 import { makeHero, makeNPC, makeMonster } from "./models.js";
 import { loadKayKit, kayReady, makeKay } from "./kaykit.js";
+import { loadSua, suaReady, makeSua } from "./sua.js";
 import { LINES } from "./lines.js";
 import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js";
 import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume } from "./audio.js";
@@ -665,7 +666,7 @@ function placeNPCs() {
     npcs.push(n);
   }
   for (const kind of ["minsu", "jieun", "gyeongbi", "teacher", "sua", "clerk"]) {
-    const at = STREET_NPCS[kind], model = kind === "gyeongbi" ? makeNPC("guard") : kayReady() ? makeKay(kind) : makeNPC("sitter"), n = { isNpc: true, kind, zone: "street", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
+    const at = STREET_NPCS[kind], model = kind === "gyeongbi" ? makeNPC("guard") : kind === "sua" && suaReady() ? makeSua() : kayReady() ? makeKay(kind) : makeNPC("sitter"), n = { isNpc: true, kind, zone: "street", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = at.face; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); colliders_street_push(n.pos);
@@ -1922,7 +1923,7 @@ function onNet(d, from) {
     case "enter": if (NET.role === "host") populateStreet(); break;
     case "whisper": if (NET.role === "host") onWhisper(d, from); break;
     case "invite": if (NET.role === "host") showInvite(d, from); break;
-    case "ping": if (NET.role === "host") netSend({ to: from, t: "pong", nm: S.name || classDef().ko, lvl: S.level, cls: S.cls, zone: player.zone, n: remotes.size + 1 }); break;
+    case "ping": if (NET.role === "host") { const wc = wordCounts(); netSend({ to: from, t: "pong", nm: S.name || classDef().ko, lvl: S.level, cls: S.cls, zone: player.zone, n: remotes.size + 1, ms: wc.mastered, lr: wc.learned + wc.mastered, bk: S.book }); } break;
     case "enterM": if (NET.role === "host" && !someoneIn("market", from)) resetMarket(); break;
     case "board": if (NET.role === "host") applyBoard(d.i, d.ok); break;
     case "ln": if (NET.role === "guest") makeLine(d.x, d.z, d.ang, d.len, d.w, d.tele, d.dmg, d.lv); break;
@@ -2353,10 +2354,12 @@ function spawnCompanion() {
   if (!S.companion || !player.model) return;
   let model;
   if (S.companion === "gumiho") {
-    model = kayReady() ? makeKay("sua") : makeNPC("sitter");
+    model = suaReady() ? makeSua() : kayReady() ? makeKay("sua") : makeNPC("sitter");
+    if (!suaReady()) {   /* the old KayKit 수아 gets her tails here; the new model has its own */
     const tailM = toon("#f6efe6"), tipM = toon("#e8a33a");
     for (let i = 0; i < 9; i++) { const a = (i - 4) * .26; const tail = new THREE.Group(); tail.position.set(0, .85, .3); tail.rotation.set(.6 - Math.abs(a) * .2, 0, a * .8); model.root.add(tail);
       const c = new THREE.Mesh(new THREE.ConeGeometry(.2, 1.6, 7), tailM); c.position.y = .8; c.rotation.x = Math.PI; tail.add(c); const tip = new THREE.Mesh(new THREE.ConeGeometry(.13, .5, 7), tipM); tip.position.y = 1.75; tail.add(tip); }
+    }
   } else { model = makeMonster("pet"); model.root.scale.setScalar(.45); model.height *= .45; }
   scene.add(model.root);
   const plate = document.createElement("div"); plate.className = "plate npc"; plate.innerHTML = compLabel(); $("plates").appendChild(plate);
@@ -3088,13 +3091,26 @@ async function refreshFriends() {
   const res = await Promise.all(S.friends.map(f => f.code === S.friendCode ? Promise.resolve({ online: false }) : probeFriend(f.code)));
   S.friends.forEach((f, i) => {
     const st = res[i], was = f.online; f.online = st.online;
-    if (st.online) { f.nm = st.nm || f.nm; f.info = { lvl: st.lvl, cls: st.cls, zone: st.zone, n: st.n }; f.seen = Date.now(); if (!was && !frFirst) { toast(`👥 ${f.nm || f.code} 님이 접속했어요 · is online (${keyName(SET.keys.friends)})`); logChat("system", `👥 ${f.nm || f.code} online`); } }
+    if (st.online) { f.nm = st.nm || f.nm; f.info = { lvl: st.lvl, cls: st.cls, zone: st.zone, n: st.n, ms: st.ms, lr: st.lr, bk: st.bk }; f.seen = Date.now(); if (!was && !frFirst) { toast(`👥 ${f.nm || f.code} 님이 접속했어요 · is online (${keyName(SET.keys.friends)})`); logChat("system", `👥 ${f.nm || f.code} online`); } }
   });
   frFirst = false; frBusy = false; save(); if (!$("friendsView").hidden) drawFriends();
 }
 setInterval(() => { if (started && S.friends?.length) refreshFriends(); }, 60000);
 function openFriends() { if (!S.cls) return; ensureFriendCode(); paused = true; showScreen("friendsView"); drawFriends(); refreshFriends(); }
+// word leaderboard: me (live) + every friend's last numbers, most mastered words first
+const wordCounts = () => { const c = { learned: 0, mastered: 0 }; for (const id in S.stats) { const k = mastery(id).k; if (k === "learned") c.learned++; else if (k === "mastered") c.mastered++; } return c; };
+function drawBoard() {
+  const wc = wordCounts(), has = f => f.info && f.info.ms !== undefined;
+  const rows = [{ me: true, nm: S.name || "나", lvl: S.level, ms: wc.mastered, lr: wc.learned + wc.mastered }, ...S.friends.filter(has).map(f => ({ nm: f.nm || f.code, lvl: f.info.lvl, ms: f.info.ms, lr: f.info.lr, at: f.seen, on: f.online }))];
+  rows.sort((a, b) => b.ms - a.ms || b.lr - a.lr || b.lvl - a.lvl);
+  const ago = t => { const m = Math.round((Date.now() - t) / 60000); return m < 2 ? "지금 · now" : m < 60 ? `${m}분 전 · ${m} min ago` : m < 1440 ? `${Math.round(m / 60)}시간 전 · ${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)}일 전 · ${Math.round(m / 1440)} d ago`; };
+  const waiting = S.friends.filter(f => !has(f)).length;
+  $("frBoard").innerHTML = `<h3>단어 순위 · word leaderboard</h3><div class="tw"><table><thead><tr><th>#</th><th>이름 · name</th><th>Lv</th><th>마스터 · mastered</th><th>배운 단어 · learned</th><th>기준 · as of</th></tr></thead><tbody>`
+    + rows.map((r, i) => `<tr${r.me ? ' class="me"' : ""}><td>${i + 1}</td><td>${esc(r.nm)}${r.me && S.name ? " (나)" : ""}</td><td>${r.lvl}</td><td><b>${r.ms}</b></td><td>${r.lr}</td><td>${r.me ? "지금 · now" : (r.on ? "🟢 " : "") + ago(r.at)}</td></tr>`).join("") + "</tbody></table></div>"
+    + (waiting ? `<p class="fine">${waiting}명은 아직 숫자가 없어요. 다음에 접속하면 나와요 · ${waiting} friend(s) appear here the next time they're online.</p>` : "");
+}
 function drawFriends() {
+  drawBoard();
   const me = NET.role === "host" && NET.code === S.friendCode, inRoom = NET.role === "guest" ? S.friends.find(f => f.code === NET.code) : null;
   $("frMe").innerHTML = `<label>내 이름 · your name <input id="frMyName" maxlength="12" autocomplete="off" value="${esc(S.name || "")}" placeholder="이름"></label>`
     + `<div class="frCode">내 친구 코드 · my friend code <b>${S.friendCode}</b> <button id="frCopy">복사 · copy</button></div>`
@@ -3316,7 +3332,7 @@ function loop(now) {
 async function boot() {
   try { await Promise.race([Promise.all([document.fonts.load('64px "Black Han Sans"'), document.fonts.load('700 20px "Noto Sans KR"', '가나다')]), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
   world = buildWorld(scene);
-  await loadKayKit();
+  await Promise.all([loadKayKit(), loadSua()]);
   placeNPCs(); placeMapItem(); placeRacks(); buildCampParts(); applyQuality(); refreshKeyLabels(); setMusicVolume(SET.music); makeSpawnPoints();
   buildClassPick();
   const has = load();
@@ -3345,6 +3361,7 @@ window.__seoul = {
   gear: (kind = "dokkaebi") => { const g = Object.keys(GEAR).find(k => GEAR[k].drop === kind); addItem(g); }, tab: () => cycleTarget(), toStreet: () => toStreet(), toStation: () => toStation(),
   tp(x, z) { player.pos.set(x, 0, z); },
   spawn(kind, lvl, x, z, zone = "street") { spawnMonster({ kind, lvl, x, z, mon: null, zone }); return monsters[monsters.length - 1]; },
+  wordCounts: () => wordCounts(), drawFriends: () => drawFriends(),
   toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
   get memo() { return memo; }, heart: n => addHeart(n), get comp() { return comp; }, get fishing() { return fishing; }, flip: i => flipStone(i), upgrade: () => upgradeMenu(npcs.find(n => n.kind === "smith")),
   talk: kind => talkTo(npcs.find(n => n.kind === kind)), get dialog() { return dialog; }, opt(i) { $("dOpts").children[i]?.click(); }, get quiz() { return quiz; }, quizAnswer(right = true) { if (quiz) answerQuiz(right ? quiz.opts.indexOf(quiz.answer) : (quiz.opts.indexOf(quiz.answer) + 1) % quiz.opts.length); },
