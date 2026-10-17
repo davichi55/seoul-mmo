@@ -334,12 +334,12 @@ const MAX_LEVEL = 20, MASTER_XP = 15;
 const xpNeed = L => Math.round(100 * Math.pow(L, 1.6) / 10) * 10;
 const lvlHp = () => 1 + .05 * (S.level - 1), lvlDmg = () => 1 + .04 * (S.level - 1);
 // monsters far below your level give little XP (no farming the first street), stronger ones give more
-// level gap (Danny 2026-10-17): up to 1 level above you is a fair fight; every level beyond that the monster deals
-// +20% damage to you (max x3) and takes -12% from you (min x0.2). Monsters 2+ levels below you: a small bonus (max 25%).
+// level gap (Danny 2026-10-17): up to 2 levels above you is a fair fight ("Lv 3 vs Lv 5 should not be punished");
+// every level beyond that the monster deals +25% damage to you (max x3) and takes -15% from you (min x0.2). Monsters 2+ levels below you: a small bonus (max 25%).
 const lvlGap = lv => (lv || S.level) - S.level;
-const gapTaken = lv => { const g = lvlGap(lv); return g > 1 ? Math.min(3, 1 + .2 * (g - 1)) : g < -1 ? Math.max(.75, 1 + .05 * (g + 1)) : 1; };
-const gapDealt = lv => { const g = lvlGap(lv); return g > 1 ? Math.max(.2, 1 - .12 * (g - 1)) : g < -1 ? Math.min(1.25, 1 - .05 * (g + 1)) : 1; };
-const gapClass = lv => { const g = lvlGap(lv); return g >= 4 ? "lv-red" : g >= 2 ? "lv-orange" : g >= -1 ? "lv-yellow" : g >= -4 ? "lv-green" : "lv-gray"; };
+const gapTaken = lv => { const g = lvlGap(lv); return g > 2 ? Math.min(3, 1 + .25 * (g - 2)) : g < -1 ? Math.max(.75, 1 + .05 * (g + 1)) : 1; };
+const gapDealt = lv => { const g = lvlGap(lv); return g > 2 ? Math.max(.2, 1 - .15 * (g - 2)) : g < -1 ? Math.min(1.25, 1 - .05 * (g + 1)) : 1; };
+const gapClass = lv => { const g = lvlGap(lv); return g >= 5 ? "lv-red" : g >= 3 ? "lv-orange" : g >= -1 ? "lv-yellow" : g >= -4 ? "lv-green" : "lv-gray"; };
 const monsterXp = m => m.def.xp * (1 + .3 * (m.lvl - m.def.lvl)) * Math.max(.2, Math.min(1.5, 1 + .2 * (m.lvl - S.level)));
 function gainXp(n, at) {
   if (S.level >= MAX_LEVEL) return;
@@ -468,7 +468,7 @@ function respawnNow() {
 // ---- target -----------------------------------------------------------------------------------------
 const tRing = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.3, 32), new THREE.MeshBasicMaterial({ color: "#ffd23d", transparent: true, opacity: .85, side: THREE.DoubleSide, depthWrite: false }));
 tRing.rotation.x = -Math.PI / 2; tRing.visible = false; scene.add(tRing);
-function setTarget(m) { target = m; tRing.visible = !!m; $("tframe").hidden = !m; if (m) { $("tName").textContent = m.name; const g = lvlGap(m.lvl); $("tSub").className = gapClass(m.lvl); $("tSub").textContent = `Lv ${m.lvl} · ${m.def.en}` + (g > 1 ? ` · ⚠ 너무 강해요 · too strong: it hits ×${gapTaken(m.lvl).toFixed(1)}, you hit ×${gapDealt(m.lvl).toFixed(1)}` : g < -1 ? " · 약해요 · weak" : ""); } }
+function setTarget(m) { target = m; tRing.visible = !!m; $("tframe").hidden = !m; if (m) { $("tName").textContent = m.name; const g = lvlGap(m.lvl); $("tSub").className = gapClass(m.lvl); $("tSub").textContent = `Lv ${m.lvl} · ${m.def.en}` + (g > 2 ? ` · ⚠ 너무 강해요 · too strong: it hits ×${gapTaken(m.lvl).toFixed(1)}, you hit ×${gapDealt(m.lvl).toFixed(1)}` : g < -1 ? " · 약해요 · weak" : ""); } }
 function cycleTarget() {
   if (player.zone === "station") return;
   const list = monsters.filter(m => !m.dead && m.zone === player.zone && !m.caged && dist2(m.pos, player.pos) < 40).sort((a, b) => dist2(a.pos, player.pos) - dist2(b.pos, player.pos));
@@ -3194,9 +3194,9 @@ function areaWatch(dt) {
   if ((areaT -= dt) > 0 || player.dead) return; areaT = .5;
   const a = areaOf(); if (a === "apt" && !S.visitedApt) { S.visitedApt = true; save(); }
   if (a === areaNow) return; areaNow = a;
-  if (!a || S.level + 1 >= AREA_LV[a] || areaWarned[a] === S.level) return;
+  if (!a || S.level + 2 >= AREA_LV[a] || areaWarned[a] === S.level) return;
   areaWarned[a] = S.level;
-  const go = [...AREA_GO].reverse().find(x => AREA_LV[x] <= S.level + 1) || "hongdae";
+  const go = [...AREA_GO].reverse().find(x => AREA_LV[x] <= S.level + 2) || "hongdae";
   phoneText(["g_danger", "g_go_" + go], `${LINES.g_danger.ko} ${LINES["g_go_" + go].ko}`,`${AREA_KO[a]} is still dangerous for you (Lv ${AREA_LV[a]}+). Try ${AREA_KO[go]} first.`);
 }
 function aptHint() {
