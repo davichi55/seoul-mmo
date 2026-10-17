@@ -655,7 +655,7 @@ function eatGimbap() {
 }
 
 // ---- NPCs + dialogue ----------------------------------------------------------------------------------------
-const NPC_DEF = { driver: "기관사 아저씨", teacher: "부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지은", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가영 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "박 선생님 · 학원 강사", cupbap: "컵밥 아줌마" };
+const NPC_DEF = { driver: "기관사 아저씨", teacher: "시연 · 부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지유", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "다미 · 카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가현 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "유현 선생님 · 학원 강사", cupbap: "컵밥 아줌마" };
 function placeNPCs() {
   const sp = world.npcSpots;
   sp.trader = { x: STATION.x + 5, z: STATION.z - 8.6, face: 0 };
@@ -696,7 +696,7 @@ function placeNPCs() {
   });
 }
 function colliders_street_push(p) { world.colliders.street.push({ x: p.x, z: p.z, r: .6 }); }
-// 지은 only shows up once Minsu has asked you to find her, and leaves when you've found her
+// 지유 only shows up once Minsu has asked you to find her, and leaves when you've found her
 function syncQuestNpcs() { const j = npcs.find(n => n.kind === "jieun"); if (j) j.model.root.visible = S.quests.sister?.st === "active" && !S.quests.sister.found; const su = npcs.find(n => n.kind === "sua"); if (su) su.model.root.visible = S.companion !== "gumiho"; }
 // Korean particle 와/과: 과 after a final consonant (받침)
 const wa = w => { const c = w.trim().slice(-1).charCodeAt(0) - 0xAC00; return c >= 0 && c < 11172 && c % 28 ? "과" : "와"; };
@@ -1318,7 +1318,7 @@ const QUESTS = {
            desc: "버스킹 광장의 민수 씨에게 도시락을 갖다 주세요 · bring the lunch box to Minsu at the busking square" },
   sister: { giver: "minsu", needs: "lunch", ko: "잃어버린 동생", en: "The lost sister", kind: "find", to: "jieun",
             offer: "m_q", wait: "m_wait", done: "m_done", turn: "p_found", reward: { won: 10000, xp: 80, card: 1 },
-            desc: "홍대 어딘가에서 지은 씨를 찾아 한국어로 말해 보세요, 그리고 민수 씨에게 · find Jieun somewhere in Hongdae, talk to her, then tell Minsu" },
+            desc: "홍대 어딘가에서 지유 씨를 찾아 한국어로 말해 보세요, 그리고 민수 씨에게 · find Jiyu somewhere in Hongdae, talk to her, then tell Minsu" },
   parking: { giver: "gyeongbi", ko: "주차장의 도깨비", en: "Goblins in the parking lot", kind: "kill", target: "dokkaebi", minLvl: 4, n: 6,
              offer: "b_q", wait: "b_wait", done: "b_done", turn: "p_done", reward: { won: 15000, xp: 150, card: 2 },
              desc: "서교 아파트 주차장에서 큰 도깨비 여섯 마리를 잡으세요 · defeat 6 big goblins (Lv 4+) in the apartment complex, then see the 경비 아저씨" },
@@ -1332,10 +1332,10 @@ const QUESTS = {
          desc: "한강공원의 수아에게 김밥을 갖다 주세요 (할머니 식당에서 포장) · bring Sua at the Han River park a gimbap (takeaway from Grandma's restaurant)" },
   jangseung: { giver: "gayoung", ko: "깨어난 장승", en: "The guardians awake", kind: "kill", target: "jangseung", n: 4,
                offer: "y_q", wait: "y_wait", done: "y_done", turn: "p_done", reward: { won: 25000, xp: 300, card: 2 },
-               desc: "여의도 한강공원의 장승 네 개를 쓰러뜨리고 가영 씨에게 돌아가세요 · knock down 4 guardian posts on 여의도, then go back to 가영 at the bridge" },
+               desc: "여의도 한강공원의 장승 네 개를 쓰러뜨리고 가현 씨에게 돌아가세요 · knock down 4 guardian posts on 여의도, then go back to 가현 at the bridge" },
   exam: { giver: "gangsa", ko: "학원의 귀신", en: "Ghosts of the academy", kind: "kill", target: "gwisin", n: 5,
           offer: "n_q", wait: "n_wait", done: "n_done", turn: "p_done", reward: { won: 30000, xp: 450, card: 3 },
-          desc: "노량진 학원가의 시험 귀신 다섯 마리를 쫓아내고 박 선생님에게 · chase away 5 exam ghosts on the 노량진 cram-school street, then see 박 선생님" },
+          desc: "노량진 학원가의 시험 귀신 다섯 마리를 쫓아내고 유현 선생님에게 · chase away 5 exam ghosts on the 노량진 cram-school street, then see 유현 선생님" },
   cards: { giver: "trader", ko: "카드 수집가", en: "The card collector", kind: "cards", n: 3,
            offer: "q_t1", wait: "q_t1_wait", done: "q_t1_done", turn: "p_pay", reward: { won: 6000, xp: 60, card: 2 },
            desc: "이 단어 카드 세 장을 가방에 모아서 카드 상인에게 · collect these 3 word cards (loose, in your bag) for the card trader" },
@@ -1420,10 +1420,10 @@ function questTalk(n, normal) {
   }
   return false;
 }
-// 지은: the Korean test of the "find" quest — pick the sentence that makes sense
+// 지유: the Korean test of the "find" quest — pick the sentence that makes sense
 function findTalk(n, id) {
   const ask = () => showLine(n, "j_hello", shuffle([
-    { plr: "p_brother", act: () => { S.quests[id].found = true; save(); showLine(n, "j_relief", [{ plr: "p_yes", act: () => { closeDialog(); fade(() => { n.model.root.visible = false; toast("지은 씨가 민수 씨에게 갔어요 · Jieun ran to Minsu"); }); } }]); } },
+    { plr: "p_brother", act: () => { S.quests[id].found = true; save(); showLine(n, "j_relief", [{ plr: "p_yes", act: () => { closeDialog(); fade(() => { n.model.root.visible = false; toast("지유 씨가 민수 씨에게 갔어요 · Jiyu ran to Minsu"); }); } }]); } },
     { plr: "p_hungry", act: () => showLine(n, "j_what", [{ ko: "(다시 말해 보기)", en: "try again", act: ask }]) },
   ]));
   ask();
@@ -1595,10 +1595,10 @@ const ACH = [
   { id: "map4", ko: "섬의 지도", en: "Island map", desc: "Find the 여의도 map", prog: () => [S.hasMapYd ? 1 : 0, 1], reward: { xp: 40 } },
   { id: "poster", ko: "찢어진 포스터", en: "The torn poster", desc: "Look at the torn poster in the 63 Building", prog: () => [S.sawPoster ? 1 : 0, 1], reward: { xp: 50 } },
   { id: "tower1", ko: "63층의 영웅", en: "Hero of the 63rd floor", desc: "Defeat the alien commander", prog: () => [S.towerClears ? 1 : 0, 1], reward: { won: 40000, xp: 200 } },
-  { id: "camp5", ko: "우리 캠프", en: "Our camp", desc: "Rebuild 가영's camp on 여의도 (5 steps)", prog: () => [S.camp || 0, 5], reward: { won: 20000, xp: 150 } },
+  { id: "camp5", ko: "우리 캠프", en: "Our camp", desc: "Rebuild 가현's camp on 여의도 (5 steps)", prog: () => [S.camp || 0, 5], reward: { won: 20000, xp: 150 } },
   { id: "granny", ko: "그날 밤", en: "That night", desc: "Hear the grandmother's whole story by the 나들목", prog: () => [S.heardGranny ? 1 : 0, 1], reward: { xp: 60 } },
   { id: "map5", ko: "학원가 산책", en: "Exam street walk", desc: "Find the 노량진 map", prog: () => [S.hasMapNr ? 1 : 0, 1], reward: { xp: 50 } },
-  { id: "list", ko: "명단", en: "The list", desc: "Read 박 선생님's list of the missing", prog: () => [S.sawList ? 1 : 0, 1], reward: { xp: 60 } },
+  { id: "list", ko: "명단", en: "The list", desc: "Read 유현 선생님's list of the missing", prog: () => [S.sawList ? 1 : 0, 1], reward: { xp: 60 } },
   { id: "market1", ko: "문어 왕을 잡다", en: "Octopus king", desc: "Defeat the octopus king in the fish market", prog: () => [S.marketClears ? 1 : 0, 1], reward: { won: 40000, xp: 250 } },
   { id: "lvl5", ko: "생존자", en: "Survivor", desc: "Reach level 5", prog: () => [S.level, 5], reward: { won: 10000 } },
   { id: "epic", ko: "보물 사냥꾼", en: "Treasure hunter", desc: "Own an epic or legendary card", prog: () => [S.cards.some(c => c.rar >= 2) ? 1 : 0, 1], reward: { xp: 50 } },
@@ -2705,11 +2705,11 @@ function grannyTalk(n) {
   showLine(n, "h_1", [{ plr: "p_more", act: () => showLine(n, "h_2", [{ plr: "p_more", act: () => { S.heardGranny = true; save(); showLine(n, "h_3", [{ plr: "p_thanks2", act: closeDialog }]); } }]) }, { plr: "p_thanks2", act: closeDialog }]);
 }
 
-// ---- 가영's camp on 여의도: rebuild it in 5 steps with materials (decision 32; Danny 2026-10-12 "3 yes") ----
+// ---- 가현's camp on 여의도: rebuild it in 5 steps with materials (decision 32; Danny 2026-10-12 "3 yes") ----
 const CAMP = { x: YD.x + 18, z: YD.z + 143, r: 16 };
 const CAMP_STEPS = [
   { ko: "모닥불과 쉼터", en: "fire + shelter", gives: "캠프에서 빨리 회복 · fast healing at the camp", cost: { wood: 3, vine: 2 }, won: 5000 },
-  { ko: "식량 창고", en: "food store", gives: "가영 씨가 컵밥을 팔아요 · 가영 sells 컵밥", cost: { wood: 4, stone: 3 }, won: 10000 },
+  { ko: "식량 창고", en: "food store", gives: "가현 씨가 컵밥을 팔아요 · 가현 sells 컵밥", cost: { wood: 4, stone: 3 }, won: 10000 },
   { ko: "바리케이드", en: "barricades", gives: "캠프 안은 안전 · monsters lose you inside the camp", cost: { stone: 5, metal: 3 }, won: 15000 },
   { ko: "작업대", en: "workbench", gives: "여기서 장비 강화 · upgrade gear here", cost: { metal: 4, horn: 4, shadow: 2 }, won: 25000 },
   { ko: "잠자리", en: "bedrolls", gives: "여기서 자고, 쓰러지면 여기서 깨요 · sleep here, wake up here after dying on 여의도", cost: { wood: 6, shadow: 4, metal: 4 }, won: 40000 },
@@ -2741,7 +2741,7 @@ function buildCampParts() {
   { const g = campParts[4], c = at(-6, -8);         // bedrolls + the camp flag
     for (let k = 0; k < 3; k++) mk(new THREE.BoxGeometry(1, .15, 2.2), ["#2f7f86", "#e0a21c", "#6a4fa0"][k], c.x + k * 1.4, .08, c.z, g);
     mk(new THREE.CylinderGeometry(.06, .06, 5, 6), "#555", c.x + 5, 2.5, c.z, g);
-    const cv = document.createElement("canvas"); cv.width = 256; cv.height = 128; const x = cv.getContext("2d"); x.fillStyle = "#3a8f4c"; x.fillRect(0, 0, 256, 128); x.fillStyle = "#fff"; x.font = `52px "Noto Sans KR",sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("가영 캠프", 128, 66);
+    const cv = document.createElement("canvas"); cv.width = 256; cv.height = 128; const x = cv.getContext("2d"); x.fillStyle = "#3a8f4c"; x.fillRect(0, 0, 256, 128); x.fillStyle = "#fff"; x.font = `52px "Noto Sans KR",sans-serif`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("가현 캠프", 128, 66);
     const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace; const fl = mk(new THREE.PlaneGeometry(1.8, .9), toon("#ffffff", { map: tx, side: THREE.DoubleSide }), c.x + 5.95, 4.4, c.z, g); }
   syncCamp();
 }
@@ -3051,11 +3051,11 @@ function moveBy(vx, vz, dt) {
 function marketCleared() {
   S.marketClears = (S.marketClears || 0) + 1; addHeart(10);
   toast("🏆 수산시장 클리어! 문어 왕을 물리쳤어요 · the fish market is cleared!");
-  if (S.marketClears === 1) setTimeout(() => sendMail("박 선생님", "문어 왕을 물리쳤다고 들었어요. 정말 대단해요! 학생들이 이걸 꼭 드리고 싶대요.", "I heard you defeated the octopus king. Amazing! My students really wanted you to have this.",
+  if (S.marketClears === 1) setTimeout(() => sendMail("유현 선생님", "문어 왕을 물리쳤다고 들었어요. 정말 대단해요! 학생들이 이걸 꼭 드리고 싶대요.", "I heard you defeated the octopus king. Amazing! My students really wanted you to have this.",
     { cards: [{ id: pick(bookWords().filter(w => S.chapters.includes(w.ch))).id, rar: 3 }], gear: ["t_ink"], won: 30000 }), 2500);
   save();
 }
-// 박 선생님's list: the small clue (decision 19)
+// 유현 선생님's list: the small clue (decision 19)
 function teacher2Talk(n) {
   const opts = [];
   if (S.sawList) opts.push({ ko: "(명단 다시 보기 · read the list again)", en: "", act: readList });

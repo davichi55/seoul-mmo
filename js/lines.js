@@ -77,9 +77,9 @@ export const LINES = {
   q_r1: { ko: "버스킹 광장에 민수 씨가 있어요. 이 도시락 좀 갖다 줄래요?", en: "Minsu is at the busking square. Could you take this lunch box to him?" },
   q_r1_wait: { ko: "민수 씨가 기다리고 있어요.", en: "Minsu is waiting." },
   m_thanks: { ko: "와, 할머니 도시락이에요? 정말 고마워요!", en: "Wow, is this grandma's lunch box? Thank you so much!" },
-  m_q: { ko: "제 동생 지은이가 없어졌어요. 홍대 어딘가에 있을 거예요. 찾아 주세요.", en: "My little sister Jieun is missing. She must be somewhere in Hongdae. Please find her." },
-  m_wait: { ko: "지은이를 아직 못 찾았어요?", en: "You haven't found Jieun yet?" },
-  m_done: { ko: "지은이가 무사해요? 정말 감사합니다!", en: "Jieun is safe? Thank you so much!" },
+  m_q: { ko: "제 동생 지유가 없어졌어요. 홍대 어딘가에 있을 거예요. 찾아 주세요.", en: "My little sister Jiyu is missing. She must be somewhere in Hongdae. Please find her." },
+  m_wait: { ko: "지유를 아직 못 찾았어요?", en: "You haven't found Jiyu yet?" },
+  m_done: { ko: "지유가 무사해요? 정말 감사합니다!", en: "Jiyu is safe? Thank you so much!" },
   m_hello: { ko: "여기는 위험해요. 조심하세요.", en: "It's dangerous here. Be careful." },
   j_hello: { ko: "누, 누구세요?", en: "W-who are you?" },
   j_what: { ko: "네? 무슨 말이에요?", en: "What? What do you mean?" },
@@ -92,7 +92,7 @@ export const LINES = {
   p_brother: { ko: "괜찮아요. 오빠가 찾고 있어요.", en: "It's okay. Your brother is looking for you." },
   p_hungry: { ko: "배고파요.", en: "I'm hungry." },
   p_lunch: { ko: "할머니가 보내셨어요.", en: "Grandma sent this." },
-  p_found: { ko: "지은 씨를 찾았어요.", en: "I found Jieun." },
+  p_found: { ko: "지유 씨를 찾았어요.", en: "I found Jiyu." },
   p_done: { ko: "다 했어요.", en: "I'm done." },
   x_map: { ko: "지도를 찾았어요!", en: "You found a map!" },
 
@@ -165,14 +165,14 @@ export const LINES = {
   f_story1: { ko: "The guy in the hood at Hongik station? I've seen him at night by the river, just staring across at Yeouido. Never says a word.", en: "", foreign: true },
   f_story2: { ko: "People say the aliens didn't land on Yeouido by accident. It was the night of a big concert by the river. They were looking for someone.", en: "", foreign: true },
   f_bye: { ko: "Stay safe out there. 화이팅, right?", en: "", foreign: true },
-  // 가영's camp
+  // 가현's camp
   y_camp: { ko: "캠프를 같이 고쳐요! 재료를 주면 제가 지을게요.", en: "Let's fix up the camp together! Give me the materials and I'll build it." },
   y_built: { ko: "와! 캠프가 더 좋아졌어요. 고마워요!", en: "Wow! The camp got better. Thank you!" },
   y_need: { ko: "재료가 아직 모자라요. 괴물들이 재료를 떨어뜨려요.", en: "We don't have enough materials yet. Monsters drop materials." },
   y_wake: { ko: "정신이 들어요? 캠프로 데려왔어요.", en: "Are you awake? I brought you to the camp." },
   p_build: { ko: "이걸로 캠프를 고쳐요.", en: "Let's fix the camp with this." },
   p_cupbap: { ko: "컵밥 하나 주세요.", en: "One cup-rice bowl, please." },
-  // 노량진: 박 선생님 (academy teacher), the list, 컵밥 아줌마
+  // 노량진: 유현 선생님 (academy teacher), the list, 컵밥 아줌마
   n_q: { ko: "학원에 시험 귀신들이 가득해요. 다섯 마리만 쫓아내 주세요.", en: "The academy is full of exam ghosts. Please chase away just five." },
   n_wait: { ko: "귀신이 단어를 물어보면 침착하게 대답하세요.", en: "When a ghost asks you a word, answer calmly." },
   n_done: { ko: "고마워요. 이건 제가 몰래 적어 둔 실종자 명단이에요.", en: "Thank you. This is the list of missing people I secretly wrote down." },
