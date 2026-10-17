@@ -1179,7 +1179,7 @@ function openCharView() {
   $("cvPass").textContent = cd.pass;
   const lv = heartLvl(), next = HEARTS[lv], prev = HEARTS[lv - 1] || 0;
   $("cvComp").innerHTML = !S.companion ? "" : S.companion === "gumiho"
-    ? `<h3>동료 · Companion</h3><div class="cvc"><b>💗 수아 · 구미호</b><span class="hearts">${"♥".repeat(lv)}${"♡".repeat(5 - lv)}</span><div class="bar xp"><i style="width:${next ? ((S.suaHeart || 0) - prev) / (next - prev) * 100 : 100}%"></i><span>${next ? `${S.suaHeart || 0} / ${next}` : "MAX"}</span></div><span class="fine">싸울 때 8초마다 체력 ${5 + lv}% 회복, 가까이 있으면 공격 +5% · heals ${5 + lv}% every 8 s in fights, +5% damage while she's close. 같이 괴물을 이기면 ♥ +1, 퀘스트 +3, 터널 +10.</span></div>`
+    ? `<h3>동료 · Companion</h3><div class="cvc"><b>💗 수아 · 구미호</b><span class="hearts">${"♥".repeat(lv)}${"♡".repeat(5 - lv)}</span><div class="bar xp"><i style="width:${next ? ((S.suaHeart || 0) - prev) / (next - prev) * 100 : 100}%"></i><span>${next ? `${S.suaHeart || 0} / ${next}` : "MAX"}</span></div><span class="fine">싸울 때 16초마다 체력 ${5 + lv}% 회복, 가까이 있으면 공격 +5% · heals ${5 + lv}% every 16 s in fights, +5% damage while she's close. 같이 괴물을 이기면 ♥ +1, 퀘스트 +3, 터널 +10.</span></div>`
     : `<h3>동료 · Companion</h3><div class="cvc"><b>🐾 ${esc(petName())} · 꼬마 도깨비</b><span class="fine">근처 괴물은 8% 더 다쳐요, 15초마다 괴물 하나를 4초 동안 데려가요 · monsters near it take +8%, every 15 s it lures one away for 4 s.</span><button id="cvRename">이름 바꾸기 · rename</button></div>`;
   if ($("cvRename")) $("cvRename").onclick = () => { showScreen(null); askPetName(() => openCharView()); };
   const all = Object.keys(S.stats).filter(id => S.stats[id].s > 0), cnt = { seen: 0, learned: 0, mastered: 0 };
@@ -2367,7 +2367,7 @@ function companionTick(dt) {
   comp.model.root.position.set(comp.pos.x, 0, comp.pos.z); comp.model.root.rotation.y = comp.yaw; comp.model.anim(dt, { moving });
   const fight = !player.dead && player.zone !== "station" && monsters.some(m => !m.dead && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 20);
   if (!fight) return;
-  if (S.companion === "gumiho" && (comp.healT -= dt) <= 0) { comp.healT = 8; if (player.hp < player.maxHp) { const h = player.maxHp * (.05 + .01 * heartLvl()); player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "💗 +" + Math.round(h), "#ff9ec4", true, 2.4); } }
+  if (S.companion === "gumiho" && (comp.healT -= dt) <= 0) { comp.healT = 16;   // Danny 2026-10-17: was 8 s, too strong if (player.hp < player.maxHp) { const h = player.maxHp * (.05 + .01 * heartLvl()); player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "💗 +" + Math.round(h), "#ff9ec4", true, 2.4); } }
   if (S.companion === "pet" && NET.role !== "guest" && (comp.tauntT -= dt) <= 0) {
     comp.tauntT = 15;
     const ms = monsters.filter(m => !m.dead && !m.def.boss && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 20);
