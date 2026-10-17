@@ -9,7 +9,7 @@ import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, toon } from "./world.js";
 import { makeHero, makeNPC, makeMonster } from "./models.js";
 import { loadKayKit, kayReady, makeKay } from "./kaykit.js";
-import { loadSua, suaReady, makeSua } from "./sua.js";
+import { loadWomen, womenReady, makeWoman } from "./women.js";
 import * as FX from "./fx.js";
 import { LINES } from "./lines.js";
 import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js";
@@ -718,29 +718,32 @@ function eatGimbap() {
 
 // ---- NPCs + dialogue ----------------------------------------------------------------------------------------
 const NPC_DEF = { driver: "기관사 아저씨", teacher: "시연 · 부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지유", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "다미 · 카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가현 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "유현 선생님 · 학원 강사", cupbap: "컵밥 아줌마", dealer: "수상한 경매사", handong: "한동 · 박물관 카페" };
+// the Dreamcatcher-named women (Danny 2026-10-18: their group stage style, their own hair) replace the KayKit stand-ins
+const WOMAN_OF = { jieun: "jiyu", teacher: "siyeon", sua: "sua", gayoung: "gahyeon", gangsa: "yoohyeon", trader: "dami", handong: "handong" };
+const npcWoman = kind => womenReady() && WOMAN_OF[kind] ? makeWoman(WOMAN_OF[kind]) : null;
 function placeNPCs() {
   const sp = world.npcSpots;
   sp.trader = { x: STATION.x + 5, z: STATION.z - 8.6, face: 0 };
   for (const kind of ["grandma", "smith", "stranger", "guard", "trader", "driver"]) {
-    const model = kayReady() && (kind === "smith" || kind === "stranger" || kind === "trader") ? makeKay(kind) : makeNPC(kind === "trader" ? "sitter" : kind === "driver" ? "guard" : kind), at = sp[kind], n = { isNpc: true, kind, model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
+    const model = npcWoman(kind) || (kayReady() && (kind === "smith" || kind === "stranger" || kind === "trader") ? makeKay(kind) : makeNPC(kind === "trader" ? "sitter" : kind === "driver" ? "guard" : kind)), at = sp[kind], n = { isNpc: true, kind, model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = at.face; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; n.plate.textContent = NPC_DEF[kind]; $("plates").appendChild(n.plate);
     npcs.push(n);
   }
   for (const kind of ["minsu", "jieun", "gyeongbi", "teacher", "sua", "clerk"]) {
-    const at = STREET_NPCS[kind], model = kind === "gyeongbi" ? makeNPC("guard") : kind === "sua" && suaReady() ? makeSua() : kayReady() ? makeKay(kind) : makeNPC("sitter"), n = { isNpc: true, kind, zone: "street", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
+    const at = STREET_NPCS[kind], model = kind === "gyeongbi" ? makeNPC("guard") : npcWoman(kind) || (kayReady() ? makeKay(kind) : makeNPC("sitter")), n = { isNpc: true, kind, zone: "street", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = at.face; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); colliders_street_push(n.pos);
   }
   {
-    const at = YEOUIDO.npc, model = kayReady() ? makeKay("gayoung") : makeNPC("sitter"), n = { isNpc: true, kind: "gayoung", zone: "yeouido", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF.gayoung };
+    const at = YEOUIDO.npc, model = npcWoman("gayoung") || (kayReady() ? makeKay("gayoung") : makeNPC("sitter")), n = { isNpc: true, kind: "gayoung", zone: "yeouido", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF.gayoung };
     model.root.position.copy(n.pos); model.root.rotation.y = Math.PI; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); world.colliders.yeouido.push({ x: at.x, z: at.z, r: .6 });
   }
   for (const [kind, at, mdl] of [["gangsa", YEOUIDO.npcTeacher, () => kayReady() ? makeKay("gangsa") : makeNPC("sitter")], ["cupbap", YEOUIDO.npcCupbap, () => makeNPC("grandma")], ["handong", YEOUIDO.npcHandong, () => kayReady() ? makeKay("handong") : makeNPC("sitter")], ["dealer", MARKET.dealer, () => kayReady() ? makeKay("dealer") : makeNPC("sitter")]]) {
-    const model = mdl(), n = { isNpc: true, kind, zone: kind === "dealer" ? "market" : "yeouido", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
+    const model = npcWoman(kind) || mdl(), n = { isNpc: true, kind, zone: kind === "dealer" ? "market" : "yeouido", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = Math.PI; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); world.colliders.yeouido.push({ x: at.x, z: at.z, r: .6 });
@@ -2467,8 +2470,8 @@ function spawnCompanion() {
   if (!S.companion || !player.model) return;
   let model;
   if (S.companion === "gumiho") {
-    model = suaReady() ? makeSua() : kayReady() ? makeKay("sua") : makeNPC("sitter");
-    if (!suaReady()) {   /* the old KayKit 수아 gets her tails here; the new model has its own */
+    model = npcWoman("sua") || (kayReady() ? makeKay("sua") : makeNPC("sitter"));
+    if (!womenReady()) {   /* the old KayKit 수아 gets her tails here; the new model has its own */
     const tailM = toon("#f6efe6"), tipM = toon("#e8a33a");
     for (let i = 0; i < 9; i++) { const a = (i - 4) * .26; const tail = new THREE.Group(); tail.position.set(0, .85, .3); tail.rotation.set(.6 - Math.abs(a) * .2, 0, a * .8); model.root.add(tail);
       const c = new THREE.Mesh(new THREE.ConeGeometry(.2, 1.6, 7), tailM); c.position.y = .8; c.rotation.x = Math.PI; tail.add(c); const tip = new THREE.Mesh(new THREE.ConeGeometry(.13, .5, 7), tipM); tip.position.y = 1.75; tail.add(tip); }
@@ -3700,7 +3703,7 @@ function loop(now) {
 async function boot() {
   try { await Promise.race([Promise.all([document.fonts.load('64px "Black Han Sans"'), document.fonts.load('700 20px "Noto Sans KR"', '가나다')]), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
   world = buildWorld(scene);
-  await Promise.all([loadKayKit(), loadSua()]);
+  await Promise.all([loadKayKit(), loadWomen()]);
   placeNPCs(); placeMapItem(); placeRacks(); buildCampParts(); applyQuality(); refreshKeyLabels(); setMusicVolume(SET.music); makeSpawnPoints();
   buildClassPick();
   const has = load();
