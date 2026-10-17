@@ -719,6 +719,7 @@ function eatGimbap() {
 // ---- NPCs + dialogue ----------------------------------------------------------------------------------------
 const NPC_DEF = { driver: "기관사 아저씨", teacher: "시연 · 부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지유", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "다미 · 카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가현 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "유현 선생님 · 학원 강사", cupbap: "컵밥 아줌마", dealer: "수상한 경매사", handong: "한동 · 박물관 카페" };
 // the Dreamcatcher-named women (Danny 2026-10-18: their group stage style, their own hair) replace the KayKit stand-ins
+const DREAM_TEAM = ["jieun", "teacher", "sua", "gayoung", "gangsa", "trader", "handong"];
 const WOMAN_OF = { jieun: "jiyu", teacher: "siyeon", sua: "sua", gayoung: "gahyeon", gangsa: "yoohyeon", trader: "dami", handong: "handong" };
 const npcWoman = kind => womenReady() && WOMAN_OF[kind] ? makeWoman(WOMAN_OF[kind]) : null;
 function placeNPCs() {
@@ -762,7 +763,7 @@ function placeNPCs() {
 }
 function colliders_street_push(p) { world.colliders.street.push({ x: p.x, z: p.z, r: .6 }); }
 // 지유 only shows up once Minsu has asked you to find her, and leaves when you've found her
-function syncQuestNpcs() { const j = npcs.find(n => n.kind === "jieun"); if (j) j.model.root.visible = S.quests.sister?.st === "active" && !S.quests.sister.found; const su = npcs.find(n => n.kind === "sua"); if (su) su.model.root.visible = S.companion !== "gumiho"; }
+function syncQuestNpcs() { const j = npcs.find(n => n.kind === "jieun"); if (j) { const home = S.quests.sister?.st === "done"; j.model.root.visible = home || (S.quests.sister?.st === "active" && !S.quests.sister.found); if (home) { j.pos.set(-36.2, 0, -26.2); j.model.root.position.copy(j.pos); j.zone = "street"; } }   /* after the reunion 지유 stays with her brother 민수, so you can still talk to her */ const su = npcs.find(n => n.kind === "sua"); if (su) su.model.root.visible = S.companion !== "gumiho"; }
 // Korean particle 와/과: 과 after a final consonant (받침)
 const wa = w => { const c = w.trim().slice(-1).charCodeAt(0) - 0xAC00; return c >= 0 && c < 11172 && c % 28 ? "과" : "와"; };
 function subsFor(key) { if (transNow) return true; if (LINES[key]?.hard) return false; if (S.subs === "always") return true; if (S.subs === "never") return false; return (S.heard[key] || 0) < 3; }
@@ -796,13 +797,14 @@ function endWith(npc, key) { showLine(npc, key, [{ ko: "(대화 끝내기)", en:
 function talkTo(n) {
   if (player.dead) return;
   cancelRitual();
+  (S.talked = S.talked || {})[n.kind] = 1;
   const normal = {
     grandma: () => restaurant(n), smith: () => shop(n), trader: () => cardShop(n),
     stranger: () => (S.hasMirror && !S.metMirror) ? (S.metMirror = true, save(), revealTalk(n)) : (S.towerClears && S.sawPoster && !S.metHaneul) ? (S.metHaneul = true, save(), showLine(n, "x_haneul", [{ plr: "p_haneul", act: () => endWith(n, "x_haneul2") }])) : (S.sawList && !S.metList) ? (S.metList = true, save(), endWith(n, "x_list")) : (S.dunClears && !S.metAgain) ? (S.metAgain = true, save(), endWith(n, "x_return")) : showLine(n, "x_again", [{ plr: "p_yes", act: () => { closeDialog(); openDeckPicker(false); } }, { plr: "p_who", act: () => endWith(n, "x_who") }, { plr: "p_no", act: () => endWith(n, "x_bye") }]),
     guard: () => showLine(n, S.hasMap ? "g_hello" : "g_map", [{ plr: "p_yes", act: () => endWith(n, "g_sleep") }]),
     driver: () => showLine(n, S.spells?.sleep || S.dunClears ? "d_hello" : "d_hint", [{ plr: "p_enter", act: () => { closeDialog(); fade(toDungeon); } }, { plr: "p_later", act: closeDialog }]),
     teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), dealer: () => dealerTalk(n), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
-    minsu: () => endWith(n, "m_hello"), jieun: () => endWith(n, "j_hello"), gyeongbi: () => endWith(n, S.hasMapApt ? "b_hello" : "b_map"),
+    minsu: () => endWith(n, "m_hello"), jieun: () => endWith(n, S.quests.sister?.st === "done" ? "j_home" : "j_hello"), gyeongbi: () => endWith(n, S.hasMapApt ? "b_hello" : "b_map"),
   }[n.kind];
   if (questTalk(n, normal)) return;
   normal();
@@ -1697,6 +1699,8 @@ const ACH = [
   { id: "truth", ko: "진실", en: "The truth", desc: "Hear the stranger's story", prog: () => [S.metMirror ? 1 : 0, 1], reward: { xp: 200 } },
   { id: "set1", ko: "세트 완성", en: "Full set", desc: "Own both pieces of a dungeon set", prog: () => [Object.values(SETS).some(st => ownsG(st.w) && ownsG(st.a)) ? 1 : 0, 1], reward: { won: 30000, xp: 150 } },
   { id: "dealer", ko: "수상한 거래", en: "A shady deal", desc: "Buy a card from someone who isn't on any map", prog: () => [S.dealerBuys ? 1 : 0, 1], reward: { xp: 150 } },
+  // Danny 2026-10-18: talk to every Dreamcatcher-named character once (수아 and 지유 also count through their quests)
+  { id: "dreamteam", ko: "드림팀", en: "The Dream Team", desc: "Talk to 지유, 시연, 수아, 가현, 유현, 다미 and 한동", prog: () => [DREAM_TEAM.filter(k => S.talked?.[k] || (k === "sua" && (S.sua?.step || 0) >= 1) || (k === "jieun" && (S.quests.sister?.found || S.quests.sister?.st === "done"))).length, DREAM_TEAM.length], reward: { won: 50000, xp: 300 } },
   { id: "lvl5", ko: "생존자", en: "Survivor", desc: "Reach level 5", prog: () => [S.level, 5], reward: { won: 10000 } },
   { id: "epic", ko: "보물 사냥꾼", en: "Treasure hunter", desc: "Own an epic or legendary card", prog: () => [S.cards.some(c => c.rar >= 2) ? 1 : 0, 1], reward: { xp: 50 } },
   { id: "geared", ko: "완전 무장", en: "Fully equipped", desc: "Wear a better weapon, armour and a trinket", prog: () => [(weaponTier() >= 1) + (itemBy(S.equip.armor)?.g !== "a0" && !!S.equip.armor) + !!S.equip.trinket, 3], reward: { won: 8000 } },

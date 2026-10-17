@@ -109,6 +109,7 @@ export const LINES = {
   m_hello: { ko: "여기는 위험해요. 조심하세요.", en: "It's dangerous here. Be careful." },
   j_hello: { ko: "누, 누구세요?", en: "W-who are you?" },
   j_what: { ko: "네? 무슨 말이에요?", en: "What? What do you mean?" },
+  j_home: { ko: "저를 찾아 줘서 고마워요. 오빠랑 같이 있으니까 괜찮아요.", en: "Thank you for finding me. I am okay now that I am with my brother." },
   j_relief: { ko: "정말요? 오빠가요? 고마워요. 지금 갈게요!", en: "Really? My brother? Thank you. I'll go now!" },
   q_t1: { ko: "이 단어 카드 세 장을 찾아 주세요. 좋은 카드로 바꿔 줄게요.", en: "Please find these three word cards. I'll trade you a good card." },
   q_t1_wait: { ko: "카드는 괴물들이 떨어뜨려요.", en: "Monsters drop the cards." },
