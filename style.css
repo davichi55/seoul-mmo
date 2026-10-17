@@ -450,3 +450,7 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 /* story / practice mode choice */
 #modePick .modeDesc{flex-basis:100%}
 .dvChapters span.chip{cursor:default}
+
+/* level gap colours (nameplate level tag + target frame) */
+.lv-gray{color:#a3a3a3}.lv-green{color:#7be07b}.lv-yellow{color:#ffe066}.lv-orange{color:#ff9a3d}.lv-red{color:#ff5a4a}
+.plate .lv{font-weight:700}

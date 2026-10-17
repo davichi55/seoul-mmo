@@ -1,6 +1,14 @@
 // Every spoken line in the game. key -> { ko, en, say? }  (say = what Piper reads, when it differs from ko)
 // After editing: node tools/gen-lines.js  (makes audio/lines/<key>.wav for new keys)
 export const LINES = {
+  // 민수's phone texts: soft area guidance (no gates)
+  g_danger: { ko: "거기는 아직 위험해요!", en: "It's still dangerous there!" },
+  g_go_hongdae: { ko: "홍대 거리에서 먼저 연습하세요.", en: "Practise on the Hongdae streets first." },
+  g_go_apt: { ko: "서교 아파트에 먼저 가 보세요.", en: "Try the 서교 apartments first." },
+  g_go_river: { ko: "한강공원에 먼저 가 보세요.", en: "Try 한강공원 first." },
+  g_go_yeouido: { ko: "여의도에 먼저 가 보세요.", en: "Try 여의도 first." },
+  g_go_noryangjin: { ko: "노량진에 먼저 가 보세요.", en: "Try 노량진 first." },
+  g_apt_hint: { ko: "서교 아파트에 가 봤어요? 동쪽 문으로 나가면 돼요.", en: "Have you been to the 서교 apartments? Go out through the east gate." },
   // 사장님, 홍대 할머니 식당
   r_welcome: { ko: "어서 오세요! 몇 분이세요?", en: "Welcome! How many people?" },
   r_two: { ko: "두 분이요? 혼자 오신 것 같은데요?", en: "Two? It looks like you came alone." },

@@ -334,13 +334,19 @@ const MAX_LEVEL = 20, MASTER_XP = 15;
 const xpNeed = L => Math.round(100 * Math.pow(L, 1.6) / 10) * 10;
 const lvlHp = () => 1 + .05 * (S.level - 1), lvlDmg = () => 1 + .04 * (S.level - 1);
 // monsters far below your level give little XP (no farming the first street), stronger ones give more
+// level gap (Danny 2026-10-17): up to 1 level above you is a fair fight; every level beyond that the monster deals
+// +20% damage to you (max x3) and takes -12% from you (min x0.2). Monsters 2+ levels below you: a small bonus (max 25%).
+const lvlGap = lv => (lv || S.level) - S.level;
+const gapTaken = lv => { const g = lvlGap(lv); return g > 1 ? Math.min(3, 1 + .2 * (g - 1)) : g < -1 ? Math.max(.75, 1 + .05 * (g + 1)) : 1; };
+const gapDealt = lv => { const g = lvlGap(lv); return g > 1 ? Math.max(.2, 1 - .12 * (g - 1)) : g < -1 ? Math.min(1.25, 1 - .05 * (g + 1)) : 1; };
+const gapClass = lv => { const g = lvlGap(lv); return g >= 4 ? "lv-red" : g >= 2 ? "lv-orange" : g >= -1 ? "lv-yellow" : g >= -4 ? "lv-green" : "lv-gray"; };
 const monsterXp = m => m.def.xp * (1 + .3 * (m.lvl - m.def.lvl)) * Math.max(.2, Math.min(1.5, 1 + .2 * (m.lvl - S.level)));
 function gainXp(n, at) {
   if (S.level >= MAX_LEVEL) return;
   n = Math.round(n); S.xp += n;
   floater(at || player.pos, `+${n} XP`, "#c3b2ff", true, at ? 2 : 3.2);
   while (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) {
-    S.xp -= xpNeed(S.level); S.level++; recalcMax(); player.hp = player.maxHp; learnSkills(true); syncStory(true);
+    S.xp -= xpNeed(S.level); S.level++; recalcMax(); player.hp = player.maxHp; learnSkills(true); syncStory(true); setTimeout(aptHint, 2500);
     toast(`레벨 업! Lv ${S.level} · health +5%, damage +4%`); SFX.pickup(); floater(player.pos, "LEVEL UP!", "#ffd23d", false, 3.4);
   }
   save();
@@ -390,7 +396,7 @@ function spawnMonster(sp) {
   const sc = (def.scale || (sp.kind === "dokkaebi" ? .8 : 1)) * (1 + .1 * up); model.root.scale.setScalar(sc); model.height *= sc;   // "little" goblin; big ones grow
   m.zone = sp.zone || "street"; m.baseScale = sc;
   model.root.userData.ent = m; model.root.position.copy(m.pos); scene.add(model.root);
-  m.plate = document.createElement("div"); m.plate.className = "plate"; m.plate.innerHTML = `<div class="n">Lv ${lvl} ${m.name}</div><div class="pb"><i></i></div>`; $("plates").appendChild(m.plate);
+  m.plate = document.createElement("div"); m.plate.className = "plate"; m.plate.innerHTML = `<div class="n"><span class="lv">Lv ${lvl}</span> ${m.name}</div><div class="pb"><i></i></div>`; $("plates").appendChild(m.plate);
   monsters.push(m); sp.mon = m;
 }
 // monsters only come back when you enter the street again (Danny 2026-10-11): a cleared street stays cleared
@@ -426,6 +432,7 @@ function hurt(amount, src, raw = false) {
   const cd = classDef();
   if (!raw && cd.mitig) amount *= 1 - cd.mitig;
   if (!raw && player.guardUntil > clock) amount *= 1 - .5;   // 철벽
+  if (!raw && src && src.lvl) amount *= gapTaken(src.lvl);   // level gap
   amount = Math.round(amount);
   if (player.invulnUntil > clock) { floater(player.pos, "무적 · untouchable", "#ffd23d", true, 2.4); return; }
   if (player.absorb && player.absorb.v > 0) { const a = Math.min(player.absorb.v, amount); player.absorb.v -= a; amount -= a; floater(player.pos, `🛡 -${Math.round(a)}`, "#9ec8ff", true, 2.6); if (amount <= 0) return; }
@@ -461,7 +468,7 @@ function respawnNow() {
 // ---- target -----------------------------------------------------------------------------------------
 const tRing = new THREE.Mesh(new THREE.RingGeometry(1.1, 1.3, 32), new THREE.MeshBasicMaterial({ color: "#ffd23d", transparent: true, opacity: .85, side: THREE.DoubleSide, depthWrite: false }));
 tRing.rotation.x = -Math.PI / 2; tRing.visible = false; scene.add(tRing);
-function setTarget(m) { target = m; tRing.visible = !!m; $("tframe").hidden = !m; if (m) { $("tName").textContent = m.name; $("tSub").textContent = `Lv ${m.lvl} · ${m.def.en}`; } }
+function setTarget(m) { target = m; tRing.visible = !!m; $("tframe").hidden = !m; if (m) { $("tName").textContent = m.name; const g = lvlGap(m.lvl); $("tSub").className = gapClass(m.lvl); $("tSub").textContent = `Lv ${m.lvl} · ${m.def.en}` + (g > 1 ? ` · ⚠ 너무 강해요 · too strong: it hits ×${gapTaken(m.lvl).toFixed(1)}, you hit ×${gapDealt(m.lvl).toFixed(1)}` : g < -1 ? " · 약해요 · weak" : ""); } }
 function cycleTarget() {
   if (player.zone === "station") return;
   const list = monsters.filter(m => !m.dead && m.zone === player.zone && !m.caged && dist2(m.pos, player.pos) < 40).sort((a, b) => dist2(a.pos, player.pos) - dist2(b.pos, player.pos));
@@ -561,7 +568,7 @@ function castRitual() {
       if (!sk.pierce && sk.fire && tt.def.immune === "fire") { part = 0; imm = true; }
       total += part;
     }
-    total *= (1 + sumMod("dmg") + b.dmg + gearStat("dmg")) * (buffOn("dmg") ? 1.05 : 1) * (S.hunger <= 0 ? HUNGRY_MULT : 1) * (player.cryUntil > clock ? 1.15 : 1) * rand(.9, 1.1);
+    total *= (1 + sumMod("dmg") + b.dmg + gearStat("dmg")) * (buffOn("dmg") ? 1.05 : 1) * (S.hunger <= 0 ? HUNGRY_MULT : 1) * (player.cryUntil > clock ? 1.15 : 1) * gapDealt(tt.lvl) * rand(.9, 1.1);
     return { dmg: Math.max(imm && total < 1 ? 0 : 1, Math.round(total)), weak, imm };
   };
   const { dmg, weak: weakHit, imm: immuneHit } = calc(t, sk.execute ? (t.hp / t.maxHp < .25 ? 5 : 1) : sk.mult);
@@ -1232,7 +1239,7 @@ $("actDeck").onclick = () => openDeckView();
 // ---- start --------------------------------------------------------------------------------------------
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
-  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
+  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
   player.model = kayReady() ? makeKay(S.cls) : makeHero(S.cls); scene.add(player.model.root);
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
@@ -1292,7 +1299,7 @@ function drawPlates() {
     if (far || tmpV.z > 1) { el.style.display = "none"; continue; }
     el.style.display = ""; el.style.left = (tmpV.x * .5 + .5) * innerWidth + "px"; el.style.top = (-tmpV.y * .5 + .5) * innerHeight + "px";
     if (e.isNpc) { const mk = npcMarker(e), html = (mk ? `<span class="qmk${mk === "…" ? " dim" : ""}">${mk}</span>` : "") + e.name; if (el.innerHTML !== html) el.innerHTML = html; }
-    if (e.isMonster) { el.className = "plate" + (e === target ? " tgt" : e.state === "chase" ? " aggro" : ""); el.querySelector("i").style.width = Math.max(0, e.hp / e.maxHp * 100) + "%"; }
+    if (e.isMonster) { el.className = "plate" + (e === target ? " tgt" : e.state === "chase" ? " aggro" : ""); el.querySelector("i").style.width = Math.max(0, e.hp / e.maxHp * 100) + "%"; const lv = el.querySelector(".lv"), lc = "lv " + gapClass(e.lvl); if (lv && lv.className !== lc) lv.className = lc; }
   }
 }
 
@@ -1773,7 +1780,7 @@ function updateMonsters(dt) {
           if (m.slamCd <= 0 && d < 9 && m.slamT <= 0) {
             m.slamT = def.slam.tele; m.slamAt = tg.pos.clone(); m.ring = makeRing(m.slamAt, def.slam.radius, def.slam.tele);
             if (tg.id === myId()) toast(`${m.name} — 피하세요! · it's jumping, dodge!`);
-            netSend({ t: "sl", x: m.slamAt.x, z: m.slamAt.z, r: def.slam.radius, tele: def.slam.tele, dmg: def.slam.dmg * m.mul });
+            netSend({ t: "sl", x: m.slamAt.x, z: m.slamAt.z, r: def.slam.radius, tele: def.slam.tele, dmg: def.slam.dmg * m.mul, lv: m.lvl });
           }
           if (m.slamT > 0) {
             m.slamT -= dt; m.slamAnim = 1 - m.slamT / def.slam.tele;
@@ -1805,14 +1812,14 @@ function monsterAttack(m, tg) {
   setTimeout(() => {
     if (m.dead || dist2(m.pos, tg.pos) > rangeOf(m) + 1) return;
     if (tg.id === myId()) { if (!player.dead && player.zone === m.zone) hurt(mdmg(m), m); }
-    else netSend({ t: "hurt", to: tg.id, dmg: mdmg(m), root: !!(m.def.root && Math.random() < m.def.root.chance) });
+    else netSend({ t: "hurt", to: tg.id, dmg: mdmg(m), lv: m.lvl, root: !!(m.def.root && Math.random() < m.def.root.chance) });
   }, 260);
 }
 function shootThorn(m, at) {
   const from = m.pos.clone(); from.y = 1.9;
   const to = at.clone(); to.y = 1.1; const vel = to.sub(from).normalize().multiplyScalar(11);
   spawnThorn(from, vel, m.def.dmg * m.mul, m);
-  netSend({ t: "th", x: from.x, y: from.y, z: from.z, vx: vel.x, vy: vel.y, vz: vel.z, dmg: m.def.dmg * m.mul, sh: m.def.shock ? 1 : 0 });
+  netSend({ t: "th", x: from.x, y: from.y, z: from.z, vx: vel.x, vy: vel.y, vz: vel.z, dmg: m.def.dmg * m.mul, sh: m.def.shock ? 1 : 0, lv: m.lvl });
 }
 function spawnThorn(from, vel, dmg, src) {
   const mesh = new THREE.Mesh(thornGeo, src?.def?.shock ? shockMat : thornMat); mesh.position.copy(from); scene.add(mesh);
@@ -1918,7 +1925,7 @@ function onNet(d, from) {
     case "ping": if (NET.role === "host") netSend({ to: from, t: "pong", nm: S.name || classDef().ko, lvl: S.level, cls: S.cls, zone: player.zone, n: remotes.size + 1 }); break;
     case "enterM": if (NET.role === "host" && !someoneIn("market", from)) resetMarket(); break;
     case "board": if (NET.role === "host") applyBoard(d.i, d.ok); break;
-    case "ln": if (NET.role === "guest") makeLine(d.x, d.z, d.ang, d.len, d.w, d.tele, d.dmg); break;
+    case "ln": if (NET.role === "guest") makeLine(d.x, d.z, d.ang, d.len, d.w, d.tele, d.dmg, d.lv); break;
     case "enterY": if (NET.role === "host") populateYeouido(); break;
     case "enterT": if (NET.role === "host" && !someoneIn("tower", from)) resetTower(); break;
     case "order": if (NET.role === "host") applyOrder(d.ok); break;
@@ -1933,9 +1940,9 @@ function onNet(d, from) {
     case "hit": if (NET.role === "host") { const m = monsters.find(x => x.id === d.mid && !x.dead && !(x.shieldUntil > clock)); if (m) { m.sleepUntil = 0; m.hp -= Math.round(d.dmg * armorMul(m)); if (!(m.tauntUntil > clock)) m.tgtId = from; aggro(m); if (d.slow) m.slowUntil = clock + d.slow; if (m.hp <= 0) killMonster(m, from); } } break;
     case "w": if (NET.role === "guest") applySnapshot(d); break;
     case "kill": if (NET.role === "guest") { const m = monsters.find(x => x.id === d.mid); if (m && !m.dead) { m.dead = true; m.deadT = 0; m.plate.remove(); if (d.near.includes(myId())) rewardKill(m); else if (target === m) setTarget(null); } } break;
-    case "hurt": if (d.to === myId() && !player.dead && player.zone !== "station") { hurt(d.dmg, null); if (d.root) { player.rootedUntil = clock + 2; floater(player.pos, "덩굴에 묶임! · rooted", "#9be66a", true, 3); } } break;
-    case "th": if (NET.role === "guest" && d.orb) { spawnOrb(new THREE.Vector3(d.x, d.y, d.z), new THREE.Vector3(d.vx, d.vy, d.vz), d.dmg); break; } if (NET.role === "guest") spawnThorn(new THREE.Vector3(d.x, d.y, d.z), new THREE.Vector3(d.vx, d.vy, d.vz), d.dmg, d.sh ? { def: MONS.jangeo } : undefined); break;
-    case "sl": if (NET.role === "guest") { const at = new THREE.Vector3(d.x, 0, d.z); makeRing(at, d.r, d.tele); setTimeout(() => { SFX.slam(); if (!player.dead && player.zone !== "station" && dist2(player.pos, at) < d.r) hurt(d.dmg, null); }, d.tele * 1000); } break;
+    case "hurt": if (d.to === myId() && !player.dead && player.zone !== "station") { hurt(d.dmg, { lvl: d.lv }); if (d.root) { player.rootedUntil = clock + 2; floater(player.pos, "덩굴에 묶임! · rooted", "#9be66a", true, 3); } } break;
+    case "th": if (NET.role === "guest" && d.orb) { spawnOrb(new THREE.Vector3(d.x, d.y, d.z), new THREE.Vector3(d.vx, d.vy, d.vz), d.dmg, { lvl: d.lv }); break; } if (NET.role === "guest") spawnThorn(new THREE.Vector3(d.x, d.y, d.z), new THREE.Vector3(d.vx, d.vy, d.vz), d.dmg, d.sh ? { def: MONS.jangeo, lvl: d.lv } : { lvl: d.lv }); break;
+    case "sl": if (NET.role === "guest") { const at = new THREE.Vector3(d.x, 0, d.z); makeRing(at, d.r, d.tele); setTimeout(() => { SFX.slam(); if (!player.dead && player.zone !== "station" && dist2(player.pos, at) < d.r) hurt(d.dmg, { lvl: d.lv }); }, d.tele * 1000); } break;
     case "chat": if (NET.role === "host") netSend({ t: "chat", id: from, nm: d.nm, text: d.text }); showRemoteChat(d.id || from, d.nm, d.text); break;
     case "em": if (NET.role === "host") netSend({ t: "em", id: from, e: d.e }); { const r = remotes.get(d.id || from); if (r) { r.model.emote?.(d.e); remoteBubble(r, d.e === "wave" ? "👋" : "🙇"); } } break;
     case "gift": if (NET.role === "host" && d.to !== "host") { netSend({ ...d, from }); break; } if (d.to === myId()) sendMail(d.nm, "선물을 보내요. 잘 쓰세요!", "I'm sending you a present. Use it well!", d.attach); break;
@@ -2188,7 +2195,7 @@ function fireOrb(m) {
   for (let k = 0; k < n; k++) {
     const v = vel.clone().applyAxisAngle(UP, (k - (n - 1) / 2) * .3);
     spawnOrb(from, v, m.def.orb * m.mul, m);
-    netSend({ t: "th", x: from.x, y: from.y, z: from.z, vx: v.x, vy: v.y, vz: v.z, dmg: m.def.orb * m.mul, orb: 1 });
+    netSend({ t: "th", x: from.x, y: from.y, z: from.z, vx: v.x, vy: v.y, vz: v.z, dmg: m.def.orb * m.mul, orb: 1, lv: m.lvl });
   }
 }
 function spawnOrb(from, vel, dmg, src) {
@@ -2942,7 +2949,7 @@ const armorMul = m => m.def.armor && !(m.flippedUntil > clock) ? 1 - m.def.armor
 // 문어 왕: tentacle sweeps in lines, arms come off as it loses health, ink while it asks its question
 const lineMat = new THREE.MeshBasicMaterial({ color: "#ff3a2a", transparent: true, opacity: .32, side: THREE.DoubleSide, depthWrite: false });
 const lines = [];
-function makeLine(x, z, ang, len, w, tele, dmg) {
+function makeLine(x, z, ang, len, w, tele, dmg, lv) {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, len), lineMat); mesh.rotation.x = -Math.PI / 2; mesh.rotation.z = ang;
   mesh.position.set(x + Math.sin(ang) * len / 2, .06, z + Math.cos(ang) * len / 2); scene.add(mesh);
   lines.push({ mesh, x, z, ang, len, w, t: 0, tele, dmg });
@@ -2953,7 +2960,7 @@ function lineTick(dt) {
     if (l.t >= l.tele && !l.hit) {
       l.hit = true; SFX.slam();
       const dx = player.pos.x - l.x, dz = player.pos.z - l.z, along = dx * Math.sin(l.ang) + dz * Math.cos(l.ang), side = Math.abs(dx * Math.cos(l.ang) - dz * Math.sin(l.ang));
-      if (!player.dead && isDun(player.zone) && along > 0 && along < l.len && side < l.w / 2) hurt(l.dmg, null); else if (along > -2 && along < l.len + 2 && side < l.w + 3) floater(player.pos, "피했다! · dodged", "#9be6a5", true);
+      if (!player.dead && isDun(player.zone) && along > 0 && along < l.len && side < l.w / 2) hurt(l.dmg, { lvl: lv }); else if (along > -2 && along < l.len + 2 && side < l.w + 3) floater(player.pos, "피했다! · dodged", "#9be6a5", true);
     }
     if (l.t > l.tele + .3) { scene.remove(l.mesh); lines.splice(i, 1); }
   }
@@ -2969,8 +2976,8 @@ function sweepTick(m, dt, tg) {
   const n = Math.ceil(arms / 2), base = Math.atan2(tg.pos.x - m.pos.x, tg.pos.z - m.pos.z);
   for (let k = 0; k < n; k++) {
     const ang = base + (k - (n - 1) / 2) * .38;
-    makeLine(m.pos.x, m.pos.z, ang, sw.len, sw.w, sw.tele, sw.dmg * m.mul);
-    netSend({ t: "ln", x: m.pos.x, z: m.pos.z, ang, len: sw.len, w: sw.w, tele: sw.tele, dmg: sw.dmg * m.mul });
+    makeLine(m.pos.x, m.pos.z, ang, sw.len, sw.w, sw.tele, sw.dmg * m.mul, m.lvl);
+    netSend({ t: "ln", x: m.pos.x, z: m.pos.z, ang, len: sw.len, w: sw.w, tele: sw.tele, dmg: sw.dmg * m.mul, lv: m.lvl });
   }
   if (tg.id === myId()) toast("문어 다리가 휩쓸어요! 선 밖으로 · tentacles — get out of the red lines!");
 }
@@ -3167,13 +3174,44 @@ function chatCommand(text) {
 
 // ---- main loop ------------------------------------------------------------------------------------------
 let last = performance.now(), saveT = 0;
+// ---- area guidance (Danny 2026-10-17) -------------------------------------------------------------------
+const AREA_LV = { hongdae: 1, apt: 4, river: 6, yeouido: 9, tower: 10, noryangjin: 12, market: 15 };
+const AREA_KO = { hongdae: "홍대 거리", apt: "서교 아파트", river: "한강공원", yeouido: "여의도", tower: "63빌딩", noryangjin: "노량진", market: "수산시장" };
+const AREA_GO = ["hongdae", "apt", "river", "yeouido", "noryangjin"];   // where 민수 sends you instead (overworld only)
+function areaOf() {
+  const p = player.pos, z = player.zone;
+  if (z === "street") return p.z >= 108 ? "river" : p.x > 108 ? "apt" : "hongdae";
+  if (z === "yeouido") return p.z > YD.z + 330 ? "noryangjin" : "yeouido";
+  return z === "tower" || z === "market" ? z : null;
+}
+let areaT = 0, areaNow = null;
+const areaWarned = {};   // area -> the level you were warned at (warn again after a level-up)
+function phoneText(keys, ko, en) {
+  say(keys.map(lineClip), { interrupt: true }); SFX.coin?.();
+  toast(`📱 민수: ${ko} · ${en}`); logChat("📱 민수", `${ko} (${en})`);
+}
+function areaWatch(dt) {
+  if ((areaT -= dt) > 0 || player.dead) return; areaT = .5;
+  const a = areaOf(); if (a === "apt" && !S.visitedApt) { S.visitedApt = true; save(); }
+  if (a === areaNow) return; areaNow = a;
+  if (!a || S.level + 1 >= AREA_LV[a] || areaWarned[a] === S.level) return;
+  areaWarned[a] = S.level;
+  const go = [...AREA_GO].reverse().find(x => AREA_LV[x] <= S.level + 1) || "hongdae";
+  phoneText(["g_danger", "g_go_" + go], `${LINES.g_danger.ko} ${LINES["g_go_" + go].ko}`,`${AREA_KO[a]} is still dangerous for you (Lv ${AREA_LV[a]}+). Try ${AREA_KO[go]} first.`);
+}
+function aptHint() {
+  if (S.visitedApt || S.level < 3 || S.aptHintLvl === S.level || NET.role === "guest" && player.zone !== "street") return;
+  S.aptHintLvl = S.level; save();
+  phoneText(["g_apt_hint"], "서교 아파트에 가 봤어요? 동쪽 문으로 나가면 돼요.", "Have you been to the 서교 apartments? Go out through the east gate.");
+}
+
 function step(dt) {
   if (paused || !started) return;
   clock += dt;
   S.time += dt * GAME_MIN_PER_SEC;
   night = nightFactor();
   S.hunger = Math.max(0, S.hunger - dt * 100 / HUNGER_SECONDS);
-  checkAchievements(dt); netTick(dt); quizTick(dt);
+  checkAchievements(dt); netTick(dt); quizTick(dt); areaWatch(dt);
   if (S.hunger <= 0 && !step.warned) { toast("배고파요! 식당에 가세요 · you're hungry: attacks do 75%"); step.warned = true; } if (S.hunger > 0) step.warned = false;
   // movement (camera-relative WASD, the character turns to where it walks)
   let mx = 0, mz = 0;
@@ -3300,6 +3338,7 @@ window.__seoul = {
   answer(right = true) { if (!ritual) return; const id = ritual.words[ritual.idx]; const i = ritual.opts.indexOf(id); pickCard(right ? i : (i + 1) % CHOICES); },
   attack: (k = "basic") => startRitual(k),
   setBook(b) { S.book = b; S.chapters = []; }, bookChapters: () => bookChapters(), bookWords: () => bookWords(), setNewBook(b) { newBook = b; },
+  gap: lv => ({ g: lvlGap(lv), taken: gapTaken(lv), dealt: gapDealt(lv), cls: gapClass(lv) }), areaOf: () => areaOf(), aptHint: () => aptHint(),
   syncStory: () => syncStory(true), xpNeed: L => xpNeed(L), setMode(m) { S.mode = m; syncStory(false); }, setNewMode(m) { newMode = m; },
   giveDeck(ids, k = "basic") { const cs = ids.map(id => newCard(id, 0)); S.cards.push(...cs); S.skillDecks[k] = cs.map(c => c.uid); if (!S.origin) { S.origin = deckBonus(ids); S.chapters = [...new Set(ids.map(id => WORD[id].ch))]; } recalcMax(); },
   drop: m => dropCard(m || { kind: "dokkaebi", pos: player.pos }),
