@@ -17,6 +17,8 @@ export function setIntensity(v) { intensity = v; }
 // additive particles fade by darkening their colour (black adds nothing); solid ones (dust, water) shrink away
 const MAX_PER = 700, pools = {};
 const SHAPES = { chunk: geoChunk, spark: geoSpark, star: geoStar };
+let snd = () => {};
+export function setSound(fn) { snd = fn; }
 export function initFx(sc) {
   scene = sc;
   for (const [k, g] of Object.entries(SHAPES)) for (const addv of [true, false]) {
@@ -80,8 +82,9 @@ export function slash(pos, yaw, o = {}) {
   const g = new THREE.RingGeometry(1.2, 1.9, 24, 1, -.9, 1.8), mesh = new THREE.Mesh(g, add(o.color || "#ffffff", .95));
   mesh.position.set(pos.x, (pos.y ?? 0) + (o.y ?? 1.3), pos.z); mesh.rotation.set(o.tilt ?? -1.2, yaw + Math.PI / 2, Math.random() * .8 - .4, "YXZ");
   mesh.scale.setScalar((o.size ?? 1) * (.8 + .4 * intensity));
-  scene.add(mesh); arcs.push({ mesh, t: 0, life: .22, s: mesh.scale.x });
+  scene.add(mesh); arcs.push({ mesh, t: 0, life: .22, s: mesh.scale.x }); snd("slice", .55, rnd2(.9, 1.2));
 }
+const rnd2 = (a, b) => a + Math.random() * (b - a);
 export function shake(a) { shakeState.amp = Math.min(1.2, Math.max(shakeState.amp, a * intensity)); }
 export function stop(sec) { hitStop.until = Math.max(hitStop.until, performance.now() + sec * 1000 * intensity); }
 
@@ -120,31 +123,37 @@ export function impact(pos, cols, power = 1, weak = false) {
   burst(pos, { n: 6 + p * 6, color: cols, speed: 3 + p * 2, size: .16 + p * .05, life: .8, grav: 10 });
   ring(pos, { color: cols[0], r: 1.8 + p * 1.4, y: 1.2, life: .35 });
   if (weak) { burst(pos, { n: 22, color: ["#ffd23d", "#fff2a8"], speed: 10, size: .2, life: .9, shape: "star", grav: 4 }); ring(pos, { color: "#ffd23d", r: 4 + p, y: .15, life: .5 }); }
+  snd(p >= 1.6 ? "punchH" : "punchM", .45 + p * .12, 1.1 - p * .08); if (weak) { snd("bell", .55, 1.1); snd("glass", .35, 1.4); }
   shake(.18 + p * .16); if (p >= 1.6 || weak) stop(.05 + p * .025);
 }
 export function healFx(pos, big = false) {
+  snd("bell", .3, 1.6);
   burst(pos, { n: big ? 40 : 22, color: ["#7bdc86", "#c8ffd0", "#ffffff"], speed: 2.5, up: 2.2, size: .14, life: 1.1, grav: -2.5, drag: .8, y: .3 });
   ring(pos, { color: "#7bdc86", r: big ? 6 : 3, life: .6 }); glow(pos, { color: "#7bdc86", r: big ? 2.6 : 1.6, life: .35 });
 }
-export function shieldFx(pos, col = "#9ec8ff") { glow(pos, { color: col, r: 2.6, life: .5, opacity: .55 }); ring(pos, { color: col, r: 3, life: .5 }); burst(pos, { n: 18, color: [col, "#ffffff"], speed: 3, size: .12, life: .7, grav: 0, shape: "star" }); }
-export function pillarFx(pos, col = "#ffd23d") { glow(pos, { color: col, pillar: true, r: 1.8, h: 14, life: .9, opacity: .6 }); ring(pos, { color: col, r: 5, life: .7 }); burst(pos, { n: 36, color: [col, "#ffffff"], speed: 4, up: 3, size: .16, life: 1.2, grav: -1, shape: "star" }); }
+export function shieldFx(pos, col = "#9ec8ff") { snd("field", .5); glow(pos, { color: col, r: 2.6, life: .5, opacity: .55 }); ring(pos, { color: col, r: 3, life: .5 }); burst(pos, { n: 18, color: [col, "#ffffff"], speed: 3, size: .12, life: .7, grav: 0, shape: "star" }); }
+export function pillarFx(pos, col = "#ffd23d") { snd("bell", .55, .8); snd("field", .3, 1.3); glow(pos, { color: col, pillar: true, r: 1.8, h: 14, life: .9, opacity: .6 }); ring(pos, { color: col, r: 5, life: .7 }); burst(pos, { n: 36, color: [col, "#ffffff"], speed: 4, up: 3, size: .16, life: 1.2, grav: -1, shape: "star" }); }
 export function waterSplash(pos, r = 4) {
+  snd("soft", .9, .6); snd("soft", .6, 1.3); snd("lowboom", .35, 1.4);
   burst(pos, { n: 46, color: ["#5ab8ff", "#bfe8ff", "#ffffff"], speed: 9, up: 1.4, size: .2, life: .9, grav: 16, y: .3, additive: false });
   burst(pos, { n: 20, color: ["#ffffff", "#d8f2ff"], speed: 4, up: 2.6, size: .28, life: 1, grav: 12, y: .2, additive: false });
   ring(pos, { color: "#bfe8ff", r: r * 1.3, life: .6 }); ring(pos, { color: "#ffffff", r: r * .8, life: .4 }); shake(.35);
 }
 export function dustSlam(pos, r = 4, col = ["#b8a888", "#8a7a62", "#e0d4b8"]) {
+  snd("plate", .8, .7); snd("mining", .5, .8); snd("lowboom", .45);
   burst(pos, { n: 40, color: col, speed: 8, up: .8, size: .26, life: .9, grav: 10, y: .3, additive: false, flat: true });
   burst(pos, { n: 14, color: ["#6a6058", "#9a8a78"], speed: 10, up: 1.6, size: .3, life: 1, grav: 18, y: .3, additive: false });
   ring(pos, { color: "#f2e8d0", r: r * 1.25, life: .5 }); shake(.4);
 }
 export function explosion(pos, cols = ["#ff7a1a", "#ffcf3a", "#ff3a1a"], size = 1) {
+  snd("boom", Math.min(1, .45 + .3 * size), 1.15 - .1 * size);
   glow(pos, { color: cols[1] || cols[0], r: 2.4 * size, life: .35 });
   burst(pos, { n: 50 * size, color: cols, speed: 11 * size, size: .22 * size, life: 1, shape: "spark", grav: 6 });
   burst(pos, { n: 26 * size, color: ["#3a3436", "#6a6466"], speed: 4, up: 1.6, size: .35 * size, life: 1.3, grav: -1, drag: 2, additive: false });
   ring(pos, { color: cols[0], r: 6 * size, life: .6 }); shake(.5 * size); stop(.06 * size);
 }
 export function deathPoof(pos, big = false) {
+  snd("soft", .55, 1.2); snd("coins", .35); if (big) snd("lowboom", 1, .8);
   burst(pos, { n: big ? 90 : 28, color: ["#ffffff", "#f2ede4", "#c9c4b8"], speed: big ? 12 : 6, up: 1, size: big ? .3 : .2, life: 1.1, grav: 3, drag: 2, additive: false });
   burst(pos, { n: big ? 40 : 12, color: ["#ffd23d", "#fff2a8"], speed: 7, up: 2, size: .14, life: 1.2, grav: 12, shape: "star" });
   if (big) { explosion(pos, ["#ffd23d", "#ffffff", "#ff9a3a"], 1.6); stop(.25); }

@@ -1,7 +1,7 @@
 // Sound: synthesized effects (WebAudio, no files) + Korean voice clips (Piper). Copied from Word Ammo, paths changed.
 let AC = null, master = null, volume = 0.8;
 export function initAudio(){
-  if (!AC) { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = volume; master.connect(AC.destination); }
+  if (!AC) { AC = new (window.AudioContext || window.webkitAudioContext)(); master = AC.createGain(); master.gain.value = volume; master.connect(AC.destination); loadSfx(); }
   if (AC.state === "suspended") AC.resume();
 }
 export function setVolume(v){ volume = v; if (master) master.gain.value = v; voiceVol = v; }
@@ -43,6 +43,22 @@ export const SFX = {
   empty(){ tone(1200, .03, "square", .05); },
 };
 const rnd = (a, b) => a + Math.random() * (b - a);
+
+// ---- recorded effects (Kenney Impact / Sci-Fi / RPG Audio, CC0: assets/sfx/LICENSE.txt), played on top of the synth sounds ----
+// Danny 2026-10-17: the over-the-top effects needed sounds to match. Each group has a few takes; pitch varies a little.
+const SFX_GROUPS = { punchH: 5, punchM: 5, bell: 5, glass: 5, metal: 5, wood: 5, plate: 5, soft: 5, mining: 5, slice: 2, draw: 3, coins: 2, boom: 5, lowboom: 2, laserL: 5, laserS: 5, field: 5 };
+const sbuf = {}, lastPlay = {};
+function loadSfx(){
+  for (const [g, n] of Object.entries(SFX_GROUPS)) for (let i = 0; i < n; i++)
+    fetch("assets/sfx/" + g + "_" + i + ".mp3").then(r => r.arrayBuffer()).then(b => AC.decodeAudioData(b)).then(buf => (sbuf[g] = sbuf[g] || []).push(buf)).catch(() => {});
+}
+export function snd(g, vol = .6, rate = 1){
+  if (!AC || !sbuf[g] || !sbuf[g].length) return;
+  const now = AC.currentTime; if (lastPlay[g] && now - lastPlay[g] < .035) return; lastPlay[g] = now;   // the same sound 20 times in one frame is just noise
+  const s = AC.createBufferSource(), gn = AC.createGain();
+  s.buffer = sbuf[g][Math.floor(Math.random() * sbuf[g].length)]; s.playbackRate.value = rate * rnd(.9, 1.1); gn.gain.value = vol;
+  s.connect(gn).connect(master); s.start();
+}
 
 // ---- voice: a queue so the helper never talks over herself ----
 const clipCache = new Map();

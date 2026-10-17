@@ -13,7 +13,7 @@ import { loadSua, suaReady, makeSua } from "./sua.js";
 import * as FX from "./fx.js";
 import { LINES } from "./lines.js";
 import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume } from "./audio.js";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -200,7 +200,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 $("game").appendChild(renderer.domElement);
 const scene = new THREE.Scene();
-FX.initFx(scene);
+FX.initFx(scene); FX.setSound(snd);
 const camera = new THREE.PerspectiveCamera(55, 1, .1, 400);
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
@@ -454,7 +454,7 @@ function hurt(amount, src, raw = false) {
   else player.hp -= amount;
   player.lastHurt = clock; player.model.trigger?.("hit");
   floater(player.pos, "-" + amount, "#ff7a6a", true, 2.2);
-  FX.shake(Math.min(1, .3 + amount / player.maxHp * 2.5)); FX.burst(player.pos, { n: 14, color: ["#ff5a4a", "#ffffff", "#ff9a8a"], speed: 6, size: .12, life: .45, shape: "spark", grav: 4 });
+  snd("punchH", .7, .75); FX.shake(Math.min(1, .3 + amount / player.maxHp * 2.5)); FX.burst(player.pos, { n: 14, color: ["#ff5a4a", "#ffffff", "#ff9a8a"], speed: 6, size: .12, life: .45, shape: "spark", grav: 4 });
   $("vignette").classList.add("hit"); setTimeout(() => $("vignette").classList.remove("hit"), 120);
   SFX.hurt();
   if (src && src.def && src.def.root && !raw && Math.random() < src.def.root.chance) { player.rootedUntil = clock + src.def.root.dur; floater(player.pos, "덩굴에 묶임! · rooted", "#9be66a", true, 3); }
@@ -602,7 +602,7 @@ function castRitual() {
     if (sk.burn) addDot(t, Math.round(dmg * sk.burn.mult / sk.mult), sk.burn.dur);
     if (sk.stun) applyCC(t, "stun", sk.stun);
     if (sk.slow) { floater(t.pos, "느려짐 · slowed", "#9ec8ff", true, t.model.height + .4); }
-    FX.impact(t.pos, fxCols, fxPow, weakHit); if (S.cls === "geomgaek") FX.slash(t.pos, player.yaw, { color: fxCols[0], size: .8 + fxPow * .4 });
+    FX.impact(t.pos, fxCols, fxPow, weakHit); if (S.cls === "mudang") snd("bell", .3, 1.4); else if (S.cls === "gungsu") snd("wood", .5, 1.2); else snd("metal", .45, 1.1); if (S.cls === "geomgaek") FX.slash(t.pos, player.yaw, { color: fxCols[0], size: .8 + fxPow * .4 });
     if (sk.stun) FX.burst(t.pos, { n: 10, color: ["#ffd23d", "#fff2a8"], speed: 2, size: .18, life: 1.2, grav: 0, shape: "star", y: t.model.height });
     dmgNum(t, dmg, weakHit, immuneHit && dmg === 0, fxPow);
     if (ls > 0) { const h = dmg * ls; player.hp = Math.min(player.maxHp, player.hp + h); }
@@ -664,6 +664,7 @@ function shootSpell(t, land, cols = FX.CLASS_COL[S.cls] || FX.CLASS_COL.mudang, 
   const halo = new THREE.Mesh(new THREE.SphereGeometry(.28, 10, 8), new THREE.MeshBasicMaterial({ color: cols[0], transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); mesh.add(halo);
   mesh.position.set(player.pos.x, 1.6, player.pos.z); scene.add(mesh);
   FX.burst({ x: player.pos.x - Math.sin(player.yaw) * .8, z: player.pos.z - Math.cos(player.yaw) * .8 }, { n: 10, color: cols, speed: 4, size: .1, life: .35, grav: 0, y: 1.6, shape: "spark" });
+  snd(S.cls === "mudang" ? "laserS" : "draw", S.cls === "mudang" ? .22 : .45, S.cls === "mudang" ? 1.7 : 1.3);
   projectiles.push({ mesh, target: t, speed: S.cls === "mudang" ? 16 : 30, land, life: 3, spin: S.cls === "mudang", trail: cols, tsize: .08 + .04 * Math.min(3, pow) });
   SFX.shot();
 }
@@ -1918,6 +1919,7 @@ function shootThorn(m, at) {
 }
 function spawnThorn(from, vel, dmg, src) {
   const mesh = new THREE.Mesh(thornGeo, src?.def?.shock ? shockMat : thornMat); mesh.position.copy(from); mesh.scale.setScalar(1.6); scene.add(mesh);
+  snd("laserS", .3, src?.def?.shock ? 1.6 : .8);
   projectiles.push({ mesh, vel, life: 2.2, hostile: true, dmg, src: src || { def: MONS.vine }, trail: src?.def?.shock ? ["#fff36a", "#ffffff", "#9fd8ff"] : ["#9be66a", "#5a8a3a", "#d8ffb0"] });
   SFX.orb();
 }
@@ -2305,6 +2307,7 @@ function spawnOrb(from, vel, dmg, src) {
   const mesh = new THREE.Mesh(orbGeo, orbMat); mesh.position.copy(from); mesh.scale.setScalar(2.2); scene.add(mesh);
   mesh.add(new THREE.Mesh(new THREE.SphereGeometry(.5, 12, 10), new THREE.MeshBasicMaterial({ color: "#ff6aff", transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })));
   FX.burst(from, { n: 16, color: ["#c08aff", "#ff6aff", "#ffffff"], speed: 4, size: .14, life: .5, grav: 0, y: 0, shape: "spark" });
+  snd("laserL", .5, .85);
   projectiles.push({ mesh, vel, life: 3, hostile: true, dmg, src: src || { def: MONS.alien_caster }, r: 1, trail: ["#c08aff", "#ff6aff", "#ffffff"] });
   SFX.orb();
 }
@@ -3424,7 +3427,7 @@ function burstAt(m) {
   netSend({ t: "sl", x: at.x, z: at.z, r: b.radius, tele: b.tele, dmg, lv });
   if (player.zone === zone && dist2(player.pos, at) < b.radius + 3) floater(at, "깨져요! 피하세요 · it's bursting — step away!", "#9fe0c8", false, 2.4);
   FX.burst(at, { n: 12, color: ["#8fc4b0", "#5f9a86"], speed: 3, size: .16, life: .6, additive: false });
-  setTimeout(() => { SFX.slam(); FX.burst(at, { n: 50, color: ["#8fc4b0", "#5f9a86", "#e8fff4"], speed: 12, up: .6, size: .22, life: .9, grav: 12, additive: false, flat: true, y: .8 }); FX.ring(at, { color: "#9fe0c8", r: b.radius * 1.2 }); FX.shake(.3); if (!player.dead && player.zone === zone && dist2(player.pos, at) < b.radius) hurt(dmg, { lvl: lv }); }, b.tele * 1000);
+  setTimeout(() => { SFX.slam(); snd("glass", .9, .8); snd("glass", .6, 1.2); FX.burst(at, { n: 50, color: ["#8fc4b0", "#5f9a86", "#e8fff4"], speed: 12, up: .6, size: .22, life: .9, grav: 12, additive: false, flat: true, y: .8 }); FX.ring(at, { color: "#9fe0c8", r: b.radius * 1.2 }); FX.shake(.3); if (!player.dead && player.zone === zone && dist2(player.pos, at) < b.radius) hurt(dmg, { lvl: lv }); }, b.tele * 1000);
 }
 // 선사관: the painted hunters throw spears across the room
 let caveT = 3, caveTold = false;
