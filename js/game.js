@@ -892,7 +892,7 @@ function nearestInteract() {
     if (dist2(player.pos, BRIDGE_FOOT) < 4) return { t: "bridge", label: `${E} · 부서진 다리 오르기 → 여의도 (Lv 9+)` };
     for (const [a, it] of Object.entries(MAP_ITEMS)) if (!it.zone && !S[it.flag] && dist2(player.pos, it.spot) < 2.8) return { t: "map", area: a, label: `${E} · ${it.ko} 가져가기 · take the ${it.en}` };
     for (const n of npcs) if (n.zone === "street" && n.model.root.visible && dist2(n.pos, player.pos) < 3.4) return { t: "npc", n, label: `${E} · ${n.name}${wa(n.name)} 이야기하기` };
-    if (dist2(player.pos, PIER) < 3.5) return { t: "fish", label: fishing ? "🎣 기다리는 중… · waiting for a bite (don't move)" : `${E} · 낚시하기 · fish` };
+    if (dist2(player.pos, PIER) < 3.5) return { t: "fish", label: fishing ? "🎣 낚시 연습 중 · fishing drill (walk away to stop)" : `${E} · 낚시하기 · fish` };
     return null;
   }
   const sp = world.npcSpots;
@@ -2179,6 +2179,7 @@ const nounPool = () => {
 let quiz = null;
 function openQuiz(q) {   // q = { title, prompt, answer (word), opts (words), time, onDone(ok) }
   if (quiz) return;
+  if (WORD[q.answer?.id]) stat(q.answer.id).s++;   /* quizzes are practice too (Danny 2026-10-18) */
   cancelRitual();
   quiz = { ...q, t: q.time || 0, lock: false };
   $("quiz").hidden = false; $("qzTitle").textContent = q.title; $("qzPrompt").innerHTML = q.prompt; $("qzBar").parentElement.hidden = !q.time;
@@ -2191,7 +2192,7 @@ function answerQuiz(i) {
   const ok = i >= 0 && quiz.opts[i] === quiz.answer, btns = $("qzOpts").children;
   if (i >= 0) btns[i].classList.add(ok ? "ok" : "no");
   btns[quiz.opts.indexOf(quiz.answer)].classList.add("ok");
-  if (ok) { stat(quiz.answer.id).c++; say([wordClip(quiz.answer.id)], { interrupt: true }); SFX.select(); } else { stat(quiz.answer.id).w++; SFX.resist(); }
+  if (ok) { const id = quiz.answer.id; stat(id).c++; if (WORD[id] && mastery(id).k === "mastered" && !S.mastered.includes(id)) { S.mastered.push(id); toast(`마스터! ${WORD[id].kr} · +${MASTER_XP} XP`); gainXp(MASTER_XP); } say([wordClip(id)], { interrupt: true }); SFX.select(); } else { stat(quiz.answer.id).w++; SFX.resist(); }
   const q = quiz; setTimeout(() => { $("quiz").hidden = true; quiz = null; q.onDone(ok); }, ok ? 700 : 1600);
 }
 function quizTick(dt) {
@@ -2394,7 +2395,8 @@ const FISH = [{ ko: "붕어", en: "crucian carp", p: .45, won: 800 }, { ko: "잉
 let fishing = null;
 function startFishing() {
   if (fishing || quiz) return;
-  fishing = { t: rand(3, 8) }; toast("낚싯대를 던졌어요… 가만히 기다리세요 · line cast — stand still and wait for a bite"); SFX.dash();
+  // Danny 2026-10-18: fishing is word drilling, so a fish bites right away and the line goes back out by itself until you walk off
+  fishing = { t: .5 }; toast("낚시 연습 · fishing drill: 바로 물어요, 걸어가면 멈춰요 · a bite every cast, walk away to stop"); SFX.dash();
 }
 function fishTick(dt) {
   if (!fishing) return;
@@ -2404,10 +2406,11 @@ function fishTick(dt) {
   const pool = nounPool(), w = pick(pool);
   openQuiz({ title: "물었다! 빨리 고르세요 · a bite! pick the word, fast", prompt: `<span class="qzKo">${esc(w.en)}</span><span class="qzEn">이 뜻의 단어는? · which word means this?</span>`, answer: w, opts: shuffle([w, ...shuffle(pool.filter(x => x.id !== w.id)).slice(0, 3)]), time: 5,
     onDone: ok => {
-      if (!ok) { toast("놓쳤어요… · it got away"); return; }
+      const again = () => { if (!player.moving && player.zone === "street" && !player.dead && !fishing && dist2(player.pos, PIER) < 6) { fishing = { t: .5 }; SFX.dash(); } };
+      if (!ok) { toast("놓쳤어요… · it got away"); setTimeout(again, 350); return; }
       let r = Math.random(), f = FISH[0]; for (const x of FISH) { if ((r -= x.p) < 0) { f = x; break; } }
       S.fish = S.fish || {}; S.fish[f.ko] = (S.fish[f.ko] || 0) + 1; S.fishTotal = (S.fishTotal || 0) + 1;
-      toast(`🐟 ${f.ko} · ${f.en}! (편의점에서 ${won(f.won)})`); floater(player.pos, "🐟 " + f.ko, "#9ec8ff", false, 3); SFX.pickup(); save();
+      toast(`🐟 ${f.ko} · ${f.en}! (편의점에서 ${won(f.won)})`); floater(player.pos, "🐟 " + f.ko, "#9ec8ff", false, 3); SFX.pickup(); save(); setTimeout(again, 350);
     } });
 }
 // 편의점: cup ramyeon and triangle gimbap to go (eat with F); the clerk buys your fish
