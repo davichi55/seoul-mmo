@@ -1,6 +1,26 @@
 // Every spoken line in the game. key -> { ko, en, say? }  (say = what Piper reads, when it differs from ko)
 // After editing: node tools/gen-lines.js  (makes audio/lines/<key>.wav for new keys)
 export const LINES = {
+  // 용산 (area 5): 한동 at the museum café, the stranger's truth, the map, the area hint
+  h_hello: { ko: "어서 오세요! 박물관 카페예요. 바나나우유 있어요.", en: "Welcome! This is the museum café. I have banana milk." },
+  h_q: { ko: "박물관 밖에서 무인석들이 걸어 다녀요. 다섯 개만 쓰러뜨려 주세요.", en: "Tomb statues are walking around outside the museum. Please knock down just five." },
+  h_wait: { ko: "무인석은 땅을 쳐요. 빨간 원을 피하세요.", en: "The statues pound the ground. Stay out of the red circle." },
+  h_done: { ko: "고마워요! 박물관 안에 청동 거울이 있어요. 외계인보다 먼저 찾아 주세요.", en: "Thank you! There's a bronze mirror inside the museum. Please find it before the aliens do." },
+  h_mirror: { ko: "외계인들이 박물관에서 청동 거울을 찾고 있어요. 그 거울은 사랑하는 사람을 보여 줘요.", en: "The aliens are looking for a bronze mirror in the museum. That mirror shows the person you love." },
+  p_museum: { ko: "박물관 안에 뭐가 있어요?", en: "What's inside the museum?" },
+  p_banana: { ko: "바나나우유 하나 주세요.", en: "One banana milk, please." },
+  p_hodu: { ko: "호두과자 주세요.", en: "Walnut cakes, please." },
+  x_mirror: { ko: "그 거울을 찾았군요. 거울에서 누구를 봤어요?", en: "You found that mirror. Who did you see in it?" },
+  p_saw_haneul: { ko: "하늘 씨를 봤어요. 무대에서 노래하고 있었어요.", en: "I saw Haneul. She was singing on a stage." },
+  x_rv1: { ko: "이제 다 말할게요. 저는 사람이 아니에요. 외계인이에요.", en: "Now I'll tell you everything. I'm not a human. I'm an alien." },
+  p_really: { ko: "정말요?", en: "Really?" },
+  x_rv2: { ko: "하늘 씨는 가수였어요. 저는 하늘 씨의 노래를 정말 좋아했어요. 하늘 씨를 사랑했어요.", en: "Haneul was a singer. I really loved her songs. I loved her." },
+  p_then: { ko: "그럼 하늘 씨는 어디에 있어요?", en: "Then where is Haneul?" },
+  x_rv3: { ko: "우리 함장이 하늘 씨를 죽였어요. 그래서 명단에서 하늘 씨 이름에 줄을 그었어요.", en: "Our captain killed Haneul. That's why I drew a line through her name on the list." },
+  p_sorry: { ko: "정말 슬퍼요. 미안해요.", en: "That's so sad. I'm sorry." },
+  x_rv4: { ko: "그날부터 저는 사람들을 도와요. 함장은 남산 타워에 있어요. 언젠가 같이 가요.", en: "Since that day I help people. The captain is in the Namsan tower. One day, let's go together." },
+  x_map6: { ko: "용산 지도를 찾았어요!", en: "You found the Yongsan map!" },
+  g_go_yongsan: { ko: "용산에 먼저 가 보세요.", en: "Try 용산 first." },
   // 민수's phone texts: soft area guidance (no gates)
   g_danger: { ko: "거기는 아직 위험해요!", en: "It's still dangerous there!" },
   g_go_hongdae: { ko: "홍대 거리에서 먼저 연습하세요.", en: "Practise on the Hongdae streets first." },

@@ -119,6 +119,48 @@ export const MARKET = {
 };
 MARKET.wrects = MARKET.rects.map(r => ({ ...r, x0: r.x0 + MK.x, x1: r.x1 + MK.x, z0: r.z0 + MK.z, z1: r.z1 + MK.z }));
 MARKET.coldRect = MARKET.wrects.find(r => r.kind === "freezer"); MARKET.iceRect = MARKET.wrects.find(r => r.kind === "ice");
+// 용산 (Danny 2026-10-17: area 5 = B, Lv 15-18): from 노량진's north-east corner over the 한강대교 and 노들섬, same zone as 여의도.
+// The district sits east of the island; the museum is the dungeon (its own zone, like the fish market).
+YEOUIDO.rects.push(
+  { x0: 149, x1: 215, z0: 415, z1: 427 },              // the approach road along 노량진's east side
+  { x0: 203, x1: 215, z0: 250, z1: 427 },              // 한강대교, south half
+  { x0: 170, x1: 250, z0: 196, z1: 252 },              // 노들섬
+  { x0: 203, x1: 215, z0: 112, z1: 198 },              // 한강대교, north half
+  { x0: 158, x1: 460, z0: -32, z1: 114 },              // 용산: the museum, 거울못, 용산가족공원
+);
+YEOUIDO.spawns.push(
+  { ...Yw(186, 214), kind: "cheongja", lvl: 15 }, { ...Yw(238, 238), kind: "muinseok", lvl: 15 },
+  { ...Yw(178, 30), kind: "muinseok", lvl: 15 }, { ...Yw(215, 72), kind: "cheongja", lvl: 15 }, { ...Yw(250, 32), kind: "cheongja", lvl: 16 },
+  { ...Yw(300, 94), kind: "gapot", lvl: 16 }, { ...Yw(395, 86), kind: "muinseok", lvl: 16 }, { ...Yw(432, 42), kind: "gapot", lvl: 17 },
+  { ...Yw(422, 0), kind: "dogul", lvl: 16, alien: true }, { ...Yw(188, -16), kind: "dogul", lvl: 17, alien: true }, { ...Yw(440, -22), kind: "gapot", lvl: 17, night: true },
+);
+Object.assign(YEOUIDO, { museumDoor: Yw(325, 12.6), museumOut: Yw(325, 17), npcHandong: Yw(229.4, 103) });
+export const MAPSPOT_YS = Yw(196, 106.6);   // the board at the north end of the 한강대교
+// the national museum at night: six rooms, the 훈민정음실 is the quiz room (Danny: verb endings)
+export const MU = { x: 9000, z: 0 };
+const Uw = (x, z) => ({ x: MU.x + x, z: MU.z + z });
+export const MUSEUM = {
+  rects: [
+    { x0: 0, x1: 40, z0: -8, z1: 8, room: true, name: "역사의 길", kind: "hall" }, { x0: 38, x1: 54, z0: -3, z1: 3 },
+    { x0: 52, x1: 82, z0: -12, z1: 12, room: true, name: "선사관", kind: "cave" }, { x0: 80, x1: 94, z0: -3, z1: 3 },
+    { x0: 92, x1: 122, z0: -12, z1: 12, room: true, name: "고려 청자실", kind: "celadon" }, { x0: 120, x1: 134, z0: -3, z1: 3 },
+    { x0: 132, x1: 160, z0: -11, z1: 11, room: true, name: "훈민정음실", kind: "scrolls" }, { x0: 158, x1: 172, z0: -3, z1: 3 },
+    { x0: 170, x1: 202, z0: -12, z1: 12, room: true, name: "왕의 보물실", kind: "treasure" }, { x0: 200, x1: 214, z0: -3, z1: 3 },
+    { x0: 212, x1: 256, z0: -20, z1: 20, room: true, name: "장군의 방", kind: "boss" },
+  ],
+  spawns: [
+    { ...Uw(16, -4), kind: "muinseok", lvl: 16 }, { ...Uw(30, 4), kind: "muinseok", lvl: 16 },
+    { ...Uw(62, -6), kind: "gapot", lvl: 16 }, { ...Uw(74, 6), kind: "muinseok", lvl: 17 },
+    { ...Uw(100, -6), kind: "cheongja", lvl: 16 }, { ...Uw(107, 7), kind: "cheongja", lvl: 17 }, { ...Uw(115, -2), kind: "cheongja", lvl: 17 },
+    { ...Uw(180, -6), kind: "dogul", lvl: 17 }, { ...Uw(192, 6), kind: "gapot", lvl: 17 },
+    { ...Uw(240, 0), kind: "janggun", lvl: 18, boss: true }, { ...Uw(228, -14), kind: "gapot", lvl: 17 }, { ...Uw(228, 14), kind: "gapot", lvl: 17 },
+  ],
+  entry: Uw(6, 0), up: Uw(2.5, 0), end: Uw(253, -16),
+  scrolls: [{ ...Uw(140, -10.6), spot: Uw(140, -8.6), rot: 0 }, { ...Uw(152, -10.6), spot: Uw(152, -8.6), rot: 0 }, { ...Uw(146, 10.6), spot: Uw(146, 8.6), rot: Math.PI }],
+  guardSpots: [Uw(136, -6), Uw(136, 6)], pillars: [],
+};
+MUSEUM.wrects = MUSEUM.rects.map(r => ({ ...r, x0: r.x0 + MU.x, x1: r.x1 + MU.x, z0: r.z0 + MU.z, z1: r.z1 + MU.z }));
+MUSEUM.caveRect = MUSEUM.wrects.find(r => r.kind === "cave");
 YEOUIDO.wrects = YEOUIDO.rects.map(r => ({ ...r, x0: r.x0 + YD.x, x1: r.x1 + YD.x, z0: r.z0 + YD.z, z1: r.z1 + YD.z }));
 export const MAPSPOT_YD = Yw(-8, 138.6);   // on the park information board at the end of the bridge
 export const TW = { x: 3000, z: 0 };
@@ -796,7 +838,8 @@ export function buildWorld(scene) {
       gflat(300, 12, 0, 455, ROAD, .03); gflat(12, 150, 0, 485, ROAD, .03);
       for (let i = 0; i < 9; i++) gflat(rand(2, 5), rand(1.5, 3.5), rand(-140, 140), rand(415, 555), toon("#5d8aa8", { transparent: true, opacity: .7 }), .04);
       for (const z of [409.8, 560.2]) add(new THREE.BoxGeometry(300, 1, .3), railM, 0, .5, z, G, .02);
-      for (const x of [-149.8, 149.8]) add(new THREE.BoxGeometry(.3, 1, 150), railM, x, .5, 485, G, .02);
+      add(new THREE.BoxGeometry(.3, 1, 150), railM, -149.8, .5, 485, G, .02);
+      for (const [a, b] of [[410, 415], [427, 560]]) add(new THREE.BoxGeometry(.3, 1, b - a), railM, 149.8, .5, (a + b) / 2, G, .02);   // the gap: the road to the 한강대교
       MRN(-150, 150, 410, 560, "rgba(168,163,149,.95)"); MRN(-150, 150, 449, 461, "rgba(95,97,105,.95)"); MRN(-6, 6, 410, 560, "rgba(95,97,105,.95)");
       // 노량진 수산시장: a long hall with a rounded roof; the dungeon door faces the footbridge
       { const cx = -70, cz = 470;
@@ -834,6 +877,83 @@ export function buildWorld(scene) {
         add(new THREE.PlaneGeometry(4.6, 1.1), toon("#ffffff", { map: canvasTex(c) }), 120, 3.9, 425.9, G, 0, false).rotation.y = Math.PI;
         ycol(117.5, 122.5, 426, 430); MLN("노량진역", 120, 438); }
       for (let i = 0; i < 400; i++) tuft(X(rand(-148, 148)), Z(rand(412, 445)), rand(.6, 1.1));
+    }
+    // ===== 용산, over the 한강대교 from 노량진 (area 5 = B) =====
+    {
+      const MRY = (x0, x1, z0, z1, c) => ydMap.rects.push({ x0: X(x0), x1: X(x1), z0: Z(z0), z1: Z(z1), c, area: "yongsan" });
+      const MLY = (t, x, z, rot) => ydMap.labels.push({ t, x: X(x), z: Z(z), rot, area: "yongsan" });
+      const sign = (text, bg, w, h, x, y, z, ry = 0, fg = "#fff") => { const c = document.createElement("canvas"); c.width = 512; c.height = Math.round(512 * h / w); const g = c.getContext("2d"); g.fillStyle = bg; g.fillRect(0, 0, c.width, c.height); g.fillStyle = fg; g.font = `${Math.round(c.height * .55)}px ${FONT}`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(text, 256, c.height * .54); const m = add(new THREE.PlaneGeometry(w, h), toon("#ffffff", { map: canvasTex(c) }), x, y, z, G, 0, false); m.rotation.y = ry; return m; };
+      const green = ["#6f9a5a", "#7fa866", "#5f8a4e", "#8ab26e"].map(c => toon(c));
+      const ytree = (x, z, h = rand(4.5, 7)) => {
+        add(new THREE.CylinderGeometry(.22, .36, h, 7), toon(TRUNK), x, h / 2, z, G, .04);
+        for (let j = 0; j < 6; j++) add(new THREE.IcosahedronGeometry(rand(1.1, 1.8), 1), pick(green), x + rand(-1.5, 1.5), h + rand(-.4, 1.4), z + rand(-1.5, 1.5), G, .03);
+        colliders.yeouido.push({ x: X(x), z: Z(z), r: .6 });
+      };
+      const yclear = (x, z) => YEOUIDO.spawns.every(s => Math.hypot(s.x - X(x), s.z - Z(z)) > 7);
+      // the approach road along 노량진's east side, then the bridge north
+      gflat(66, 12, 182, 421, ROAD, .03); for (let x = 152; x < 214; x += 4) gflat(2, .25, x, 421, "#e9e7df", .035);
+      MRY(149, 215, 415, 427, "rgba(95,97,105,.95)");
+      // 한강대교: two decks with the famous steel arches, 노들섬 in the middle
+      for (const [z0, z1] of [[250, 415], [112, 198]]) {
+        add(new THREE.BoxGeometry(12, .8, z1 - z0), deckM, 209, -.4, (z0 + z1) / 2, G, .08);
+        for (const x of [203.1, 214.9]) add(new THREE.BoxGeometry(.3, 1.1, z1 - z0), railM, x, .55, (z0 + z1) / 2, G, .03);
+        for (let z = z0 + 2; z < z1 - 1; z += 4) gflat(.25, 2, 209, z, "#e9e7df", .02);
+        for (let z = z0 + 14; z < z1 - 6; z += 38) add(new THREE.BoxGeometry(6, 6, 3), toon("#a9a69a"), 209, -3.4, z, G, .06);
+        MRY(203, 215, z0, z1, "rgba(128,129,138,.95)");
+      }
+      const archM = toon("#2f7a8a");
+      for (const [z0, z1] of [[262, 320], [330, 395], [125, 190]]) {
+        const pts = []; for (let k = 0; k <= 12; k++) { const t = k / 12; pts.push(new THREE.Vector3(0, Math.sin(t * Math.PI) * 9, z0 + (z1 - z0) * t)); }
+        for (const x of [203.4, 214.6]) { const tube = add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, .32, 6), archM, x, .5, 0, G, .03); }
+        for (let k = 1; k < 8; k++) { const t = k / 8, y = Math.sin(t * Math.PI) * 9; for (const x of [203.4, 214.6]) add(new THREE.BoxGeometry(.12, y, .12), archM, x, .5 + y / 2, z0 + (z1 - z0) * t, G, 0); }
+      }
+      sign("한강대교 · 용산 ↑", "#2f6db3", 7, 1.4, 209, 4.2, 412.2);
+      // 노들섬: a grass island with the music hall and a little lawn stage
+      add(new THREE.BoxGeometry(80, 6, 56), toon("#7d9a6a"), 210, -3, 224, G, .05);
+      gflat(80, 56, 210, 224, "#8fb27a", .02); gflat(12, 56, 209, 224, "#b9b2a2", .03);
+      { add(new THREE.BoxGeometry(18, 7, 14), toon("#d8d4c8"), 236, 3.5, 210, G, .12); add(new THREE.BoxGeometry(19, .5, 15), toon("#3a8f4c"), 236, 7.2, 210, G, .05);
+        ycol(227, 245, 203, 217); sign("노들섬", "#3a8f4c", 6, 1.3, 236, 5, 217.1); }
+      for (const [x, z] of [[176, 202], [178, 246], [244, 246], [194, 236]]) if (yclear(x, z)) ytree(x, z);
+      for (let i = 0; i < 260; i++) tuft(X(rand(171, 249)), Z(rand(197, 251)), rand(.7, 1.2));
+      MRY(170, 250, 196, 252, "rgba(143,178,122,.95)"); MLY("노들섬", 224, 236);
+      // the 용산 bank: lawn, paths, the museum, 거울못 and the family park
+      add(new THREE.BoxGeometry(304, 6, 154), toon("#7d9a6a"), 309, -3, 41, G, .05);
+      gflat(302, 146, 309, 41, "#a9c28f", .02);
+      gflat(302, 10, 309, 104, "#c9c2b2", .03); gflat(10, 146, 209, 41, "#c9c2b2", .03); gflat(120, 8, 325, 22, "#d8d2c4", .03);
+      for (const x of [157.8, 460.2]) add(new THREE.BoxGeometry(.3, 1, 146), railM, x, .5, 41, G, .02);
+      add(new THREE.BoxGeometry(302, 1, .3), railM, 309, .5, -32.2, G, .02);
+      for (const [a, b] of [[158, 203], [215, 460]]) add(new THREE.BoxGeometry(b - a, 1, .3), railM, (a + b) / 2, .5, 114.2, G, .02);
+      MRY(158, 460, -32, 114, "rgba(169,194,143,.95)"); MRY(158, 460, 99, 109, "rgba(201,194,178,.95)");
+      // 국립중앙박물관: two long stone wings with the open court (열린마당) between them under one flat roof
+      { const stone = toon("#d9d2c2"), roofM = toon("#b8b0a0");
+        add(new THREE.BoxGeometry(60, 14, 30), stone, 280, 7, -5, G, .15); add(new THREE.BoxGeometry(60, 14, 30), stone, 370, 7, -5, G, .15);
+        add(new THREE.BoxGeometry(150, 1.4, 32), roofM, 325, 14.7, -5, G, .12);
+        add(new THREE.BoxGeometry(30, 10, 2), toon("#c9c2b2"), 325, 5, -19, G, .08);
+        for (let i = 0; i < 6; i++) add(new THREE.BoxGeometry(30, .3, 1), toon("#cfc8b8"), 325, .15 + i * .3, 8 - i * .9, G, 0);
+        ycol(250, 310, -20, 10); ycol(340, 400, -20, 10); ycol(310, 340, -20, -17);
+        add(new THREE.BoxGeometry(6, 5, .4), toon("#14161a"), 325, 2.5, 9.9, G, 0, false);
+        sign("국립중앙박물관", "#3a3a3a", 16, 2.2, 325, 11.6, 10.25, 0, "#f2e6c8");
+        MRY(250, 400, -20, 10, "rgba(201,194,178,.95)"); MLY("국립중앙박물관", 325, -5); }
+      // 거울못: the reflecting pond, with the little 청자정 pavilion
+      { const pond = gflat(90, 30, 325, 55, toon("#5d8aa8", { emissive: new THREE.Color("#2a4a66"), emissiveIntensity: .25 }), .05);
+        ycol(280, 370, 40, 70, false);
+        add(new THREE.CylinderGeometry(3.4, 3.4, .4, 8), toon("#e8e2d4"), 360, .25, 46, G, .04);
+        for (let k = 0; k < 4; k++) { const a = k / 4 * 6.28 + .4; add(new THREE.CylinderGeometry(.15, .15, 3, 6), toon("#7a5a3a"), 360 + Math.cos(a) * 2.6, 1.7, 46 + Math.sin(a) * 2.6, G, .02); }
+        add(new THREE.ConeGeometry(4.2, 1.6, 8), toon("#5f9a8a"), 360, 3.9, 46, G, .04);
+        MRY(280, 370, 40, 70, "rgba(93,138,168,.95)"); MLY("거울못", 318, 56); }
+      // 용산가족공원: trees on the east lawn, benches
+      for (let i = 0; i < 26; i++) { const x = rand(404, 456), z = rand(-28, 96); if (yclear(x, z)) ytree(x, z); }
+      for (let i = 0; i < 10; i++) { const x = rand(165, 245), z = rand(-28, 92); if (yclear(x, z) && Math.abs(x - 209) > 8) ytree(x, z, rand(4, 6)); }
+      MLY("용산가족공원", 430, 30);
+      // the map board at the end of the bridge, and 한동's museum café cart
+      add(new THREE.BoxGeometry(3, 2, .2), toon("#3a8f4c"), 196, 1.6, 108, G, .04); for (const x of [194.8, 197.2]) add(new THREE.BoxGeometry(.15, 1.4, .15), toon("#555"), x, .7, 108, G);
+      colliders.yeouido.push({ x0: X(194.4), x1: X(197.6), z0: Z(107.7), z1: Z(108.3) });
+      { add(new THREE.BoxGeometry(3.2, 1.1, 1.6), toon("#e8e2d4"), 226, .55, 101.6, G, .04); const aw = add(new THREE.BoxGeometry(3.6, .1, 2.2), toon("#c8402f"), 226, 2.7, 101.4, G, .03); aw.rotation.x = -.12;
+        for (const dx of [-1.6, 1.6]) add(new THREE.CylinderGeometry(.05, .05, 2.6, 6), toon("#555"), 226 + dx, 1.3, 102.3, G);
+        sign("박물관 카페", "#c8402f", 3, .6, 226, 1.5, 102.45);
+        colliders.yeouido.push({ x0: X(224.4), x1: X(227.6), z0: Z(100.8), z1: Z(102.4) }); }
+      for (let i = 0; i < 700; i++) { const x = rand(160, 458), z = rand(-30, 112); if ((x > 248 && x < 402 && z > -22 && z < 12) || (x > 278 && x < 372 && z > 38 && z < 72)) continue; tuft(X(x), Z(z), rand(.7, 1.3)); }
+      MLY("용산", 300, 85);
     }
   }
   // the street side: a slope of rubble under the end of the broken bridge (that's where you climb up)
@@ -967,6 +1087,72 @@ export function buildWorld(scene) {
     add(new THREE.BoxGeometry(.3, 4, 4), toon("#14161a"), .4, 2, 0, D, 0, false); add(new THREE.BoxGeometry(4, 4, .3), toon("#14161a"), 253, 2, -19.6, D, 0, false);
     for (const [x, z, c, i] of [[15, 0, "#ffe2b0", 50], [58, 0, "#5ab4e0", 60], [101, 0, "#bfe6ff", 50], [142, 0, "#ffe2b0", 50], [184, 0, "#9fdcff", 50], [234, 0, "#d06070", 90]]) { const L = new THREE.PointLight(c, i, 40, 2); L.position.set(X(x), 5.5, MK.z + z); scene.add(L); }
   }
+  // ===== the fifth dungeon: 국립중앙박물관 at night, six rooms =====
+  const museum = new THREE.Group(); museum.position.set(MU.x, 0, MU.z); scene.add(museum);
+  colliders.museum = [];
+  {
+    const D = museum, X = x => MU.x + x, RECTS = MUSEUM.rects;
+    const tex = (bg, fn, rep = [1, 1]) => { const c = document.createElement("canvas"); c.width = 256; c.height = 256; const g = c.getContext("2d"); g.fillStyle = bg; g.fillRect(0, 0, 256, 256); fn(g); const t = canvasTex(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...rep); return toon("#ffffff", { map: t }); };
+    const marble = tex("#cfc8bc", g => { for (let i = 0; i <= 256; i += 64) { g.strokeStyle = "#b8b0a2"; g.beginPath(); g.moveTo(i, 0); g.lineTo(i, 256); g.moveTo(0, i); g.lineTo(256, i); g.stroke(); } for (let i = 0; i < 14; i++) { g.strokeStyle = "rgba(150,140,128,.35)"; g.beginPath(); g.moveTo(R() * 256, R() * 256); g.lineTo(R() * 256, R() * 256); g.stroke(); } }, [6, 6]);
+    const hallWall = tex("#e6dfd2", g => { g.fillStyle = "#8a6a4a"; g.fillRect(0, 196, 256, 18); g.fillStyle = "#c9bfae"; g.fillRect(0, 230, 256, 26); }, [3, 1]);
+    const caveWall = tex("#8a6a4e", g => {
+      for (let i = 0; i < 40; i++) { g.fillStyle = `rgba(60,40,26,${R() * .4})`; g.beginPath(); g.ellipse(R() * 256, R() * 256, rand(10, 40), rand(6, 20), R() * 3, 0, 7); g.fill(); }
+      g.strokeStyle = "#3a1e10"; g.fillStyle = "#3a1e10"; g.lineWidth = 4;
+      for (let k = 0; k < 3; k++) { const x = 40 + k * 80, y = 120; g.beginPath(); g.arc(x, y - 30, 7, 0, 7); g.fill(); g.beginPath(); g.moveTo(x, y - 22); g.lineTo(x, y + 10); g.lineTo(x - 12, y + 34); g.moveTo(x, y + 10); g.lineTo(x + 12, y + 34); g.moveTo(x - 14, y - 10); g.lineTo(x + 30, y - 22); g.stroke(); }
+      g.fillStyle = "#6a2a14"; g.beginPath(); g.ellipse(200, 190, 34, 16, 0, 0, 7); g.fill(); g.fillRect(176, 200, 6, 22); g.fillRect(218, 200, 6, 22);
+    }, [3, 1]);
+    const jadeWall = tex("#3d5a52", g => { g.fillStyle = "#4a6a60"; g.fillRect(0, 210, 256, 46); }, [3, 1]);
+    const paperWall = tex("#efe6d0", g => { g.fillStyle = "#c8402f"; g.fillRect(0, 0, 256, 10); g.fillStyle = "rgba(60,40,20,.5)"; g.font = "28px serif"; for (let i = 0; i < 6; i++) g.fillText("ㄱㄴㄷㄹㅁㅂ".slice(i, i + 1), 20 + i * 40, 120); }, [3, 1]);
+    const goldWall = tex("#4a2a2a", g => { g.fillStyle = "#c9a43a"; g.fillRect(0, 200, 256, 10); g.fillRect(0, 30, 256, 6); }, [3, 1]);
+    const WALL = { hall: hallWall, cave: caveWall, celadon: jadeWall, scrolls: paperWall, treasure: goldWall, boss: goldWall };
+    const FLOOR = { hall: marble, cave: toon("#6a5440"), celadon: marble, scrolls: toon("#b89a6a"), treasure: toon("#5a3a2a"), boss: toon("#3a2a22") };
+    const covered = (axis, fixed, a0, a1, self) => { const out = []; for (const o of RECTS) if (o !== self) { if (axis === "x" && fixed > o.z0 - .01 && fixed < o.z1 + .01) out.push([Math.max(a0, o.x0), Math.min(a1, o.x1)]); if (axis === "z" && fixed > o.x0 - .01 && fixed < o.x1 + .01) out.push([Math.max(a0, o.z0), Math.min(a1, o.z1)]); } return out.filter(([a, b]) => b > a); };
+    const minus = (a0, a1, cuts) => { let segs = [[a0, a1]]; for (const [c0, c1] of cuts) segs = segs.flatMap(([s0, s1]) => c1 <= s0 || c0 >= s1 ? [[s0, s1]] : [[s0, c0], [c1, s1]].filter(([u, v]) => v - u > .05)); return segs; };
+    for (const r of RECTS) {
+      const w = r.x1 - r.x0, d = r.z1 - r.z0, h = r.room ? 8 : 5, cx = (r.x0 + r.x1) / 2, cz = (r.z0 + r.z1) / 2;
+      const f = add(new THREE.PlaneGeometry(w, d), r.room ? FLOOR[r.kind] : marble, cx, .01, cz, D, 0, false); f.rotation.x = -Math.PI / 2; f.receiveShadow = true;
+      const c = add(new THREE.PlaneGeometry(w, d), toon("#2a2622"), cx, h, cz, D, 0, false); c.rotation.x = Math.PI / 2;
+      const wm = r.room ? WALL[r.kind] : hallWall;
+      for (const [z, sgn] of [[r.z0, -1], [r.z1, 1]]) for (const [a, b] of minus(r.x0, r.x1, covered("x", z + sgn * .02, r.x0, r.x1, r))) add(new THREE.BoxGeometry(b - a, h, .4), wm, (a + b) / 2, h / 2, z + sgn * .2, D, 0);
+      for (const [x, sgn] of [[r.x0, -1], [r.x1, 1]]) for (const [a, b] of minus(r.z0, r.z1, covered("z", x + sgn * .02, r.z0, r.z1, r))) add(new THREE.BoxGeometry(.4, h, b - a), wm, x + sgn * .2, h / 2, (a + b) / 2, D, 0);
+    }
+    const ucol = (x0, x1, z0, z1) => colliders.museum.push({ x0: X(x0), x1: X(x1), z0: MU.z + z0, z1: MU.z + z1 });
+    const label = (text, color, w, h) => { const c = document.createElement("canvas"); c.width = 512; c.height = Math.round(512 * h / w); const x = c.getContext("2d"); x.fillStyle = color; x.fillRect(0, 0, c.width, c.height); x.fillStyle = "#fff"; x.font = `${Math.round(c.height * .6)}px ${FONT}`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(text, 256, c.height * .54); return toon("#ffffff", { map: canvasTex(c) }); };
+    const glassM = new THREE.MeshBasicMaterial({ color: "#bfe6ff", transparent: true, opacity: .25, depthWrite: false, toneMapped: false });
+    const vitrine = (x, z, fill) => { add(new THREE.BoxGeometry(1.6, 1, 1.6), toon("#3a2e26"), x, .5, z, D, .03); add(new THREE.BoxGeometry(1.5, 1.4, 1.5), glassM, x, 1.7, z, D, 0, false); fill(x, z); ucol(x - .8, x + .8, z - .8, z + .8); };
+    // 1 역사의 길: the long hall, empty plinths (the statues walked off them), banners
+    for (let x = 6; x < 38; x += 8) for (const z of [-6.6, 6.6]) { add(new THREE.BoxGeometry(1.6, .8, 1.6), toon("#bdb5a6"), x, .4, z, D, .03); ucol(x - .8, x + .8, z - .8, z + .8); }
+    for (let x = 10; x < 38; x += 12) add(new THREE.PlaneGeometry(1.4, 4), toon("#7a2a2a"), x, 5, -7.75, D, 0, false);
+    add(new THREE.PlaneGeometry(7, 1.2), label("역사의 길", "#5a4a3a", 7, 1.2), 20, 6.6, -7.75, D, 0, false);
+    // 2 선사관: cave walls with painted hunters (they throw spears across the room), a fire pit
+    add(new THREE.CylinderGeometry(1.2, 1.4, .5, 10), toon("#4a3a2a"), 67, .25, 0, D, .03); add(new THREE.ConeGeometry(.8, 1.4, 6), new THREE.MeshBasicMaterial({ color: "#ff8a3a", toneMapped: false }), 67, 1, 0, D, 0, false); ucol(65.6, 68.4, -1.4, 1.4);
+    add(new THREE.PlaneGeometry(7, 1.2), label("선사관 · 창을 피하세요", "#6a3a1e", 7, 1.2), 67, 6.6, -11.75, D, 0, false);
+    // 3 고려 청자실: glass cases with celadon vases (some of them are monsters)
+    const jade = toon("#8fc4b0"), jadeD = toon("#5f9a86");
+    for (const [x, z] of [[96, -9], [104, -9], [112, -9], [120, -9], [96, 9], [104, 9], [112, 9], [120, 9]]) vitrine(x, z, (vx, vz) => { const v = add(new THREE.SphereGeometry(.4, 12, 10), jade, vx, 1.6, vz, D, .02); v.scale.set(1, 1.3, 1); add(new THREE.CylinderGeometry(.14, .2, .3, 10), jadeD, vx, 2.15, vz, D, .01); });
+    add(new THREE.PlaneGeometry(7, 1.2), label("고려 청자실", "#2f5a4e", 7, 1.2), 107, 6.6, -11.75, D, 0, false);
+    // 4 훈민정음실: three scroll stands (the verb-ending quiz), the big ㄱ ㄴ ㄷ wall
+    MUSEUM.scrollMeshes = MUSEUM.scrolls.map((b, i) => {
+      const c = document.createElement("canvas"); c.width = 512; c.height = 320; const g = c.getContext("2d");
+      g.fillStyle = "#f2e8cc"; g.fillRect(0, 0, 512, 320); g.fillStyle = "#7a2a2a"; g.fillRect(0, 0, 512, 22); g.fillRect(0, 298, 512, 22);
+      g.fillStyle = "#2a1e14"; g.font = `60px ${FONT}`; g.textAlign = "center"; g.fillText(["-아요/-어요", "-았/었어요", "-(으)ㄹ 거예요"][i], 256, 150); g.font = `34px ${FONT}`; g.fillText(`두루마리 ${i + 1} · 동사`, 256, 240);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(4.2, 2.6), toon("#ffffff", { map: canvasTex(c) })); m.position.set(b.x - MU.x, 3, b.z - MU.z + (b.rot ? -.1 : .1)); m.rotation.y = b.rot; D.add(m); return m;
+    });
+    add(new THREE.PlaneGeometry(7, 1.2), label("훈민정음실", "#7a2a2a", 7, 1.2), 146, 6.6, -10.75, D, 0, false);
+    // 5 왕의 보물실: gold crowns in cases, the looters' crates
+    const gold = toon("#e0b43a", { emissive: new THREE.Color("#5a4010"), emissiveIntensity: .3 });
+    for (const [x, z] of [[176, -9], [186, -9], [196, -9], [176, 9], [196, 9]]) vitrine(x, z, (vx, vz) => { add(new THREE.CylinderGeometry(.42, .38, .4, 12, 1, true), gold, vx, 1.4, vz, D, .02); for (let k = 0; k < 3; k++) add(new THREE.BoxGeometry(.06, .5, .06), gold, vx + (k - 1) * .3, 1.8, vz - .3, D, 0); });
+    for (let i = 0; i < 5; i++) { const x = rand(178, 198), z = rand(-3, 3); add(new THREE.BoxGeometry(1, .8, .8), toon("#7a5a3a"), x, .4, z + (z > 0 ? 3 : -3), D, .03); }
+    add(new THREE.PlaneGeometry(7, 1.2), label("왕의 보물실", "#6a4a14", 7, 1.2), 186, 6.6, -11.75, D, 0, false);
+    // 6 장군의 방: weapon racks, war banners, a 화차 (the 신기전 launcher) behind the general's dais
+    for (let k = 0; k < 8; k++) { const a = k / 8 * 6.28; add(new THREE.CylinderGeometry(.45, .45, 8, 10), toon("#6a2a22"), 234 + Math.cos(a) * 19, 4, Math.sin(a) * 16, D, .04); }
+    for (const z of [-19.75, 19.75]) for (let x = 218; x < 254; x += 9) { const b = add(new THREE.PlaneGeometry(1.6, 4.4), toon(pick(["#c8402f", "#2f5aa8", "#e0b43a"])), x, 4.6, z, D, 0, false); if (z > 0) b.rotation.y = Math.PI; }
+    { add(new THREE.BoxGeometry(3, .5, 8), toon("#8a6a4a"), 252, 1.2, 0, D, .04); for (const z of [-3, 3]) { const w = add(new THREE.CylinderGeometry(.9, .9, .3, 12), toon("#5a3a2a"), 252, .9, z, D, .03); w.rotation.x = Math.PI / 2; }
+      const rack = add(new THREE.BoxGeometry(2.4, 2.4, 6), toon("#6a4a2a"), 252, 2.8, 0, D, .04); rack.rotation.z = .5;
+      for (let i = 0; i < 18; i++) { const r = add(new THREE.CylinderGeometry(.05, .05, 2.6, 5), toon("#c8402f"), 251.2, 3.6, -2.6 + i * .3, D, 0); r.rotation.z = .5 + Math.PI / 2; } ucol(250.4, 253.6, -4, 4); }
+    add(new THREE.BoxGeometry(.3, 4, 4), toon("#14161a"), .4, 2, 0, D, 0, false); add(new THREE.BoxGeometry(4, 4, .3), toon("#14161a"), 253, 2, -19.6, D, 0, false);
+    for (const [x, z, c, i] of [[20, 0, "#ffe2b0", 50], [67, 0, "#ff9a4a", 70], [107, 0, "#9fe0c8", 55], [146, 0, "#ffe2b0", 50], [186, 0, "#ffd27a", 60], [234, 0, "#ff7a5a", 90]]) { const L = new THREE.PointLight(c, i, 40, 2); L.position.set(X(x), 6, MU.z + z); scene.add(L); }
+  }
   // instanced foliage, cel outline on leaves too
   const leafGeo = new THREE.IcosahedronGeometry(1, 1), tuftGeo = new THREE.ConeGeometry(.07, .5, 4);
   const lm = new THREE.InstancedMesh(leafGeo, toon("#ffffff", {}), leafM.length);
@@ -980,6 +1166,7 @@ export function buildWorld(scene) {
   mergeStatic(yeouido, new Set());
   mergeStatic(tower, new Set([TOWER.doorMesh]));
   mergeStatic(market, new Set(MARKET.boardMeshes));
+  mergeStatic(museum, new Set(MUSEUM.scrollMeshes));
   mergeStatic(street, new Set(swaps.map(s => s.mesh)));
   const C = { bike: "rgba(200,90,60,.95)", water: "rgba(79,143,184,.95)", alien: "rgba(180,140,255,.95)", road: "rgba(128,129,138,.9)", boul: "rgba(95,97,105,.95)", park: "rgba(94,154,62,.95)", square: "rgba(201,185,160,.95)", block: "rgba(70,52,40,.95)", slab: "rgba(225,220,205,.95)", lot: "rgba(110,110,106,.95)", play: "rgba(216,185,138,.95)", green: "rgba(58,143,108,.95)" };
   const R2 = (x0, x1, z0, z1, c, area) => ({ x0, x1, z0, z1, c: C[c], area });
@@ -1000,9 +1187,9 @@ export function buildWorld(scene) {
     { t: "편의점", x: 40, z: 141, area: "river" }, { t: "낚시터", x: -20, z: 190, area: "river" }, { t: "부서진 다리", x: 220, z: 214, area: "river" }, { t: "자전거길", x: -40, z: 164, area: "river" }, { t: "주차장", x: 170, z: -42, area: "apt" }, { t: "주차장", x: 270, z: 38, area: "apt" },
   ];
   rects.push(...ydMap.rects); labels.push(...ydMap.labels);
-  const areas = { noryangjin: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z + 330, maxZ: YD.z + 562 }, yeouido: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z - 4, maxZ: YD.z + 332 }, hongdae: { minX: -84, maxX: 108, minZ: -108, maxZ: 108 }, apt: { minX: 108, maxX: 310, minZ: -108, maxZ: 108 }, river: { minX: -84, maxX: 310, minZ: 108, maxZ: 250 } };
+  const areas = { yongsan: { minX: YD.x + 149, maxX: YD.x + 460, minZ: YD.z - 32, maxZ: YD.z + 427 }, noryangjin: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z + 330, maxZ: YD.z + 562 }, yeouido: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z - 4, maxZ: YD.z + 332 }, hongdae: { minX: -84, maxX: 108, minZ: -108, maxZ: 108 }, apt: { minX: 108, maxX: 310, minZ: -108, maxZ: 108 }, river: { minX: -84, maxX: 310, minZ: 108, maxZ: 250 } };
   const map = { bounds: STREET, rects, labels, areas };
-  return { street, station, dungeon, yeouido, tower, market, colliders, camBlocks, npcSpots, setNight, update, occlude, sun, hemi, map };
+  return { street, station, dungeon, yeouido, tower, market, museum, colliders, camBlocks, npcSpots, setNight, update, occlude, sun, hemi, map };
 }
 // Bake every static mesh of the district into one mesh per material (thousands of draw calls -> a few dozen).
 // Signs that swap day/night materials, instanced foliage and multi-material boxes stay as they are.

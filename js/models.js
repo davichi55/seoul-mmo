@@ -233,6 +233,68 @@ export function makeMonster(kind) {
       arms.forEach((g, i) => { g.rotation.z = Math.sin(t + i) * .25 + (s.attack > 0 ? .8 * Math.sin(s.attack * Math.PI) : 0); g.visible = i < (s.arms ?? 8); });
       rig.position.y = Math.sin(t * .8) * .2; mantle.scale.y = 1.25 + Math.sin(t * 1.3) * .05;
     };
+  } else if (kind === "muinseok") {               // 무인석: a stone tomb guardian (a civil official with a tall hat and a tablet), stomps
+    const rr = (a, b) => a + Math.random() * (b - a), st = toon("#a8a294"), stD = toon("#8a8476"), moss = toon("#7a8a5a");
+    const body = part(new THREE.BoxGeometry(1.3, 2.6, 1), st, 0, 1.5, 0, rig, .05); body.scale.set(1, 1, 1);
+    part(new THREE.BoxGeometry(1.5, .3, 1.2), stD, 0, .2, 0, rig, .03);
+    const head = part(new THREE.BoxGeometry(.9, 1, .85), st, 0, 3.3, 0, rig, .04);
+    part(new THREE.BoxGeometry(.95, .7, .7), stD, 0, 4.1, .1, rig, .03);   // the 복두 hat
+    part(new THREE.BoxGeometry(1.3, .12, .3), stD, 0, 3.85, .35, rig, .02);
+    const eyeM = new THREE.MeshBasicMaterial({ color: "#ffb43a", toneMapped: false });
+    for (const ex of [-.2, .2]) part(new THREE.BoxGeometry(.18, .07, .05), eyeM, ex, 3.4, -.44, rig, 0);
+    part(new THREE.BoxGeometry(.25, .5, .1), stD, 0, 3.1, -.45, rig, .01);   // the nose
+    const armL = limb(rig, -.75, 2.5, -.2, 1.1, .2, st), armR = limb(rig, .75, 2.5, -.2, 1.1, .2, st);
+    part(new THREE.BoxGeometry(.3, 1.2, .1), toon("#c8c0ae"), .1, -.9, -.4, armR, .02);   // the 홀 tablet
+    for (let i = 0; i < 6; i++) part(new THREE.SphereGeometry(rr(.08, .16), 6, 5), moss, rr(-.6, .6), rr(.5, 3), rr(-.5, .5), rig, 0);
+    height = 4.6;
+    anim = (dt, s) => {
+      t += dt * (s.moving ? 6 : 1.5);
+      rig.position.y = s.moving ? Math.abs(Math.sin(t)) * .25 : 0; rig.rotation.z = s.moving ? Math.sin(t) * .06 : 0;
+      armL.rotation.x = -.9; armR.rotation.x = s.attack > 0 ? -2.2 * Math.sin(s.attack * Math.PI) : -.9;
+      if (s.slam > 0) rig.position.y = Math.sin(s.slam * Math.PI) * 1.6;
+      head.rotation.y = Math.sin(t * .3) * .2;
+    };
+  } else if (kind === "celadon") {                // 청자 도깨비: a jade-green celadon vase with a crane pattern, a goblin face and little legs
+    const jade = toon("#8fc4b0"), jadeD = toon("#5f9a86"), crane = toon("#f2f2ee");
+    const legL = limb(rig, -.3, .55, 0, .55, .1, jadeD), legR = limb(rig, .3, .55, 0, .55, .1, jadeD);
+    const body = part(new THREE.SphereGeometry(.85, 16, 12), jade, 0, 1.4, 0, rig, .04); body.scale.set(1, 1.15, 1);
+    part(cyl(.32, .45, .5, 12), jade, 0, 2.45, 0, rig, .03); part(cyl(.42, .32, .18, 12), jadeD, 0, 2.75, 0, rig, .02);
+    for (let i = 0; i < 4; i++) { const a = i / 4 * 6.28; const c = part(new THREE.BoxGeometry(.32, .08, .02), crane, Math.sin(a) * .86, 1.5 + (i % 2) * .3, Math.cos(a) * .86, rig, 0); c.rotation.y = a; }
+    const eyeM = new THREE.MeshBasicMaterial({ color: "#fff36a", toneMapped: false });
+    for (const ex of [-.25, .25]) part(new THREE.SphereGeometry(.09, 8, 6), eyeM, ex, 1.75, -.82, rig, 0);
+    part(new THREE.BoxGeometry(.4, .08, .05), toon("#2a3a34"), 0, 1.45, -.86, rig, 0);
+    const crack = part(new THREE.BoxGeometry(.04, .7, .03), toon("#2a3a34"), .3, 1.3, -.8, rig, 0); crack.rotation.z = .4;
+    height = 3.1;
+    anim = (dt, s) => {
+      t += dt * (s.moving ? 9 : 2);
+      legL.rotation.x = s.moving ? Math.sin(t) * .7 : 0; legR.rotation.x = s.moving ? -Math.sin(t) * .7 : 0;
+      rig.rotation.z = Math.sin(t * .8) * (s.moving ? .12 : .05); rig.position.y = s.attack > 0 ? Math.sin(s.attack * Math.PI) * .5 : 0;
+      body.scale.set(1 + (s.attack > 0 ? .1 * Math.sin(s.attack * Math.PI) : 0), 1.15, 1);
+    };
+  } else if (kind === "armour" || kind === "general") {   // 빈 갑옷 / 깨어난 장군 갑옷: empty lamellar armour, no one inside, a glow where the face should be
+    const big = kind === "general", iron = toon(big ? "#6a4a2a" : "#5a5f66"), lam = toon(big ? "#c8402f" : "#8a3a2a"), gold = toon("#e0b43a"), dark = toon("#1a1416");
+    const legL = limb(rig, -.35, 1.1, 0, 1.05, .16, dark), legR = limb(rig, .35, 1.1, 0, 1.05, .16, dark);
+    const torso = part(new THREE.CylinderGeometry(.65, .8, 1.6, 10), lam, 0, 1.9, 0, rig, .05);
+    for (let r = 0; r < 4; r++) part(new THREE.CylinderGeometry(.82 - r * .03, .84 - r * .03, .08, 10), gold, 0, 1.2 + r * .45, 0, rig, 0);
+    part(new THREE.SphereGeometry(.45, 12, 10, 0, 6.3, 0, 1.6), iron, 0, 2.95, 0, rig, .04);   // helmet
+    part(new THREE.ConeGeometry(.08, .7, 6), gold, 0, 3.55, 0, rig, .02);
+    part(new THREE.CylinderGeometry(.5, .6, .35, 12, 1, true), iron, 0, 2.75, 0, rig, .02);
+    const glow = new THREE.MeshBasicMaterial({ color: big ? "#ff5a3a" : "#9ec8ff", toneMapped: false });
+    part(new THREE.BoxGeometry(.5, .12, .05), glow, 0, 2.85, -.48, rig, 0);
+    const armL = limb(rig, -.85, 2.4, 0, 1.1, .15, iron), armR = limb(rig, .85, 2.4, 0, 1.1, .15, iron);
+    const blade = part(new THREE.BoxGeometry(.1, 1.8, .2), toon("#d8dce0"), 0, -1.6, -.3, armR, .02); part(new THREE.BoxGeometry(.4, .08, .3), gold, 0, -.75, -.3, armR, 0);
+    const plates = [];
+    if (big) for (let i = 0; i < 4; i++) { const p = part(new THREE.BoxGeometry(.7, .6, .14), gold, (i % 2 ? .38 : -.38), 2.2 - Math.floor(i / 2) * .7, -.82, rig, .02); plates.push(p); }
+    for (const sx of [-1, 1]) part(new THREE.BoxGeometry(.6, .25, .7), gold, sx * .85, 2.65, 0, rig, .02);   // shoulder guards
+    height = 3.9;
+    anim = (dt, s) => {
+      t += dt * (s.moving ? 7 : 1.5);
+      legL.rotation.x = s.moving ? Math.sin(t) * .5 : 0; legR.rotation.x = s.moving ? -Math.sin(t) * .5 : 0;
+      armL.rotation.x = s.moving ? -Math.sin(t) * .3 : -.2; armR.rotation.x = s.attack > 0 ? -2.4 * Math.sin(s.attack * Math.PI) : -.4;
+      rig.position.y = .12 + Math.sin(t * .5) * .06;   // it floats a little: nobody is inside
+      plates.forEach((p, i) => p.visible = i < (s.plates ?? 4));
+      glow.color.set(s.charge > 0 ? "#ffffff" : big ? "#ff5a3a" : "#9ec8ff");
+    };
   } else if (kind === "jangseung") {              // 장승: a carved village guardian post that woke up and hops
     const wood = toon("#8a5a32"), dark = toon("#5a3a22"), red = toon("#b8382a"), white = toon("#f3efe4"), black = toon("#1d1612");
     const post = part(cyl(.48, .55, 3.2, 10), wood, 0, 1.6, 0, rig, .04);

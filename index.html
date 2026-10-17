@@ -89,7 +89,7 @@
 </div>
 
 <div id="memory" hidden>
-  <div class="mmHead"><b>대장간 · 기억의 돌</b><span id="mmInfo"></span><span>⏱ <b id="mmTime">90</b> s · 실수 <b id="mmMiss">0</b> (≤3 → +2, ≤8 → +1)</span><button id="mmQuit">포기 · give up</button></div>
+  <div class="mmHead"><b>대장간 · 기억의 돌</b><span id="mmInfo"></span><span>⏱ <b id="mmTime">150</b> s · 실수 <b id="mmMiss">0</b> (≤12 → +2, ≤20 → +1)</span><button id="mmQuit">포기 · give up</button></div>
   <div id="mmGrid"></div>
 </div>
 
@@ -178,6 +178,14 @@
       <div class="ivLeft"><h3>착용 · Wearing</h3><div class="ivSlots" id="ivSlots"></div><p class="fine" id="ivSum"></p><p class="fine">갑옷과 장신구를 누르면 벗어요 · click armour or a trinket to take it off.</p></div>
       <div class="ivRight"><div class="chTabs" id="ivTabs"></div><div class="ivBag" id="ivBag"></div></div>
     </div>
+  </div>
+</div>
+
+<div id="rewardView" class="screen" hidden>
+  <div class="panel rwv">
+    <div class="eyebrow">보상 · rewards</div><h2 id="rwTitle"></h2>
+    <div class="rwList" id="rwList"></div>
+    <button id="rwOk" class="primary">좋아요! · OK</button>
   </div>
 </div>
 

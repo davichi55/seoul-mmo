@@ -6,7 +6,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, toon } from "./world.js";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, toon } from "./world.js";
 import { makeHero, makeNPC, makeMonster } from "./models.js";
 import { loadKayKit, kayReady, makeKay } from "./kaykit.js";
 import { loadSua, suaReady, makeSua } from "./sua.js";
@@ -67,6 +67,11 @@ const MONS = {
   kkotge:     { ko: "왕꽃게", en: "king crab", hp: 380, speed: 2.2, range: 3, dmg: 16, rate: 3.4, weak: "wood", lvl: 12, xp: 150, aggro: 9, money: [11000, 15000], armor: .5, slam: { every: 9, tele: 1.4, radius: 3.6, dmg: 26 }, model: "crab" },
   jangeo:     { ko: "장어", en: "electric eel", hp: 240, speed: 3.6, range: 11, dmg: 12, rate: 3, weak: "earth", lvl: 13, xp: 140, aggro: 11, money: [10000, 14000], ranged: true, root: { chance: .3, dur: 1.2 }, shock: true, model: "eel" },
   munoh:      { ko: "문어 왕", en: "octopus king", hp: 2400, speed: 1.4, range: 6, dmg: 18, rate: 3, weak: "fire", lvl: 15, xp: 900, aggro: 24, money: [60000, 80000], boss: true, sweep: { every: 7, tele: 1.4, len: 22, w: 3.2, dmg: 30 }, ink: true, model: "octopus" },
+  muinseok:   { ko: "무인석", en: "tomb guardian statue", hp: 520, speed: 2, range: 3.2, dmg: 20, rate: 3.8, weak: "water", lvl: 15, xp: 190, aggro: 8, money: [14000, 18000], slam: { every: 9, tele: 1.6, radius: 4.6, dmg: 34 }, model: "muinseok" },
+  cheongja:   { ko: "청자 도깨비", en: "celadon vase goblin", hp: 320, speed: 3.8, range: 2.6, dmg: 17, rate: 2.6, weak: "metal", lvl: 15, xp: 170, aggro: 10, money: [13000, 17000], burst: { radius: 4.2, tele: 1.1, dmg: 30 }, model: "celadon" },
+  gapot:      { ko: "빈 갑옷", en: "empty armour", hp: 480, speed: 3.2, range: 3.2, dmg: 22, rate: 3, weak: "fire", lvl: 16, xp: 200, aggro: 10, money: [14000, 19000], model: "armour" },
+  dogul:      { ko: "외계인 도굴꾼", en: "alien looter", hp: 400, speed: 5.2, range: 2.6, dmg: 19, rate: 2.4, weak: "earth", lvl: 16, xp: 220, aggro: 13, money: [15000, 20000], alien: true, model: "alien" },
+  janggun:    { ko: "깨어난 장군", en: "the awakened general", hp: 2800, speed: 1.8, range: 4, dmg: 24, rate: 3, weak: "water", lvl: 18, xp: 1300, aggro: 24, money: [80000, 100000], boss: true, plates: true, volley: { every: 8, n: 3, tele: 1.3, len: 24, w: 2.4, dmg: 32 }, wall: { every: 26, dur: 5 }, model: "general", scale: 1.5 },
   jangseung:  { ko: "장승", en: "village guardian post", hp: 320, speed: 2.6, range: 3.0, dmg: 14, rate: 3.6, weak: "metal", lvl: 9, xp: 120, aggro: 9, money: [9000, 13000], slam: { every: 10, tele: 1.6, radius: 4.5, dmg: 30 } },
   geuseundae: { ko: "그슨대", en: "looming shadow", hp: 260, speed: 4.6, range: 2.6, dmg: 11, rate: 2.5, weak: "fire", lvl: 10, xp: 130, aggro: 11, money: [10000, 14000], grow: { every: 5, add: .1, max: .6 } },
   commander:  { ko: "외계인 사령관", en: "alien commander", hp: 2200, speed: 3.2, range: 14, dmg: 14, rate: 3.2, weak: "water", lvl: 12, xp: 700, aggro: 18, money: [50000, 70000], boss: true, alien: true, caster: true, orb: 22, volley: 3, shield: { every: 28, dur: 14 }, model: "alien_caster", scale: 1.6 },
@@ -305,14 +310,15 @@ const deckIds = k => deckCards(k).map(c => c.id);
 const bagCards = () => { const used = new Set([...Object.values(S.skillDecks).flat(), ...S.bank.cards]); return S.cards.filter(c => !used.has(c.uid)); };
 // ---- inventory: S.items = [{uid, g}], S.equip = {weapon, armor, trinket} (uids) ----
 const itemBy = uid => S.items.find(i => i.uid === uid);
-function gearName(g) { const d = GEAR[g]; return d.slot === "weapon" ? classDef().weapons[d.tier] : d.ko; }
-function gearInfo(g) { const d = GEAR[g]; if (d.slot === "weapon") return `공격력 ×${WEAPON_MULT[d.tier]}`; return [d.hp && `체력 +${Math.round(d.hp * 100)}%`, d.dmg && `공격력 +${Math.round(d.dmg * 100)}%`, d.ls && `흡혈 ${Math.round(d.ls * 100)}%`].filter(Boolean).join(", ") || "보너스 없음"; }
-const gearPrice = g => GEAR[g].slot === "weapon" ? WEAPON_PRICE[GEAR[g].tier] : GEAR[g].price;
+function gearName(g) { const d = GEAR[g]; return d.slot === "weapon" ? (d.names ? d.names[S.cls] || Object.values(d.names)[0] : classDef().weapons[d.tier]) : d.ko; }
+function gearInfo(g) { const st = GEAR[g].set && SETS[GEAR[g].set]; return gearInfo0(g) + (st ? ` · ${st.ko} (둘 다: ${bonusTxt(st.bonus)})` : ""); }
+function gearInfo0(g) { const d = GEAR[g]; if (d.slot === "weapon") return `공격력 ×${WEAPON_MULT[d.tier]}`; return [d.hp && `체력 +${Math.round(d.hp * 100)}%`, d.dmg && `공격력 +${Math.round(d.dmg * 100)}%`, d.ls && `흡혈 ${Math.round(d.ls * 100)}%`].filter(Boolean).join(", ") || "보너스 없음"; }
+const gearPrice = g => GEAR[g].slot === "weapon" && !GEAR[g].set ? WEAPON_PRICE[GEAR[g].tier] : GEAR[g].price;
 const itemName = it => gearName(it.g) + (it.up ? ` +${it.up}` : "");
 function weaponMult() { const it = itemBy(S.equip.weapon); return WEAPON_MULT[it ? GEAR[it.g].tier : 0] * (1 + .05 * (it?.up || 0)); }
 function itemInfo(it) { const up = it.up || 0, d = GEAR[it.g]; if (!up) return gearInfo(it.g); if (d.slot === "weapon") return `공격력 ×${(WEAPON_MULT[d.tier] * (1 + .05 * up)).toFixed(2)}`; if (d.slot === "armor") return `체력 +${Math.round((d.hp + .03 * up) * 100)}%`; return gearInfo(it.g) + ` ×${(1 + .2 * up).toFixed(1)}`; }
 function weaponTier() { const it = itemBy(S.equip.weapon); return it ? GEAR[it.g].tier : 0; }
-function gearStat(k) { let v = 0; for (const slot in S.equip) { const it = itemBy(S.equip[slot]); if (!it) continue; const d = GEAR[it.g], up = it.up || 0; if (d[k]) v += d[k] * (d.slot === "trinket" ? 1 + .2 * up : 1); if (k === "hp" && d.slot === "armor") v += .03 * up; } return v; }
+function gearStat(k) { let v = 0; for (const slot in S.equip) { const it = itemBy(S.equip[slot]); if (!it) continue; const d = GEAR[it.g], up = it.up || 0; if (d[k]) v += d[k] * (d.slot === "trinket" ? 1 + .2 * up : 1); if (k === "hp" && d.slot === "armor") v += .03 * up; } return v + setBonus(k); }
 function addItem(g, equip = false) { const it = { uid: newUid(), g }; S.items.push(it); if (equip) S.equip[GEAR[g].slot] = it.uid; return it; }
 function ensureGear() {            // new characters and saves from before the inventory
   if (!S.items) S.items = [];
@@ -341,7 +347,10 @@ const lvlHp = () => 1 + .05 * (S.level - 1), lvlDmg = () => 1 + .04 * (S.level -
 const lvlGap = lv => (lv || S.level) - S.level;
 const gapTaken = lv => { const g = lvlGap(lv); return g > 2 ? Math.min(3, 1 + .25 * (g - 2)) : g < -1 ? Math.max(.75, 1 + .05 * (g + 1)) : 1; };
 const gapClass = lv => { const g = lvlGap(lv); return g >= 5 ? "lv-red" : g >= 3 ? "lv-orange" : g >= -1 ? "lv-yellow" : g >= -4 ? "lv-green" : "lv-gray"; };
-const monsterXp = m => m.def.xp * (1 + .3 * (m.lvl - m.def.lvl)) * Math.max(.2, Math.min(1.5, 1 + .2 * (m.lvl - S.level)));
+// Danny 2026-10-17: Lv 9 after the 문어 왕 is too slow later on, early pace is good -> kill XP grows with the monster level
+// (Lv 1 x1, Lv 7 x1.9, Lv 12 x2.65, Lv 15 x3.1)
+const KILL_XP = lv => 1 + .15 * (lv - 1);
+const monsterXp = m => m.def.xp * KILL_XP(m.lvl) * (1 + .3 * (m.lvl - m.def.lvl)) * Math.max(.2, Math.min(1.5, 1 + .2 * (m.lvl - S.level)));
 function gainXp(n, at) {
   if (S.level >= MAX_LEVEL) return;
   n = Math.round(n); S.xp += n;
@@ -355,8 +364,8 @@ function gainXp(n, at) {
 function recalcMax() { const keep = player.hp / player.maxHp; player.maxHp = Math.round(classDef().hp * (1 + bonus().hp + gearStat("hp")) * lvlHp() * (player.lsUntil > clock ? 1.3 : 1) * (player.cryUntil > clock ? 1.1 : 1)); player.hp = Math.min(player.maxHp, isFinite(keep) ? keep * player.maxHp : player.maxHp); }
 
 // ---- collision -----------------------------------------------------------------------------------
-const ZONES = ["street", "dungeon", "yeouido", "tower", "market"], RZONES = { dungeon: DUNGEON, tower: TOWER, yeouido: YEOUIDO, market: MARKET };
-const isDun = z => z === "dungeon" || z === "tower" || z === "market";
+const ZONES = ["street", "dungeon", "yeouido", "tower", "market", "museum"], RZONES = { dungeon: DUNGEON, tower: TOWER, yeouido: YEOUIDO, market: MARKET, museum: MUSEUM };
+const isDun = z => z === "dungeon" || z === "tower" || z === "market" || z === "museum";
 function collide(p, r = .45, zone = player.zone) {
   const RZ = RZONES[zone];
   if (RZ) for (const c of RZ.pillars) { const dx = p.x - c.x, dz = p.z - c.z, d = Math.hypot(dx, dz), m = c.r + r; if (d < m && d > 1e-4) { p.x = c.x + dx / d * m; p.z = c.z + dz / d * m; } }
@@ -655,7 +664,7 @@ function eatGimbap() {
 }
 
 // ---- NPCs + dialogue ----------------------------------------------------------------------------------------
-const NPC_DEF = { driver: "기관사 아저씨", teacher: "시연 · 부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지유", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "다미 · 카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가현 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "유현 선생님 · 학원 강사", cupbap: "컵밥 아줌마" };
+const NPC_DEF = { driver: "기관사 아저씨", teacher: "시연 · 부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지유", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "다미 · 카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가현 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "유현 선생님 · 학원 강사", cupbap: "컵밥 아줌마", handong: "한동 · 박물관 카페" };
 function placeNPCs() {
   const sp = world.npcSpots;
   sp.trader = { x: STATION.x + 5, z: STATION.z - 8.6, face: 0 };
@@ -677,7 +686,7 @@ function placeNPCs() {
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); world.colliders.yeouido.push({ x: at.x, z: at.z, r: .6 });
   }
-  for (const [kind, at, mdl] of [["gangsa", YEOUIDO.npcTeacher, () => kayReady() ? makeKay("gangsa") : makeNPC("sitter")], ["cupbap", YEOUIDO.npcCupbap, () => makeNPC("grandma")]]) {
+  for (const [kind, at, mdl] of [["gangsa", YEOUIDO.npcTeacher, () => kayReady() ? makeKay("gangsa") : makeNPC("sitter")], ["cupbap", YEOUIDO.npcCupbap, () => makeNPC("grandma")], ["handong", YEOUIDO.npcHandong, () => kayReady() ? makeKay("handong") : makeNPC("sitter")]]) {
     const model = mdl(), n = { isNpc: true, kind, zone: "yeouido", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = Math.PI; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
@@ -733,10 +742,10 @@ function talkTo(n) {
   cancelRitual();
   const normal = {
     grandma: () => restaurant(n), smith: () => shop(n), trader: () => cardShop(n),
-    stranger: () => (S.towerClears && S.sawPoster && !S.metHaneul) ? (S.metHaneul = true, save(), showLine(n, "x_haneul", [{ plr: "p_haneul", act: () => endWith(n, "x_haneul2") }])) : (S.sawList && !S.metList) ? (S.metList = true, save(), endWith(n, "x_list")) : (S.dunClears && !S.metAgain) ? (S.metAgain = true, save(), endWith(n, "x_return")) : showLine(n, "x_again", [{ plr: "p_yes", act: () => { closeDialog(); openDeckPicker(false); } }, { plr: "p_who", act: () => endWith(n, "x_who") }, { plr: "p_no", act: () => endWith(n, "x_bye") }]),
+    stranger: () => (S.hasMirror && !S.metMirror) ? (S.metMirror = true, save(), revealTalk(n)) : (S.towerClears && S.sawPoster && !S.metHaneul) ? (S.metHaneul = true, save(), showLine(n, "x_haneul", [{ plr: "p_haneul", act: () => endWith(n, "x_haneul2") }])) : (S.sawList && !S.metList) ? (S.metList = true, save(), endWith(n, "x_list")) : (S.dunClears && !S.metAgain) ? (S.metAgain = true, save(), endWith(n, "x_return")) : showLine(n, "x_again", [{ plr: "p_yes", act: () => { closeDialog(); openDeckPicker(false); } }, { plr: "p_who", act: () => endWith(n, "x_who") }, { plr: "p_no", act: () => endWith(n, "x_bye") }]),
     guard: () => showLine(n, S.hasMap ? "g_hello" : "g_map", [{ plr: "p_yes", act: () => endWith(n, "g_sleep") }]),
     driver: () => showLine(n, S.spells?.sleep || S.dunClears ? "d_hello" : "d_hint", [{ plr: "p_enter", act: () => { closeDialog(); fade(toDungeon); } }, { plr: "p_later", act: closeDialog }]),
-    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
+    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
     minsu: () => endWith(n, "m_hello"), jieun: () => endWith(n, "j_hello"), gyeongbi: () => endWith(n, S.hasMapApt ? "b_hello" : "b_map"),
   }[n.kind];
   if (questTalk(n, normal)) return;
@@ -784,6 +793,12 @@ function nearestInteract() {
   if (player.dead) return null;
   const E = keyName(SET.keys.interact);
   for (const r of remotes.values()) if (r.dead && r.zone === player.zone && dist2(r.pos, player.pos) < 2.8) return { t: "revive", r, label: `${E} · ${r.nm} 살리기 · revive (word challenge)` };
+  if (player.zone === "museum") {
+    if (dist2(player.pos, MUSEUM.up) < 3) return { t: "museumOut", label: `${E} · 용산으로 나가기 · back out to 용산` };
+    if (dist2(player.pos, MUSEUM.end) < 4 && !monsters.some(m => m.def.boss && !m.dead && m.zone === "museum")) return { t: "museumOut", label: `${E} · 출구 · exit to 용산` };
+    for (let i = 0; i < 3; i++) if (dist2(player.pos, MUSEUM.scrolls[i].spot) < 2.4) return { t: "scroll", i, label: `${E} · 두루마리 ${i + 1} · scroll ${i + 1}` };
+    return null;
+  }
   if (player.zone === "market") {
     if (dist2(player.pos, MARKET.up) < 3) return { t: "marketOut", label: `${E} · 노량진으로 나가기 · back out to 노량진` };
     if (dist2(player.pos, MARKET.end) < 4 && !monsters.some(m => m.def.boss && !m.dead && m.zone === "market")) return { t: "marketOut", label: `${E} · 출구 · exit to 노량진` };
@@ -801,6 +816,7 @@ function nearestInteract() {
     if (dist2(player.pos, YEOUIDO.back) < 3) return { t: "ydBack", label: `${E} · 다리 건너 돌아가기 · climb back to 한강공원` };
     if ((S.camp || 0) >= 5 && dist2(player.pos, BEDROLL()) < 2.6) return { t: "bench", label: `${E} · 잠자리에서 자기 · sleep in a bedroll` };
     for (const rk of BIKE_RACKS) if (rk.zone === "yeouido" && dist2(player.pos, rk) < 2.8) return { t: "rack", label: S.bikeRented ? `${E} · 따릉이 반납 · return the bike` : `${E} · 따릉이 빌리기 ₩1,000 · rent a bike` };
+    if (dist2(player.pos, YEOUIDO.museumDoor) < 3.4) return { t: "museum", label: `${E} · 박물관에 들어가기 · enter the museum (dungeon, Lv 16–18)` };
     if (dist2(player.pos, YEOUIDO.marketDoor) < 3.4) return { t: "market", label: `${E} · 수산시장에 들어가기 · enter the fish market (dungeon, Lv 12–15)` };
     if (dist2(player.pos, YEOUIDO.towerDoor) < 3.4) return { t: "tower", label: `${E} · 63빌딩에 들어가기 · enter the 63 Building (dungeon, Lv 10–12)` };
     for (const [a, it] of Object.entries(MAP_ITEMS)) if (it.zone === "yeouido" && !S[it.flag] && dist2(player.pos, it.spot) < 2.8) return { t: "map", area: a, label: `${E} · ${it.ko} 가져가기 · take the ${it.en}` };
@@ -853,6 +869,9 @@ function interact() {
   else if (it.t === "panel") orderPuzzle();
   else if (it.t === "rack") rackUse();
   else if (it.t === "market") fade(toMarket);
+  else if (it.t === "museum") fade(toMuseum);
+  else if (it.t === "museumOut") fade(museumToYd);
+  else if (it.t === "scroll") scrollQuiz(it.i);
   else if (it.t === "marketOut") fade(marketToYd);
   else if (it.t === "board") boardQuiz(it.i);
   else talkTo(it.n);
@@ -885,7 +904,7 @@ function toStation() {
 function toStreet() { populateStreet(); player.zone = "street"; player.pos.set(ENTRANCE.x + .5, 0, ENTRANCE.z + 12); player.yaw = -Math.PI / 2; cam.yaw = -Math.PI / 2; closeDialog(); }
 
 // ---- UI: class pick, deck picker, deck view, menu --------------------------------------------------------------
-function showScreen(id) { for (const s of ["title", "classPick", "deckPick", "deckView", "charView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "menu", "bookView", "friendsView"]) $(s).hidden = s !== id; }
+function showScreen(id) { for (const s of ["title", "classPick", "deckPick", "deckView", "charView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "menu", "bookView", "friendsView", "rewardView"]) $(s).hidden = s !== id; }
 let newBook = "5a", newMode = "story";
 const CHAPTER_LVL = i => 1 + 2 * i;   // story mode: 1과 at Lv 1, then one every 2 levels (8과 at Lv 15)
 function syncStory(announce) {
@@ -1107,15 +1126,15 @@ function sortBar(tab) {
 function openInventory() { if (!S.cls) return; sellAllArm = false; paused = true; showScreen("invView"); drawInventory(); }
 function drawInventory() {
   const inStation = player.zone === "station";
-  $("ivSlots").innerHTML = Object.keys(SLOTS).map(sl => { const it = itemBy(S.equip[sl]); return `<div class="ivSlot${it ? "" : " empty"}" data-slot="${sl}"${it ? ` data-tip="${esc(tipGear(it.g))}"` : ""}><span class="sl">${SLOTS[sl]}</span>${it ? `<b>${itemName(it)}</b><span>${itemInfo(it)}</span>` : "<span>비었음 · empty</span>"}</div>`; }).join("");
+  $("ivSlots").innerHTML = Object.keys(SLOTS).map(sl => { const it = itemBy(S.equip[sl]); return `<div class="ivSlot${it ? "" : " empty"}" data-slot="${sl}"${it ? ` data-tip="${esc(tipGear(it.g))}"` : ""}>${it ? gearIcon(it.g) : ""}<span class="sl">${SLOTS[sl]}</span>${it ? `<b>${itemName(it)}</b><span>${itemInfo(it)}</span>` : "<span>비었음 · empty</span>"}</div>`; }).join("");
   $("ivSum").innerHTML = `체력 ${Math.ceil(player.hp)} / ${player.maxHp} · 공격력 ×${(weaponMult() * (1 + gearStat("dmg"))).toFixed(2)} · 흡혈 ${Math.round(gearStat("ls") * 100)}% · ${won(S.money)}`;
   $("ivTabs").innerHTML = "";
   for (const [k, label] of [["gear", "장비 · gear"], ["items", "소모품 · items"], ["cards", `카드 · cards (${S.cards.length})`]]) { const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", k === invTab); b.textContent = label; b.onclick = () => { invTab = k; sellAllArm = false; drawInventory(); }; $("ivTabs").appendChild(b); }
   const box = $("ivBag");
   if (invTab === "gear") {
     const loose = S.items.filter(i => !Object.values(S.equip).includes(i.uid) && !S.bank.items.includes(i.uid)).sort(SORTS.gear[invSort.gear][1]);
-    const sellable = loose.filter(i => !i.up), sellWon = sellable.reduce((a, i) => a + gearPrice(i.g) / 2, 0);
-    box.innerHTML = sortBar("gear") + (sellable.length ? `<div class="ivTools"><button class="sellAll${sellAllArm ? " arm" : ""}" ${inStation ? "" : "disabled"}>${sellAllArm ? `정말요? 한 번 더 누르세요 · sure? click again (${sellable.length}개 → ${won(sellWon)})` : `모두 팔기 · sell all ${sellable.length} (${won(sellWon)})`}</button><span class="fine">강화한 장비는 빼고 · upgraded gear is kept</span></div>` : "") + (loose.length ? loose.map(i => `<div class="ivItem" data-uid="${i.uid}" data-tip="${esc(tipGear(i.g))}"><span class="sl">${SLOTS[GEAR[i.g].slot]}</span><b>${itemName(i)}</b><span>${itemInfo(i)}</span><div class="ivBtns"><button data-act="equip">착용 · equip</button><button data-act="sell" ${inStation ? "" : "disabled"}>${gearPrice(i.g) ? "팔기 " + won(gearPrice(i.g) / 2) : "버리기 · discard"}</button>${remotes.size ? '<button data-act="gift">🎁 선물</button>' : ""}</div></div>`).join("")
+    const sellable = loose.filter(i => !i.up && !GEAR[i.g].set), sellWon = sellable.reduce((a, i) => a + gearPrice(i.g) / 2, 0);
+    box.innerHTML = sortBar("gear") + (sellable.length ? `<div class="ivTools"><button class="sellAll${sellAllArm ? " arm" : ""}" ${inStation ? "" : "disabled"}>${sellAllArm ? `정말요? 한 번 더 누르세요 · sure? click again (${sellable.length}개 → ${won(sellWon)})` : `모두 팔기 · sell all ${sellable.length} (${won(sellWon)})`}</button><span class="fine">강화한 장비는 빼고 · upgraded gear is kept</span></div>` : "") + (loose.length ? loose.map(i => `<div class="ivItem" data-uid="${i.uid}" data-tip="${esc(tipGear(i.g))}">${gearIcon(i.g)}<span class="sl">${SLOTS[GEAR[i.g].slot]}</span><b>${itemName(i)}</b><span>${itemInfo(i)}</span><div class="ivBtns"><button data-act="equip">착용 · equip</button><button data-act="sell" ${inStation ? "" : "disabled"}>${gearPrice(i.g) ? "팔기 " + won(gearPrice(i.g) / 2) : "버리기 · discard"}</button>${remotes.size ? '<button data-act="gift">🎁 선물</button>' : ""}</div></div>`).join("")
       : `<p class="fine">가방에 장비가 없어요. 무기점에서 사거나 괴물이 가끔 장신구를 떨어뜨려요. · No loose gear: buy at the weapon shop; monsters sometimes drop trinkets.</p>`);
     const sa = box.querySelector(".sellAll");
     if (sa) sa.onclick = () => {
@@ -1201,6 +1220,7 @@ function onEscape() {
   if (!started) return;
   if (!$("reroll").hidden) { closeReroll(); return; }
   if (memo) { endMemory(true); return; }
+  if (!$("rewardView").hidden) { closeReward(); return; }
   if (order) { orderClose(); return; }
   if (!$("nameBox").hidden) { $("nbOk").click(); return; }
   if (["deckView", "charView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "bookView", "friendsView"].some(id => !$(id).hidden)) { showScreen(null); paused = false; return; }
@@ -1240,7 +1260,7 @@ $("actDeck").onclick = () => openDeckView();
 // ---- start --------------------------------------------------------------------------------------------
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
-  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
+  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); setTimeout(grantMissedSets, 3000); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
   player.model = kayReady() ? makeKay(S.cls) : makeHero(S.cls); scene.add(player.model.root);
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
@@ -1286,6 +1306,7 @@ function drawHUD() {
   if (player.zone === "dungeon") drawDungeonMap(mm, 170, 170, player.pos.x, player.pos.z, 80, false);
   else if (player.zone === "tower") drawDungeonMap(mm, 170, 170, player.pos.x, player.pos.z, 80, false, TOWER, "tower");
   else if (player.zone === "market") drawDungeonMap(mm, 170, 170, player.pos.x, player.pos.z, 80, false, MARKET, "market");
+  else if (player.zone === "museum") drawDungeonMap(mm, 170, 170, player.pos.x, player.pos.z, 80, false, MUSEUM, "museum");
   else { const c = player.zone === "street" || player.zone === "yeouido" ? player.pos : ENTRANCE; drawMap(mm, 170, 170, c.x, c.z, 60, false); }
   drawTracker(); drawParty(); drawBar();
   $("actBike").hidden = !S.bikeRented; $("actBike").classList.toggle("on", !!player.riding);
@@ -1333,6 +1354,9 @@ const QUESTS = {
   jangseung: { giver: "gayoung", ko: "깨어난 장승", en: "The guardians awake", kind: "kill", target: "jangseung", n: 4,
                offer: "y_q", wait: "y_wait", done: "y_done", turn: "p_done", reward: { won: 25000, xp: 300, card: 2 },
                desc: "여의도 한강공원의 장승 네 개를 쓰러뜨리고 가현 씨에게 돌아가세요 · knock down 4 guardian posts on 여의도, then go back to 가현 at the bridge" },
+  statues: { giver: "handong", ko: "걸어 다니는 석상", en: "Walking statues", kind: "kill", target: "muinseok", n: 5,
+          offer: "h_q", wait: "h_wait", done: "h_done", turn: "p_done", reward: { won: 60000, xp: 1200, card: 3 },
+          desc: "용산의 무인석 다섯 개를 쓰러뜨리고 한동 씨에게 · knock down 5 tomb statues in 용산, then go back to 한동 at the café cart" },
   exam: { giver: "gangsa", ko: "학원의 귀신", en: "Ghosts of the academy", kind: "kill", target: "gwisin", n: 5,
           offer: "n_q", wait: "n_wait", done: "n_done", turn: "p_done", reward: { won: 30000, xp: 450, card: 3 },
           desc: "노량진 학원가의 시험 귀신 다섯 마리를 쫓아내고 유현 선생님에게 · chase away 5 exam ghosts on the 노량진 cram-school street, then see 유현 선생님" },
@@ -1431,7 +1455,7 @@ function findTalk(n, id) {
 
 // ---- maps: the minimap shows the 60 m around you; the full map (M) shows each area you've found a map for ----
 // 홍대 지도 at the 관광안내소 (park), 서교 아파트 지도 on the 경비실 counter at the apartment gate
-const MAP_ITEMS = { hongdae: { spot: MAPSPOT, flag: "hasMap", line: "x_map", ko: "홍대 지도", en: "Hongdae map" }, apt: { spot: MAPSPOT_APT, flag: "hasMapApt", line: "x_map2", ko: "서교 아파트 지도", en: "apartment map" }, river: { spot: MAPSPOT_RIVER, flag: "hasMapRiver", line: "x_map3", ko: "한강공원 지도", en: "Han River park map" }, yeouido: { spot: MAPSPOT_YD, flag: "hasMapYd", line: "x_map4", ko: "여의도 지도", en: "Yeouido map", zone: "yeouido" }, noryangjin: { spot: MAPSPOT_NR, flag: "hasMapNr", line: "x_map5", ko: "노량진 지도", en: "Noryangjin map", zone: "yeouido" } };
+const MAP_ITEMS = { hongdae: { spot: MAPSPOT, flag: "hasMap", line: "x_map", ko: "홍대 지도", en: "Hongdae map" }, apt: { spot: MAPSPOT_APT, flag: "hasMapApt", line: "x_map2", ko: "서교 아파트 지도", en: "apartment map" }, river: { spot: MAPSPOT_RIVER, flag: "hasMapRiver", line: "x_map3", ko: "한강공원 지도", en: "Han River park map" }, yeouido: { spot: MAPSPOT_YD, flag: "hasMapYd", line: "x_map4", ko: "여의도 지도", en: "Yeouido map", zone: "yeouido" }, noryangjin: { spot: MAPSPOT_NR, flag: "hasMapNr", line: "x_map5", ko: "노량진 지도", en: "Noryangjin map", zone: "yeouido" }, yongsan: { spot: MAPSPOT_YS, flag: "hasMapYs", line: "x_map6", ko: "용산 지도", en: "Yongsan map", zone: "yeouido" } };
 const ownedAreas = () => Object.keys(MAP_ITEMS).filter(a => S[MAP_ITEMS[a].flag]);
 const inAreas = (p, areas) => areas.some(a => { const b = world.map.areas[a]; return p.x >= b.minX && p.x <= b.maxX && p.z >= b.minZ && p.z <= b.maxZ; });
 function drawMap(ctx, W, H, cx, cz, span, full, areas = Object.keys(MAP_ITEMS)) {
@@ -1464,6 +1488,7 @@ function openMap() {
   if (!S.cls) return;
   paused = true; showScreen("mapView");
   if (player.zone === "dungeon") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "홍대 터널"; $("bigMap").width = 720; $("bigMap").height = 300; drawDungeonMap($("bigMap").getContext("2d"), 720, 300, DUNGEON.wrects[0].x0 + 150, 0, 316, true); return; }
+  if (player.zone === "museum") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "국립중앙박물관"; $("bigMap").width = 720; $("bigMap").height = 300; drawDungeonMap($("bigMap").getContext("2d"), 720, 300, MU.x + 128, MU.z, 270, true, MUSEUM, "museum"); return; }
   if (player.zone === "market") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "노량진 수산시장"; $("bigMap").width = 720; $("bigMap").height = 300; drawDungeonMap($("bigMap").getContext("2d"), 720, 300, MK.x + 128, MK.z, 270, true, MARKET, "market"); return; }
   if (player.zone === "tower") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "63빌딩"; $("bigMap").width = 720; $("bigMap").height = 300; drawDungeonMap($("bigMap").getContext("2d"), 720, 300, TW.x + 131, TW.z, 276, true, TOWER, "tower"); return; }
   const own = ownedAreas().filter(a => (MAP_ITEMS[a].zone || "street") === player.zone);
@@ -1485,7 +1510,7 @@ function takeMap(area) {
 }
 function placeMapItem() {
   for (const [area, it] of Object.entries(MAP_ITEMS)) {
-    const g = new THREE.Group(); g.position.set(it.spot.x, area === "apt" ? 1.13 : area === "river" || area === "yeouido" || area === "noryangjin" ? 1.75 : 1.25, it.spot.z + (area === "apt" ? -1.3 : area === "river" ? -1.24 : area === "yeouido" || area === "noryangjin" ? 1.24 : .35)); if (area === "river" || area === "yeouido" || area === "noryangjin") g.rotation.x = Math.PI / 2;
+    const g = new THREE.Group(); g.position.set(it.spot.x, area === "apt" ? 1.13 : area === "river" || area === "yeouido" || area === "noryangjin" || area === "yongsan" ? 1.75 : 1.25, it.spot.z + (area === "apt" ? -1.3 : area === "river" ? -1.24 : area === "yeouido" || area === "noryangjin" || area === "yongsan" ? 1.24 : .35)); if (area === "river" || area === "yeouido" || area === "noryangjin" || area === "yongsan") g.rotation.x = Math.PI / 2;
     g.add(new THREE.Mesh(new THREE.BoxGeometry(.7, .04, .5), toon("#f6ead2", { emissive: new THREE.Color("#ffd23d"), emissiveIntensity: .35 })));
     scene.add(g); mapItems[area] = g; g.visible = !S[it.flag];
   }
@@ -1600,6 +1625,10 @@ const ACH = [
   { id: "map5", ko: "학원가 산책", en: "Exam street walk", desc: "Find the 노량진 map", prog: () => [S.hasMapNr ? 1 : 0, 1], reward: { xp: 50 } },
   { id: "list", ko: "명단", en: "The list", desc: "Read 유현 선생님's list of the missing", prog: () => [S.sawList ? 1 : 0, 1], reward: { xp: 60 } },
   { id: "market1", ko: "문어 왕을 잡다", en: "Octopus king", desc: "Defeat the octopus king in the fish market", prog: () => [S.marketClears ? 1 : 0, 1], reward: { won: 40000, xp: 250 } },
+  { id: "map6", ko: "강 건너 용산", en: "Over to Yongsan", desc: "Find the 용산 map", prog: () => [S.hasMapYs ? 1 : 0, 1], reward: { xp: 80 } },
+  { id: "museum1", ko: "장군을 잠재우다", en: "The general sleeps again", desc: "Defeat the awakened general in the museum", prog: () => [S.museumClears ? 1 : 0, 1], reward: { won: 60000, xp: 400 } },
+  { id: "truth", ko: "진실", en: "The truth", desc: "Hear the stranger's story", prog: () => [S.metMirror ? 1 : 0, 1], reward: { xp: 200 } },
+  { id: "set1", ko: "세트 완성", en: "Full set", desc: "Own both pieces of a dungeon set", prog: () => [Object.values(SETS).some(st => ownsG(st.w) && ownsG(st.a)) ? 1 : 0, 1], reward: { won: 30000, xp: 150 } },
   { id: "lvl5", ko: "생존자", en: "Survivor", desc: "Reach level 5", prog: () => [S.level, 5], reward: { won: 10000 } },
   { id: "epic", ko: "보물 사냥꾼", en: "Treasure hunter", desc: "Own an epic or legendary card", prog: () => [S.cards.some(c => c.rar >= 2) ? 1 : 0, 1], reward: { xp: 50 } },
   { id: "geared", ko: "완전 무장", en: "Fully equipped", desc: "Wear a better weapon, armour and a trinket", prog: () => [(weaponTier() >= 1) + (itemBy(S.equip.armor)?.g !== "a0" && !!S.equip.armor) + !!S.equip.trinket, 3], reward: { won: 8000 } },
@@ -1775,6 +1804,7 @@ function updateMonsters(dt) {
         if (def.shield) shieldTick(m, dt);
         if (def.examQ) examTick(m, dt, tg);
         if (def.sweep) sweepTick(m, dt, tg);
+        if (def.volley) generalTick(m, dt, tg);
         if (def.grow) { const g0 = m.grow || 0; m.grow = Math.min(def.grow.max, g0 + dt * def.grow.add / def.grow.every); if (g0 < .2 && m.grow >= .2) floater(m.pos, "그슨대가 커져요! · it's growing", "#b8a8d8", true, m.model.height); m.model.root.scale.setScalar(m.baseScale * (1 + m.grow)); }
         if (def.slam) {
           m.slamCd -= dt;
@@ -1802,7 +1832,7 @@ function updateMonsters(dt) {
     for (const o of monsters) if (o !== m && !o.dead) { const dx = m.pos.x - o.pos.x, dz = m.pos.z - o.pos.z, dd = Math.hypot(dx, dz); if (dd < 1.7 && dd > 1e-3) { m.pos.x += dx / dd * (1.7 - dd) * .5; m.pos.z += dz / dd * (1.7 - dd) * .5; } }
     collide(m.pos, def.boss ? 1.6 : .8, m.zone);
     m.model.root.position.set(m.pos.x, 0, m.pos.z); m.model.root.rotation.y = m.yaw;
-    m.model.anim(dt, { moving, attack: m.attackAnim, slam: m.slamAnim, charge: m.charging ? 1 - m.charging / CHARGE : 0, arms: m.arms }); if (def.shield) shieldVis(m);
+    m.model.anim(dt, { moving, attack: m.attackAnim, slam: m.slamAnim, charge: m.charging ? 1 - m.charging / CHARGE : 0, arms: m.arms, plates: m.plates }); if (def.shield) shieldVis(m);
     m.moving = moving;
   }
 }
@@ -1829,6 +1859,7 @@ function spawnThorn(from, vel, dmg, src) {
 }
 // a monster dies: the host (or solo game) decides, every player near enough gets the rewards on their own side
 function killMonster(m, by = myId()) {
+  if (NET.role !== "guest") burstAt(m);
   m.dead = true; m.sp.mon = null; m.sp.respawnAt = clock + (night > .5 ? 15 : 30); m.plate.remove();
   const near = [...remotes.values()].filter(r => r.zone === m.zone && dist2(r.pos, m.pos) < 40).map(r => r.id);
   netSend({ t: "kill", mid: m.id, near });
@@ -1838,8 +1869,8 @@ function killMonster(m, by = myId()) {
 function rewardKill(m) {
   const money = Math.round(rand(...m.def.money) * (1 + .2 * (m.lvl - m.def.lvl)) / 100) * 100; S.money += money; S.kills++; if (comp && comp.zone === m.zone && dist2(comp.pos, m.pos) < 20) addHeart(1); S.killsBy[m.kind] = (S.killsBy[m.kind] || 0) + 1;
   floater(m.pos, "+" + won(money), "#e5b84a", false, 1.6);
-  SFX.kill(); gainXp(monsterXp(m), m.pos); dropCard(m); dropGear(m); dropMat(m); dropStones(m); dropScroll(m); onKillForQuests(m);
-  if (m.def.boss) (m.zone === "tower" ? towerCleared : m.zone === "market" ? marketCleared : dungeonCleared)();
+  SFX.kill(); if (m.def.boss) bossSnap = lootSnap(); gainXp(monsterXp(m), m.pos); dropCard(m); dropGear(m); dropMat(m); dropStones(m); dropScroll(m); onKillForQuests(m);
+  if (m.def.boss) (m.zone === "tower" ? towerCleared : m.zone === "market" ? marketCleared : m.zone === "museum" ? museumCleared : dungeonCleared)();
   if (target === m) setTarget(null);
   showMissed([...m.missed]);
   save();
@@ -1924,6 +1955,8 @@ function onNet(d, from) {
     case "whisper": if (NET.role === "host") onWhisper(d, from); break;
     case "invite": if (NET.role === "host") showInvite(d, from); break;
     case "ping": if (NET.role === "host") { const wc = wordCounts(); netSend({ to: from, t: "pong", nm: S.name || classDef().ko, lvl: S.level, cls: S.cls, zone: player.zone, n: remotes.size + 1, ms: wc.mastered, lr: wc.learned + wc.mastered, bk: S.book }); } break;
+    case "enterU": if (NET.role === "host" && !someoneIn("museum", from)) resetMuseum(); break;
+    case "scroll": if (NET.role === "host") applyScroll(d.i, d.ok); break;
     case "enterM": if (NET.role === "host" && !someoneIn("market", from)) resetMarket(); break;
     case "board": if (NET.role === "host") applyBoard(d.i, d.ok); break;
     case "ln": if (NET.role === "guest") makeLine(d.x, d.z, d.ang, d.len, d.w, d.tele, d.dmg, d.lv); break;
@@ -1963,11 +1996,12 @@ function netTick(dt) {
   if (!remotes.size) return;
   const ms = monsters.filter(m => !m.dead).map(m => [m.id, m.kind, m.lvl, +m.pos.x.toFixed(2), +m.pos.z.toFixed(2), +m.yaw.toFixed(2), Math.round(m.hp), m.maxHp, m.moving ? 1 : 0, m.atkN || 0, +(m.slamAnim || 0).toFixed(2), m.state === "chase" ? 1 : 0, ZONES.indexOf(m.zone), m.caged ? 1 : 0, m.sleepUntil > clock ? 1 : 0, m.sp.guard ?? -1, m.shieldUntil > clock ? 1 : 0, +(m.grow || 0).toFixed(2)]);
   const ps = [["host", myState()], ...[...remotes.values()].map(r => [r.id, { nm: r.nm, cls: r.cls, lvl: r.lvl, x: +r.tpos.x.toFixed(2), z: +r.tpos.z.toFixed(2), yaw: r.tyaw, mv: r.moving ? 1 : 0, zone: r.zone, hp: r.hp, mx: r.mx, dead: r.dead ? 1 : 0 }])];
-  netSend({ t: "w", ms, ps, tw: [tw.solved, tw.open ? 1 : 0], mk: mk.boards, time: (timeT += .125) > 2 ? (timeT = 0, S.time) : undefined });
+  netSend({ t: "w", ms, ps, tw: [tw.solved, tw.open ? 1 : 0], mk: mk.boards, mu: mu.scrolls, time: (timeT += .125) > 2 ? (timeT = 0, S.time) : undefined });
 }
 function applySnapshot(d) {
   if (d.time) S.time = d.time;
   if (d.mk) { mk.boards = d.mk; syncBoards(); }
+  if (d.mu) { mu.scrolls = d.mu; syncScrolls(); }
   if (d.tw) { tw.solved = d.tw[0]; if (!!d.tw[1] !== tw.open) { tw.open = !!d.tw[1]; setDoor(); } }
   const seen = new Set();
   for (const [id, kind, lvl, x, z, yaw, hp, maxHp, mv, atkN, slam, chase, dz, caged, slp, guard, shd, grw] of d.ms) {
@@ -2124,7 +2158,7 @@ function bossQuizTick(m, dt, tl) {
   else { const r = remotes.get(who.id); if (r) r.quizUntil = clock + 9; netSend({ t: "quiz", to: who.id }); }
 }
 function dungeonCleared() {
-  S.dunClears = (S.dunClears || 0) + 1; addHeart(10);
+  S.dunClears = (S.dunClears || 0) + 1; addHeart(10); clearReward("tunnel", "홍대 터널");
   toast("🏆 던전 클리어! 홍대 터널 · dungeon cleared!");
   if (S.dunClears === 1) setTimeout(() => sendMail("낯선 사람", "잘했어요. 터널의 주인을 물리쳤군요. 이건 선물이에요. 역에서 다시 만나요.", "Well done. You defeated the master of the tunnel. This is a present. Let's meet again at the station.",
     { cards: [{ id: pick(DATA.words.filter(w => S.chapters.includes(w.ch))).id, rar: 2 }], gear: ["t_club"] }), 2500);
@@ -2208,8 +2242,8 @@ function spawnOrb(from, vel, dmg, src) {
 const rangeOf = m => m.def.caster && m.silencedUntil > clock ? 2.6 : m.def.range;
 
 // ---- materials (decision 13): monsters drop them, the smith uses them to upgrade gear ----
-const MATS = { horn: { ko: "도깨비 뿔", en: "goblin horn" }, vine: { ko: "덩굴 줄기", en: "vine stem" }, stone: { ko: "석상 조각", en: "statue shard" }, metal: { ko: "외계 금속", en: "alien metal" }, wood: { ko: "장승 나무", en: "guardian wood" }, shell: { ko: "게 껍데기", en: "crab shell" }, shadow: { ko: "그림자 조각", en: "shadow shard" } };
-const MAT_OF = { dokkaebi: "horn", vine: "vine", haetae: "stone", chief: "horn", alien_scout: "metal", alien_caster: "metal", jangseung: "wood", geuseundae: "shadow", commander: "metal", gwisin: "shadow", kkotge: "shell", jangeo: "shell", munoh: "shell" };
+const MATS = { horn: { ko: "도깨비 뿔", en: "goblin horn" }, vine: { ko: "덩굴 줄기", en: "vine stem" }, stone: { ko: "석상 조각", en: "statue shard" }, metal: { ko: "외계 금속", en: "alien metal" }, wood: { ko: "장승 나무", en: "guardian wood" }, shell: { ko: "게 껍데기", en: "crab shell" }, shadow: { ko: "그림자 조각", en: "shadow shard" }, jade: { ko: "청자 조각", en: "celadon shard" }, iron: { ko: "녹슨 쇳조각", en: "rusty iron" } };
+const MAT_OF = { dokkaebi: "horn", vine: "vine", haetae: "stone", chief: "horn", alien_scout: "metal", alien_caster: "metal", jangseung: "wood", geuseundae: "shadow", commander: "metal", gwisin: "shadow", kkotge: "shell", jangeo: "shell", munoh: "shell", muinseok: "stone", cheongja: "jade", gapot: "iron", dogul: "metal", janggun: "iron" };
 const matCount = () => Object.values(S.mats || {}).reduce((a, b) => a + b, 0);
 function dropMat(m) {
   if (Math.random() >= (m.def.alien || m.def.boss ? 1 : .5)) return;
@@ -2240,8 +2274,8 @@ function upgradeMenu(n) {
 function startMemory(item, n, spent) {
   const words = shuffle(nounPool()).slice(0, 10);
   const stones = shuffle(words.flatMap(w => [{ w, side: "ko" }, { w, side: "en" }]));
-  memo = { item, n, spent, stones, open: [], found: 0, miss: 0, lock: true, run: false, t: 90 };
-  paused = true; cancelRitual(); $("memory").hidden = false; $("mmMiss").textContent = "0"; $("mmTime").textContent = "90"; $("mmInfo").textContent = "기억하세요! · memorise the stones (2 s)";
+  memo = { item, n, spent, stones, open: [], found: 0, miss: 0, lock: true, run: false, t: 150 };
+  paused = true; cancelRitual(); $("memory").hidden = false; $("mmMiss").textContent = "0"; $("mmTime").textContent = "150"; $("mmInfo").textContent = "기억하세요! · memorise the stones (2 s)";
   $("mmGrid").innerHTML = stones.map((s, i) => `<button class="stone up${s.side === "en" ? " en" : ""}" data-i="${i}"><span>${esc(s.side === "ko" ? s.w.kr : s.w.en)}</span></button>`).join("");
   $("mmGrid").querySelectorAll(".stone").forEach(b => b.onclick = () => flipStone(+b.dataset.i));
   setTimeout(() => { if (!memo) return; $("mmGrid").querySelectorAll(".stone").forEach(b => b.classList.remove("up")); memo.lock = false; memo.run = true; $("mmInfo").textContent = "짝을 찾으세요 · find the pairs: a Korean word + its meaning"; }, 2000);
@@ -2262,7 +2296,7 @@ function flipStone(i) {
 }
 function endMemory(giveUp) {
   const m = memo; if (!m) return; memo = null; $("memory").hidden = true; paused = false;
-  const gain = giveUp ? 0 : m.miss <= 3 ? 2 : m.miss <= 8 ? 1 : 0;
+  const gain = giveUp ? 0 : m.miss <= 12 ? 2 : m.miss <= 20 ? 1 : 0;
   m.item.up = Math.min(5, (m.item.up || 0) + gain); S.upgrades = (S.upgrades || 0) + gain;
   if (!gain) { for (const k in m.spent) S.mats[k] += m.spent[k]; toast("재료는 돌려받았어요 · your materials were returned"); }
   recalcMax(); save();
@@ -2295,10 +2329,10 @@ function fishTick(dt) {
     } });
 }
 // 편의점: cup ramyeon and triangle gimbap to go (eat with F); the clerk buys your fish
-const SNACKS = { ramyeon: { ko: "컵라면", en: "cup ramyeon", price: 1500, fill: 40, plr: "p_ramyeon" }, samgak: { ko: "삼각김밥", en: "triangle gimbap", price: 1300, fill: 30, plr: "p_samgak" }, cupbap: { ko: "컵밥", en: "cup rice", price: 3000, fill: 60, plr: "p_cupbap", camp: true } };
+const SNACKS = { ramyeon: { ko: "컵라면", en: "cup ramyeon", price: 1500, fill: 40, plr: "p_ramyeon" }, samgak: { ko: "삼각김밥", en: "triangle gimbap", price: 1300, fill: 30, plr: "p_samgak" }, cupbap: { ko: "컵밥", en: "cup rice", price: 3000, fill: 60, plr: "p_cupbap", camp: true }, banana: { ko: "바나나우유", en: "banana milk", price: 1800, fill: 35, plr: "p_banana", shop: "handong" }, hodu: { ko: "호두과자", en: "walnut cakes", price: 2500, fill: 50, plr: "p_hodu", shop: "handong" } };
 const fishValue = () => Object.entries(S.fish || {}).reduce((a, [k, c]) => a + c * (FISH.find(f => f.ko === k)?.won || 0), 0);
 function kioskTalk(n) {
-  const opts = Object.entries(SNACKS).filter(([, sn]) => !sn.camp).map(([k, sn]) => ({ plr: sn.plr, act: () => {
+  const opts = Object.entries(SNACKS).filter(([, sn]) => !sn.camp && !sn.shop).map(([k, sn]) => ({ plr: sn.plr, act: () => {
     if (S.money < sn.price) { endWith(n, "r_short"); return; }
     S.money -= sn.price; S.snacks = S.snacks || {}; S.snacks[k] = (S.snacks[k] || 0) + 1; SFX.pickup(); save();
     toast(`${sn.ko} ${won(sn.price)} → 소모품 (${keyName(SET.keys.inv)}) · ${keyName(SET.keys.food)}로 먹기`); endWith(n, "k_thanks"); } }));
@@ -2559,7 +2593,7 @@ function shieldTick(m, dt) {
   }
 }
 function towerCleared() {
-  S.towerClears = (S.towerClears || 0) + 1; addHeart(10);
+  S.towerClears = (S.towerClears || 0) + 1; addHeart(10); clearReward("tower", "63빌딩");
   toast("🏆 63빌딩 클리어! 외계인 사령관을 물리쳤어요 · the 63 Building is cleared!");
   if (S.towerClears === 1) setTimeout(() => sendMail("낯선 사람", "63빌딩의 사령관을 물리쳤군요. 고마워요. 거기에서 무엇을 봤어요? 역에서 이야기해요.", "You defeated the commander of the 63 Building. Thank you. What did you see there? Let's talk at the station.",
     { cards: [{ id: pick(DATA.words.filter(w => S.chapters.includes(w.ch))).id, rar: 3 }], gear: ["t_core"] }), 2500);
@@ -2568,7 +2602,7 @@ function towerCleared() {
 const mdmg = m => m.def.dmg * m.mul * (1 + (m.grow || 0)) * (m.feebleUntil > clock ? .8 : 1);
 
 // ---- co-op party frames: every player in your room, their health, where they are (Danny 2026-10-12) ----
-const ZONE_KO = { street: "거리", station: "역", dungeon: "홍대 터널", yeouido: "여의도", tower: "63빌딩" };
+const ZONE_KO = { street: "거리", station: "역", dungeon: "홍대 터널", yeouido: "여의도", tower: "63빌딩", market: "수산시장", museum: "박물관" };
 function drawParty() {
   const html = [...remotes.values()].map(r => {
     const away = r.zone !== player.zone, pc = Math.max(0, Math.min(100, (r.hp || 0) / (r.mx || 1) * 100));
@@ -2948,7 +2982,7 @@ function examTick(m, dt, tg) {
       else { m.hp = Math.min(m.maxHp, m.hp + m.maxHp * .15); hurt(player.maxHp * .1, null, true); floater(m.pos, "오답! · it feeds on it", "#ff9c8e", false, m.model.height); } } });
 }
 // 왕꽃게: armour halves damage until it is on its back (after its claw slam, or when stunned)
-const armorMul = m => m.def.armor && !(m.flippedUntil > clock) ? 1 - m.def.armor : 1;
+const armorMul = m => m.def.plates ? 1 - .12 * (m.plates ?? 4) : m.def.armor && !(m.flippedUntil > clock) ? 1 - m.def.armor : 1;
 // 문어 왕: tentacle sweeps in lines, arms come off as it loses health, ink while it asks its question
 const lineMat = new THREE.MeshBasicMaterial({ color: "#ff3a2a", transparent: true, opacity: .32, side: THREE.DoubleSide, depthWrite: false });
 const lines = [];
@@ -3049,7 +3083,7 @@ function moveBy(vx, vz, dt) {
   v.x += (vx - v.x) * k; v.z += (vz - v.z) * k; player.pos.x += v.x * dt; player.pos.z += v.z * dt;
 }
 function marketCleared() {
-  S.marketClears = (S.marketClears || 0) + 1; addHeart(10);
+  S.marketClears = (S.marketClears || 0) + 1; addHeart(10); clearReward("market", "노량진 수산시장");
   toast("🏆 수산시장 클리어! 문어 왕을 물리쳤어요 · the fish market is cleared!");
   if (S.marketClears === 1) setTimeout(() => sendMail("유현 선생님", "문어 왕을 물리쳤다고 들었어요. 정말 대단해요! 학생들이 이걸 꼭 드리고 싶대요.", "I heard you defeated the octopus king. Amazing! My students really wanted you to have this.",
     { cards: [{ id: pick(bookWords().filter(w => S.chapters.includes(w.ch))).id, rar: 3 }], gear: ["t_ink"], won: 30000 }), 2500);
@@ -3188,17 +3222,238 @@ function chatCommand(text) {
   return false;
 }
 
+// ---- dungeon sets (Danny 2026-10-17: "the reward should be more obvious and more satisfying"; shop gear is too cheap to compete) ----
+// Every boss drops a piece of its dungeon's set: one piece already beats anything in the shops; a second clear always gives the
+// OTHER piece (never a duplicate), and wearing both adds the set bonus. After that a clear gives won + materials.
+const SETS = {
+  tunnel: { ko: "도깨비 대장 세트", en: "goblin chief set", where: "홍대 터널", w: "sw_tunnel", a: "sa_tunnel", bonus: { dmg: .04, hp: .04 }, won: 20000, xp: 200, mat: "horn" },
+  tower: { ko: "사령관 세트", en: "commander set", where: "63빌딩", w: "sw_tower", a: "sa_tower", bonus: { dmg: .05, hp: .05 }, won: 40000, xp: 450, mat: "metal" },
+  market: { ko: "문어 왕 세트", en: "octopus king set", where: "노량진 수산시장", w: "sw_market", a: "sa_market", bonus: { dmg: .06, ls: .04 }, won: 60000, xp: 800, mat: "shell" },
+  museum: { ko: "장군 세트", en: "general's set", where: "국립중앙박물관", w: "sw_museum", a: "sa_museum", bonus: { dmg: .08, hp: .08 }, won: 90000, xp: 1200, mat: "iron" },
+};
+WEAPON_MULT.push(1.6, 1.75, 1.9, 2.1);
+Object.assign(GEAR, {
+  sw_tunnel: { slot: "weapon", tier: 3, set: "tunnel", price: 120000, names: { mudang: "도깨비불 방울", geomgaek: "도깨비 대장검", gungsu: "도깨비 뿔활" } },
+  sa_tunnel: { slot: "armor", set: "tunnel", ko: "도깨비 가죽 갑옷", en: "goblin-hide armour", hp: .25, price: 100000 },
+  sw_tower: { slot: "weapon", tier: 4, set: "tower", price: 180000, names: { mudang: "외계 수정 방울", geomgaek: "플라즈마 검", gungsu: "외계 합금 활" } },
+  sa_tower: { slot: "armor", set: "tower", ko: "외계 합금 갑옷", en: "alien-alloy armour", hp: .32, price: 150000 },
+  sw_market: { slot: "weapon", tier: 5, set: "market", price: 240000, names: { mudang: "용왕의 방울", geomgaek: "청새치 검", gungsu: "고래수염 활" } },
+  sa_market: { slot: "armor", set: "market", ko: "먹물 비단 갑옷", en: "ink-silk armour", hp: .40, price: 200000 },
+  sw_museum: { slot: "weapon", tier: 6, set: "museum", price: 320000, names: { mudang: "천신의 금방울", geomgaek: "장군의 보검", gungsu: "신기전 활" } },
+  sa_museum: { slot: "armor", set: "museum", ko: "장군의 두정갑", en: "general's studded armour", hp: .50, price: 280000 },
+});
+// item icons (Danny 2026-10-17: "so you can actually see if an item is a weapon, armour or a trinket")
+function gearQuality(g) { const d = GEAR[g]; if (d.set) return "set"; if (d.slot === "trinket") return "trinket"; const t = d.slot === "weapon" ? d.tier : +g.slice(1); return ["basic", "good", "great"][t] || "basic"; }
+const QCOL = { basic: ["#5a5650", "#8a857c"], good: ["#2f6a3a", "#5cc46a"], great: ["#24508a", "#5aa8ff"], trinket: ["#4a2f7a", "#b47aff"], set: ["#7a5410", "#ffd23d"] };
+function gearIcon(g, cls = "gi") {
+  const d = GEAR[g], [bg, fg] = QCOL[gearQuality(g)], k = d.slot === "weapon" ? (S.cls || "geomgaek") : d.slot;
+  const shape = {
+    geomgaek: `<path d="M34 8 L38 10 L18 30 L15 27 Z" fill="${fg}"/><path d="M12 26 L22 36 M14 31 L9 36" stroke="${fg}" stroke-width="3" stroke-linecap="round"/>`,
+    gungsu: `<path d="M14 8 Q36 24 14 40" fill="none" stroke="${fg}" stroke-width="3"/><path d="M14 8 L14 40" stroke="#f2ede4" stroke-width="1.2"/><path d="M10 24 L38 24 M33 20 L38 24 L33 28" stroke="#f2ede4" stroke-width="2" fill="none"/>`,
+    mudang: `<path d="M24 8 C14 8 12 20 11 32 L37 32 C36 20 34 8 24 8 Z" fill="${fg}"/><circle cx="24" cy="36" r="3.5" fill="${fg}"/><path d="M24 4 L24 9" stroke="${fg}" stroke-width="3"/><path d="M15 24 L33 24" stroke="${bg}" stroke-width="2"/>`,
+    armor: `<path d="M15 9 L20 7 Q24 12 28 7 L33 9 L40 15 L36 21 L34 19 L34 40 L14 40 L14 19 L12 21 L8 15 Z" fill="${fg}"/><path d="M18 24 L30 24 M18 30 L30 30 M18 36 L30 36" stroke="${bg}" stroke-width="2"/>`,
+    trinket: `<path d="M14 8 Q24 22 34 8" fill="none" stroke="#e8d8a8" stroke-width="2"/><circle cx="24" cy="29" r="10" fill="${fg}"/><circle cx="24" cy="29" r="4.5" fill="${bg}"/>`,
+  }[k];
+  return `<svg class="${cls}" viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="9" fill="${bg}" stroke="${fg}" stroke-width="2"/>${shape}</svg>`;
+}
+const bonusTxt = b => [b.dmg && `공격력 +${Math.round(b.dmg * 100)}%`, b.hp && `체력 +${Math.round(b.hp * 100)}%`, b.ls && `흡혈 ${Math.round(b.ls * 100)}%`].filter(Boolean).join(", ");
+function setBonus(k) {
+  const w = itemBy(S.equip?.weapon), a = itemBy(S.equip?.armor), sw = w && GEAR[w.g].set;
+  return sw && a && GEAR[a.g].set === sw ? SETS[sw].bonus[k] || 0 : 0;
+}
+const ownsG = g => S.items.some(i => i.g === g);
+let bossSnap = null;
+const lootSnap = () => ({ cards: S.cards.length, items: S.items.length, mats: { ...(S.mats || {}) }, stones: S.rerollStones || 0, scrolls: S.scrolls || 0 });
+function lootRows() {
+  const b = bossSnap; bossSnap = null; if (!b) return [];
+  const rows = [];
+  for (const it of S.items.slice(b.items)) rows.push({ iconHtml: gearIcon(it.g, "gi rw"), ko: gearName(it.g), en: `${SLOTS[GEAR[it.g].slot]} · ${gearInfo(it.g)}` });
+  for (const c of S.cards.slice(b.cards)) { const R = RARITY[c.rar]; rows.push({ icon: "🃏", ko: `${WORD[c.id]?.kr || c.id} · ${R.ko} 카드`, en: `${R.en} card · ${WORD[c.id]?.en || ""}`, color: R.c }); }
+  for (const k in S.mats || {}) { const n = (S.mats[k] || 0) - (b.mats[k] || 0); if (n > 0) rows.push({ icon: "🪨", ko: `${MATS[k].ko} ×${n}`, en: `${MATS[k].en} (smith upgrades)` }); }
+  if ((S.rerollStones || 0) > b.stones) rows.push({ icon: "🔮", ko: `다시 굴리기 돌 ×${S.rerollStones - b.stones}`, en: "reroll stones" });
+  if ((S.scrolls || 0) > b.scrolls) rows.push({ icon: "📜", ko: `번역 두루마리 ×${S.scrolls - b.scrolls}`, en: "translation scroll" });
+  return rows;
+}
+const FIRST_FLAG = { tunnel: "dunClears", tower: "towerClears", market: "marketClears", museum: "museumClears" };
+function clearReward(key, title) {
+  const loot = lootRows();
+  const st = SETS[key], miss = ["w", "a"].filter(p => !ownsG(st[p])); S.setsGiven = S.setsGiven || {}; S.setsGiven[key] = true;
+  const rows = [];
+  if (miss.length) {
+    const it = addItem(st[pick(miss)]), d = GEAR[it.g], done = ["w", "a"].every(p => ownsG(st[p]));
+    rows.push({ big: true, iconHtml: gearIcon(it.g, "gi rw lg"), ko: gearName(it.g), en: `${SLOTS[d.slot]} · ${gearInfo(it.g)}`, equip: it.uid,
+      note: done ? `${st.ko} 완성! 둘 다 입으면 · set complete — wear both: ${bonusTxt(st.bonus)}` : `${st.ko} 1/2 · 한 번 더 깨면 나머지 조각이 나와요 · clear it again for the other piece (both: ${bonusTxt(st.bonus)})` });
+  } else {
+    S.mats = S.mats || {}; S.mats[st.mat] = (S.mats[st.mat] || 0) + 3;
+    rows.push({ big: true, icon: "🧰", ko: `${MATS[st.mat].ko} ×3`, en: `${MATS[st.mat].en} for the smith's upgrades`, note: `${st.ko}는 이미 다 있어요 · you already have the whole set` });
+  }
+  S.money += st.won; rows.push({ icon: "💰", ko: `클리어 보너스 ${won(st.won)}`, en: "clear bonus" });
+  rows.push({ icon: "✨", ko: `+${st.xp} XP`, en: "clear bonus" });
+  setTimeout(() => gainXp(st.xp), 400);
+  if (loot.length) { rows.push({ head: "보스 전리품 · boss drops" }); rows.push(...loot); }
+  if (S[FIRST_FLAG[key]] === 1) rows.push({ icon: "✉️", ko: "첫 클리어 선물이 우체통에 왔어요", en: "a first-clear present is waiting in your mailbox (station)" });
+  save(); showReward(`🏆 ${title} 클리어!`, rows);
+}
+// your save may already have clears from before the sets: one piece per cleared dungeon comes by mail
+function grantMissedSets() {
+  S.setsGiven = S.setsGiven || {};
+  for (const [key, flag] of [["tunnel", "dunClears"], ["tower", "towerClears"], ["market", "marketClears"]]) {
+    if (!S[flag] || S.setsGiven[key]) continue;
+    S.setsGiven[key] = true; const st = SETS[key];
+    if (ownsG(st.w) || ownsG(st.a)) continue;
+    sendMail("서울 생존자 모임", `${st.where}를 깨서 받는 보상이에요. 늦어서 미안해요! 한 번 더 깨면 나머지 조각도 받아요.`, `Your reward for clearing ${st.where}, sorry it's late! Clear it once more for the other piece of the ${st.en}.`, { gear: [st[pick(["w", "a"])]] });
+  }
+}
+let rewardDone = null;
+function showReward(title, rows, then) {
+  cancelRitual(); closeDialog(); rewardDone = then || null;
+  $("rwTitle").textContent = title;
+  $("rwList").innerHTML = rows.map((r, i) => r.head ? `<div class="rwHead">${esc(r.head)}</div>` : `<div class="rwRow${r.big ? " hero" : ""}"${r.color ? ` style="border-color:${r.color}"` : ""}><span class="ic">${r.iconHtml || r.icon}</span><div class="tx"><b>${esc(r.ko)}</b><span>${esc(r.en || "")}</span>${r.note ? `<p>${esc(r.note)}</p>` : ""}</div>${r.equip ? `<button data-eq="${r.equip}">지금 장착 · equip</button>` : ""}</div>`).join("");
+  $("rwList").querySelectorAll("[data-eq]").forEach(b => b.onclick = () => { const it = itemBy(b.dataset.eq); if (!it) return; S.equip[GEAR[it.g].slot] = it.uid; recalcMax(); save(); SFX.reload(); b.textContent = "장착했어요 ✓ · equipped"; b.disabled = true; });
+  paused = true; showScreen("rewardView"); SFX.kill();
+}
+function closeReward() { showScreen(null); paused = false; const f = rewardDone; rewardDone = null; if (f) setTimeout(f, 300); }
+
+// ---- 용산 + the national museum (Danny 2026-10-17: area 5 = B, Lv 15-18, quiz room = verb endings, story = the big reveal, 한동 = a shop and a quest) ----
+// 청자 도깨비: bursts into shards when it breaks (the host makes the ring; guests get it as a slam)
+function burstAt(m) {
+  const b = m.def.burst; if (!b) return;
+  const at = new THREE.Vector3(m.pos.x, 0, m.pos.z), dmg = b.dmg * m.mul, zone = m.zone, lv = m.lvl;
+  makeRing(at, b.radius, b.tele, "#5fd0b0");
+  netSend({ t: "sl", x: at.x, z: at.z, r: b.radius, tele: b.tele, dmg, lv });
+  if (player.zone === zone && dist2(player.pos, at) < b.radius + 3) floater(at, "깨져요! 피하세요 · it's bursting — step away!", "#9fe0c8", false, 2.4);
+  setTimeout(() => { SFX.slam(); if (!player.dead && player.zone === zone && dist2(player.pos, at) < b.radius) hurt(dmg, { lvl: lv }); }, b.tele * 1000);
+}
+// 선사관: the painted hunters throw spears across the room
+let caveT = 3, caveTold = false;
+function caveTick(dt) {
+  if (player.zone !== "museum" || player.dead || !inRect(player.pos, MUSEUM.caveRect)) { caveT = 3; return; }
+  if ((caveT -= dt) > 0) return; caveT = 4.5;
+  const r = MUSEUM.caveRect;
+  for (let k = 0; k < 2; k++) {
+    const fromN = Math.random() < .5, x = k === 0 ? player.pos.x + rand(-1, 1) : rand(r.x0 + 3, r.x1 - 3);
+    makeLine(x, fromN ? r.z0 : r.z1, fromN ? 0 : Math.PI, r.z1 - r.z0, 1.6, 1.3, 26, 17);
+  }
+  if (!caveTold) { caveTold = true; toast("벽화의 사냥꾼들이 창을 던져요! 빨간 선 밖으로 · the painted hunters throw spears — leave the red lines!"); }
+}
+// 깨어난 장군: 신기전 volleys in lines, a wall of shields now and then, four armour plates (each solved scroll breaks one)
+function generalTick(m, dt, tg) {
+  const v = m.def.volley; if (!v || !tg) return;
+  const maxP = 4 - mu.scrolls.filter(b => b === 1).length;
+  const plates = Math.max(0, Math.min(maxP, Math.ceil(m.hp / m.maxHp * 5) - 1));
+  if (m.plates !== undefined && plates < m.plates) floater(m.pos, "갑옷이 깨졌어요! · an armour plate breaks!", "#ffd23d", false, m.model.height);
+  m.plates = plates;
+  m.wallCd = (m.wallCd ?? 16) - dt;
+  if (m.wallCd <= 0) { m.wallCd = m.def.wall.every; m.shieldUntil = clock + m.def.wall.dur; SFX.charge(); if (player.zone === m.zone) toast("방패 벽! 5초만 피하세요 · a wall of shields — dodge for 5 s"); }
+  m.volleyCd = (m.volleyCd ?? 5) - dt; if (m.volleyCd > 0) return;
+  m.volleyCd = v.every; m.attackAnim = 1;
+  const n = v.n + (m.hp < m.maxHp * .5 ? 2 : 0), base = Math.atan2(tg.pos.x - m.pos.x, tg.pos.z - m.pos.z);
+  for (let k = 0; k < n; k++) {
+    const ang = base + (k - (n - 1) / 2) * .3;
+    makeLine(m.pos.x, m.pos.z, ang, v.len, v.w, v.tele, v.dmg * m.mul, m.lvl);
+    netSend({ t: "ln", x: m.pos.x, z: m.pos.z, ang, len: v.len, w: v.w, tele: v.tele, dmg: v.dmg * m.mul, lv: m.lvl });
+  }
+  if (tg.id === myId()) toast("신기전! 빨간 선 밖으로 · fire arrows — get out of the red lines!");
+}
+// the museum dungeon
+const muPoints = MUSEUM.spawns.map(s => ({ ...s, zone: "museum", mon: null, respawnAt: 0 }));
+const mu = { scrolls: [0, 0, 0] };
+function syncScrolls() { (MUSEUM.scrollMeshes || []).forEach((m, i) => { m.material.color.set(mu.scrolls[i] === 1 ? "#9be6a5" : mu.scrolls[i] === -1 ? "#555555" : "#ffffff"); }); }
+function resetMuseum() {
+  for (let i = monsters.length - 1; i >= 0; i--) { const m = monsters[i]; if (m.zone !== "museum") continue; scene.remove(m.model.root); m.plate.remove(); monsters.splice(i, 1); if (target === m) setTarget(null); }
+  for (const sp of muPoints) { sp.mon = null; spawnMonster(sp); }
+  mu.scrolls = [0, 0, 0]; syncScrolls();
+}
+function toMuseum() {
+  cancelRitual(); setTarget(null); closeDialog(); caveTold = false;
+  if (NET.role === "guest") netSend({ t: "enterU" }); else if (!someoneIn("museum", myId())) resetMuseum();
+  player.zone = "museum"; player.pos.set(MUSEUM.entry.x, 0, MUSEUM.entry.z); player.yaw = -Math.PI / 2; cam.yaw = -Math.PI / 2; player.vel = null;
+  toast("국립중앙박물관 · 밤이 되면 유물이 깨어나요 · at night the relics wake up");
+}
+function museumToYd() { cancelRitual(); setTarget(null); closeDialog(); player.zone = "yeouido"; player.pos.set(YEOUIDO.museumOut.x, 0, YEOUIDO.museumOut.z); player.yaw = Math.PI; cam.yaw = Math.PI; player.vel = null; }
+// 훈민정음실: pick the right verb form for the time word (지금 / 어제 / 내일 …). Past questions offer the other tenses as wrong answers;
+// present and future ones only offer the past plus broken forms, because Korean present tense can also mean the near future.
+const VERB_Q = [
+  ["어제 친구를 ＿. (만나다)", "Yesterday I met a friend.", "만났어요", ["만나요", "만날 거예요", "만나었어요"]],
+  ["내일 영화를 ＿. (보다)", "Tomorrow I'll watch a movie.", "볼 거예요", ["봤어요", "보을 거예요", "봘 거예요"]],
+  ["지금 밥을 ＿. (먹다)", "I'm eating now.", "먹어요", ["먹었어요", "먹아요", "먹으요"]],
+  ["지난주에 부산에 ＿. (가다)", "Last week I went to Busan.", "갔어요", ["가요", "갈 거예요", "가았어요"]],
+  ["이번 주말에 집에서 ＿. (쉬다)", "This weekend I'll rest at home.", "쉴 거예요", ["쉬었어요", "쉬을 거예요", "쉬일 거예요"]],
+  ["요즘 한국어를 ＿. (공부하다)", "These days I study Korean.", "공부해요", ["공부했어요", "공부하어요", "공부하아요"]],
+  ["지금 음악을 ＿. (듣다)", "I'm listening to music now.", "들어요", ["들었어요", "듣어요", "듣아요"]],
+  ["어제 편지를 ＿. (쓰다)", "Yesterday I wrote a letter.", "썼어요", ["써요", "쓸 거예요", "쓰었어요"]],
+  ["내일 아침에 일찍 ＿. (일어나다)", "Tomorrow morning I'll get up early.", "일어날 거예요", ["일어났어요", "일어나을 거예요", "일어낼 거예요"]],
+  ["작년에 서울에서 ＿. (살다)", "Last year I lived in Seoul.", "살았어요", ["살아요", "살 거예요", "살었어요"]],
+  ["지금 친구를 ＿. (기다리다)", "I'm waiting for a friend now.", "기다려요", ["기다렸어요", "기다리아요", "기다러요"]],
+  ["내년에 한국에 다시 ＿. (오다)", "Next year I'll come to Korea again.", "올 거예요", ["왔어요", "오을 거예요", "와을 거예요"]],
+  ["어제 커피를 많이 ＿. (마시다)", "Yesterday I drank a lot of coffee.", "마셨어요", ["마셔요", "마실 거예요", "마시았어요"]],
+  ["지금 방을 ＿. (청소하다)", "I'm cleaning my room now.", "청소해요", ["청소했어요", "청소하아요", "청소하어요"]],
+  ["이따가 엄마한테 전화를 ＿. (걸다)", "Later I'll call my mom.", "걸 거예요", ["걸었어요", "걸을 거예요", "걸를 거예요"]],
+  ["아까 문을 ＿. (닫다)", "A moment ago I closed the door.", "닫았어요", ["닫아요", "닫을 거예요", "닫었어요"]],
+  ["지금 창문을 ＿. (열다)", "I'm opening the window now.", "열어요", ["열었어요", "열아요", "여러요"]],
+  ["다음 주에 시험을 ＿. (보다)", "Next week I'll take an exam.", "볼 거예요", ["봤어요", "보을 거예요", "봘 거예요"]],
+  ["어젯밤에 늦게 ＿. (자다)", "Last night I went to bed late.", "잤어요", ["자요", "잘 거예요", "자았어요"]],
+  ["지금 노래를 ＿. (부르다)", "I'm singing a song now.", "불러요", ["불렀어요", "부르어요", "부라요"]],
+  ["어제 사진을 많이 ＿. (찍다)", "Yesterday I took a lot of photos.", "찍었어요", ["찍어요", "찍을 거예요", "찍았어요"]],
+  ["내일 친구에게 선물을 ＿. (주다)", "Tomorrow I'll give my friend a present.", "줄 거예요", ["줬어요", "주을 거예요", "줄을 거예요"]],
+  ["지난 주말에 산에 ＿. (올라가다)", "Last weekend I climbed a mountain.", "올라갔어요", ["올라가요", "올라갈 거예요", "올라가었어요"]],
+  ["지금 손을 ＿. (씻다)", "I'm washing my hands now.", "씻어요", ["씻었어요", "씻아요", "씻으요"]],
+];
+function scrollQuiz(i) {
+  if (mu.scrolls[i]) { toast(mu.scrolls[i] > 0 ? "이미 풀었어요 · already solved" : "이 두루마리는 찢어졌어요 · this scroll is torn for this run"); return; }
+  const [s, en, a, wrong] = pick(VERB_Q), ans = { id: "v", kr: a }, opts = shuffle([ans, ...wrong.map(w => ({ id: "x", kr: w }))]);
+  openQuiz({ title: `두루마리 ${i + 1} · 맞는 동사는? · which verb form fits?`, prompt: `<span class="qzKo">${esc(s)}</span><span class="qzEn">${esc(en)}</span>`, answer: ans, opts,
+    onDone: ok => { if (NET.role === "guest") netSend({ t: "scroll", i, ok }); applyScroll(i, ok); } });
+}
+function applyScroll(i, ok) {
+  if (mu.scrolls[i]) return; mu.scrolls[i] = ok ? 1 : -1; syncScrolls();
+  if (ok) { toast(`정답! 장군의 갑옷 하나가 떨어졌어요 · right! the general loses an armour plate (${4 - mu.scrolls.filter(b => b === 1).length} left)`); return; }
+  toast("틀렸어요! 도굴꾼이 와요 · wrong — looters are coming!");
+  if (NET.role === "guest") return;
+  for (const g of MUSEUM.guardSpots) { spawnMonster({ kind: "dogul", lvl: 17, x: g.x, z: g.z, mon: null, zone: "museum" }); monsters[monsters.length - 1].state = "chase"; }
+}
+function museumCleared() {
+  S.museumClears = (S.museumClears || 0) + 1; addHeart(10);
+  const first = S.museumClears === 1;
+  if (first) { S.hasMirror = true; setTimeout(() => sendMail("한동", "장군을 물리쳤다고요? 정말 대단해요! 카페에서 작은 선물을 준비했어요.", "You beat the general? Amazing! I got you a little present from the café.", { cards: [{ id: pick(bookWords().filter(w => S.chapters.includes(w.ch))).id, rar: 3 }], won: 40000 }), 2500); }
+  save();
+  clearReward("museum", "국립중앙박물관");
+  if (first) rewardDone = mirrorVision;
+}
+// the bronze mirror shows what someone loved: the way into the stranger's story (decision 19, Danny: the big reveal)
+function mirrorVision() {
+  showReward("🪞 청동 거울 · the bronze mirror", [
+    { big: true, icon: "🎤", ko: "거울 속에서 한 여자가 무대에서 노래하고 있어요.", en: "In the mirror, a woman is singing on a stage." },
+    { icon: "🏷️", ko: "이름표에 '하늘'이라고 쓰여 있어요.", en: "Her name tag says 'Haneul'." },
+    { icon: "🧥", ko: "홍대입구역의 낯선 사람에게 거울을 보여 주세요.", en: "Show the mirror to the stranger at 홍대입구역." },
+  ]);
+}
+function revealTalk(n) {
+  showLine(n, "x_mirror", [{ plr: "p_saw_haneul", act: () => showLine(n, "x_rv1", [{ plr: "p_really", act: () => showLine(n, "x_rv2", [{ plr: "p_then", act: () => showLine(n, "x_rv3", [{ plr: "p_sorry", act: () => { endWith(n, "x_rv4"); SFX.kill(); toast("📖 이야기 · the stranger told you the truth"); } }]) }]) }]) }]);
+}
+// 한동: the museum café cart at the end of the bridge (shop + quest)
+function handongShop(n) {
+  const opts = Object.entries(SNACKS).filter(([, sn]) => sn.shop === "handong").map(([k, sn]) => ({ plr: sn.plr, act: () => {
+    if (S.money < sn.price) { endWith(n, "r_short"); return; }
+    S.money -= sn.price; S.snacks = S.snacks || {}; S.snacks[k] = (S.snacks[k] || 0) + 1; SFX.pickup(); save();
+    toast(`${sn.ko} ${won(sn.price)} → 소모품 (${keyName(SET.keys.inv)}) · ${keyName(SET.keys.food)}로 먹기`); endWith(n, "k_thanks"); } }));
+  opts.push({ plr: "p_museum", act: () => endWith(n, "h_mirror") });
+  opts.push({ plr: "p_leave", act: () => endWith(n, "k_thanks") });
+  showLine(n, "h_hello", opts);
+}
+$("rwOk").onclick = closeReward;
+
 // ---- main loop ------------------------------------------------------------------------------------------
 let last = performance.now(), saveT = 0;
 // ---- area guidance (Danny 2026-10-17) -------------------------------------------------------------------
-const AREA_LV = { hongdae: 1, apt: 4, river: 6, yeouido: 9, tower: 10, noryangjin: 12, market: 15 };
-const AREA_KO = { hongdae: "홍대 거리", apt: "서교 아파트", river: "한강공원", yeouido: "여의도", tower: "63빌딩", noryangjin: "노량진", market: "수산시장" };
-const AREA_GO = ["hongdae", "apt", "river", "yeouido", "noryangjin"];   // where 민수 sends you instead (overworld only)
+const AREA_LV = { hongdae: 1, apt: 4, river: 6, yeouido: 9, tower: 10, noryangjin: 12, market: 15, yongsan: 15, museum: 16 };
+const AREA_KO = { hongdae: "홍대 거리", apt: "서교 아파트", river: "한강공원", yeouido: "여의도", tower: "63빌딩", noryangjin: "노량진", market: "수산시장", yongsan: "용산", museum: "국립중앙박물관" };
+const AREA_GO = ["hongdae", "apt", "river", "yeouido", "noryangjin", "yongsan"];   // where 민수 sends you instead (overworld only)
 function areaOf() {
   const p = player.pos, z = player.zone;
   if (z === "street") return p.z >= 108 ? "river" : p.x > 108 ? "apt" : "hongdae";
-  if (z === "yeouido") return p.z > YD.z + 330 ? "noryangjin" : "yeouido";
-  return z === "tower" || z === "market" ? z : null;
+  if (z === "yeouido") return p.x > YD.x + 152 ? "yongsan" : p.z > YD.z + 330 ? "noryangjin" : "yeouido";
+  return z === "tower" || z === "market" || z === "museum" ? z : null;
 }
 let areaT = 0, areaNow = null;
 const areaWarned = {};   // area -> the level you were warned at (warn again after a level-up)
@@ -3253,7 +3508,7 @@ function step(dt) {
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * rate * dt);
   }
   player.attackAnim = Math.max(0, player.attackAnim - dt * 3);
-  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); companionTick(dt); rubbleTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt);
+  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); companionTick(dt); rubbleTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt); caveTick(dt);
   if (target && target.dead) setTarget(null);
   saveT += dt; if (saveT > 10) { saveT = 0; S.hp = player.hp; save(); }
 }
@@ -3292,7 +3547,7 @@ function render(dt) {
     // pull the camera in when a building stands between it and you
     let cd = cam.dist;
     const dx = Math.sin(cam.yaw) * Math.cos(cam.pitch), dz = Math.cos(cam.yaw) * Math.cos(cam.pitch);
-    const RZc = player.zone === "dungeon" ? DUNGEON : player.zone === "tower" ? TOWER : player.zone === "market" ? MARKET : null;
+    const RZc = player.zone === "dungeon" ? DUNGEON : player.zone === "tower" ? TOWER : player.zone === "market" ? MARKET : player.zone === "museum" ? MUSEUM : null;
     if (player.zone === "street" || player.zone === "yeouido") cd = Math.max(1.6, Math.min(cd, camClear(p.x, p.z, dx, dz, cam.dist) - .6));
     if (RZc) cd = Math.min(cd, 7);
     camera.position.set(p.x + dx * cd, 1.8 + Math.sin(cam.pitch) * cd, p.z + dz * cd);
@@ -3312,6 +3567,7 @@ function render(dt) {
     if (player.zone === "dungeon") { world.sun.intensity = .12; world.hemi.intensity = .45; }
     else if (player.zone === "tower") { world.sun.intensity = .4; world.hemi.intensity = 1; }
     else if (player.zone === "market") { world.sun.intensity = .2; world.hemi.intensity = .65; }
+    else if (player.zone === "museum") { world.sun.intensity = .25; world.hemi.intensity = .7; }
     bloom.strength = .6 * n; bloom.enabled = n > .02;
     scene.fog.near = player.zone === "station" ? 30 : scene.fog.near;
     drawHUD(); drawPlates(); drawBubble(); drawRemotes(dt); drawCompanionPlate();
@@ -3362,7 +3618,7 @@ window.__seoul = {
   tp(x, z) { player.pos.set(x, 0, z); },
   spawn(kind, lvl, x, z, zone = "street") { spawnMonster({ kind, lvl, x, z, mon: null, zone }); return monsters[monsters.length - 1]; },
   wordCounts: () => wordCounts(), drawFriends: () => drawFriends(),
-  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
+  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
   get memo() { return memo; }, heart: n => addHeart(n), get comp() { return comp; }, get fishing() { return fishing; }, flip: i => flipStone(i), upgrade: () => upgradeMenu(npcs.find(n => n.kind === "smith")),
   talk: kind => talkTo(npcs.find(n => n.kind === kind)), get dialog() { return dialog; }, opt(i) { $("dOpts").children[i]?.click(); }, get quiz() { return quiz; }, quizAnswer(right = true) { if (quiz) answerQuiz(right ? quiz.opts.indexOf(quiz.answer) : (quiz.opts.indexOf(quiz.answer) + 1) % quiz.opts.length); },
 };

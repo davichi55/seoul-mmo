@@ -459,3 +459,23 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .frBoard h3{margin:10px 0 6px}.frBoard .tw{overflow-x:auto}.frBoard table{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums}
 .frBoard th{text-align:left;font-weight:500;font-size:12px;opacity:.7}.frBoard th,.frBoard td{padding:4px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
 .frBoard td b{font-size:16px}.frBoard tr.me td{color:#ffd23d}.frBoard{margin-bottom:10px}
+
+/* the clear-reward window (Danny 2026-10-17: rewards must be obvious) */
+.rwv{max-width:560px;text-align:center}
+.rwv h2{font:900 30px var(--display);color:#ffd23d;margin:4px 0 14px;text-shadow:0 0 18px rgba(255,210,61,.45)}
+.rwList{display:grid;gap:8px;text-align:left;margin-bottom:16px}
+.rwRow{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.rwRow.hero{background:linear-gradient(135deg,rgba(255,210,61,.18),rgba(255,140,60,.1));border-color:#e0b43a;animation:rwPop .5s ease-out}
+.rwRow .ic{font-size:30px;text-align:center}.rwRow.hero .ic{font-size:38px}
+.rwRow .tx b{display:block;font:700 18px var(--display)}.rwRow.hero .tx b{font-size:21px;color:#ffe08a}
+.rwRow .tx span{font-size:13px;opacity:.8}.rwRow .tx p{margin:4px 0 0;font-size:13px;color:#9be6a5}
+.rwRow button{white-space:nowrap}
+#rwOk{font-size:17px;padding:10px 28px}
+@keyframes rwPop{0%{transform:scale(.7);opacity:0}70%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+@media (prefers-reduced-motion:reduce){.rwRow.hero{animation:none}}
+
+/* item icons (inventory + reward window) */
+.ivSlot,.ivItem{position:relative;padding-right:64px}
+.ivSlot .gi,.ivItem .gi{position:absolute;right:10px;top:10px;width:44px;height:44px}
+.gi.rw{width:40px;height:40px;display:block;margin:auto}.gi.rw.lg{width:48px;height:48px}
+.rwHead{font:700 13px var(--display);letter-spacing:.06em;opacity:.75;text-align:left;margin-top:6px}

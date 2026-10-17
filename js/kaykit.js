@@ -43,6 +43,7 @@ const ROLES = {
   clerk: { file: "rogue", show: [], tint: "#c8e0ff", idle: "Idle" },
   mike: { file: "rogue", show: [], tint: "#f3e2c4", idle: "Idle" },
   gangsa: { file: "rogue", show: [], tint: "#d8d0e8", idle: "Idle" },
+  handong: { file: "mage", show: [], tint: "#f0dcc8", idle: "Idle" },
   gayoung: { file: "rogue", show: ["Rogue_Cape"], tint: "#e8c8a8", idle: "Idle" },
   smith: { file: "barbarian", show: ["Barbarian_Cape"], idle: "Idle", busy: "Interact" },
   sitterA: { file: "mage", show: [], idle: "Sit_Floor_Idle", tint: "#d8c8b8" },
