@@ -1260,7 +1260,7 @@ $("actDeck").onclick = () => openDeckView();
 // ---- start --------------------------------------------------------------------------------------------
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
-  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); setTimeout(grantMissedSets, 3000); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
+  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); setTimeout(grantMissedSets, 3000); setTimeout(autoCreditBossQuests, 3500); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
   player.model = kayReady() ? makeKay(S.cls) : makeHero(S.cls); scene.add(player.model.root);
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
@@ -1388,6 +1388,16 @@ function acceptQuest(id) {
   if (q.kind === "cards") { st.words = []; for (const k of ["dokkaebi", "vine", "haetae"]) st.words.push(pick(monsterPool(k).filter(w => !st.words.includes(w)))); }   // one per monster kind, all different
   S.quests[id] = st; SFX.pickup(); toast(`퀘스트 수락 · ${q.ko} (L)`); save();
   if (q.kind === "find") { const j = npcs.find(n => n.kind === "jieun"); if (j) j.model.root.visible = true; }
+}
+// boss quests count a boss you beat before you had the quest (Danny 2026-10-17: 터널의 주인 showed up after he had already cleared the tunnel)
+function autoCreditBossQuests() {
+  for (const [id, q] of Object.entries(QUESTS)) {
+    const st = S.quests[id];
+    if (q.kind !== "kill" || !MONS[q.target]?.boss || st?.st === "done" || (st && st.c >= q.n)) continue;
+    const beaten = Math.max(S.killsBy?.[q.target] || 0, q.target === "chief" ? S.dunClears || 0 : 0);
+    if (beaten < q.n) continue;
+    S.quests[id] = { st: "active", c: q.n }; completeQuest(id); toast(`이미 했어요! 보상을 받았어요 · already done: ${q.ko} — reward received`);
+  }
 }
 function completeQuest(id) {
   const q = QUESTS[id], st = S.quests[id], r = q.reward;
@@ -1869,7 +1879,7 @@ function killMonster(m, by = myId()) {
 function rewardKill(m) {
   const money = Math.round(rand(...m.def.money) * (1 + .2 * (m.lvl - m.def.lvl)) / 100) * 100; S.money += money; S.kills++; if (comp && comp.zone === m.zone && dist2(comp.pos, m.pos) < 20) addHeart(1); S.killsBy[m.kind] = (S.killsBy[m.kind] || 0) + 1;
   floater(m.pos, "+" + won(money), "#e5b84a", false, 1.6);
-  SFX.kill(); if (m.def.boss) bossSnap = lootSnap(); gainXp(monsterXp(m), m.pos); dropCard(m); dropGear(m); dropMat(m); dropStones(m); dropScroll(m); onKillForQuests(m);
+  SFX.kill(); if (m.def.boss) bossSnap = lootSnap(); gainXp(monsterXp(m), m.pos); dropCard(m); dropGear(m); dropMat(m); dropStones(m); dropScroll(m); onKillForQuests(m); if (m.def.boss) autoCreditBossQuests();
   if (m.def.boss) (m.zone === "tower" ? towerCleared : m.zone === "market" ? marketCleared : m.zone === "museum" ? museumCleared : dungeonCleared)();
   if (target === m) setTarget(null);
   showMissed([...m.missed]);
@@ -3618,7 +3628,7 @@ window.__seoul = {
   tp(x, z) { player.pos.set(x, 0, z); },
   spawn(kind, lvl, x, z, zone = "street") { spawnMonster({ kind, lvl, x, z, mon: null, zone }); return monsters[monsters.length - 1]; },
   wordCounts: () => wordCounts(), drawFriends: () => drawFriends(),
-  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
+  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
   get memo() { return memo; }, heart: n => addHeart(n), get comp() { return comp; }, get fishing() { return fishing; }, flip: i => flipStone(i), upgrade: () => upgradeMenu(npcs.find(n => n.kind === "smith")),
   talk: kind => talkTo(npcs.find(n => n.kind === kind)), get dialog() { return dialog; }, opt(i) { $("dOpts").children[i]?.click(); }, get quiz() { return quiz; }, quizAnswer(right = true) { if (quiz) answerQuiz(right ? quiz.opts.indexOf(quiz.answer) : (quiz.opts.indexOf(quiz.answer) + 1) % quiz.opts.length); },
 };
