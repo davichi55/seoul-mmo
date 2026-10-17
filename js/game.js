@@ -2367,7 +2367,7 @@ function companionTick(dt) {
   comp.model.root.position.set(comp.pos.x, 0, comp.pos.z); comp.model.root.rotation.y = comp.yaw; comp.model.anim(dt, { moving });
   const fight = !player.dead && player.zone !== "station" && monsters.some(m => !m.dead && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 20);
   if (!fight) return;
-  if (S.companion === "gumiho" && (comp.healT -= dt) <= 0) { comp.healT = 16;   // Danny 2026-10-17: was 8 s, too strong if (player.hp < player.maxHp) { const h = player.maxHp * (.05 + .01 * heartLvl()); player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "💗 +" + Math.round(h), "#ff9ec4", true, 2.4); } }
+  if (S.companion === "gumiho" && (comp.healT -= dt) <= 0) { comp.healT = 16;   /* Danny 2026-10-17: was 8 s, too strong */ if (player.hp < player.maxHp) { const h = player.maxHp * (.05 + .01 * heartLvl()); player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "💗 +" + Math.round(h), "#ff9ec4", true, 2.4); } }
   if (S.companion === "pet" && NET.role !== "guest" && (comp.tauntT -= dt) <= 0) {
     comp.tauntT = 15;
     const ms = monsters.filter(m => !m.dead && !m.def.boss && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 20);
