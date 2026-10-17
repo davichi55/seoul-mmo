@@ -115,7 +115,7 @@ export const MARKET = {
   ],
   entry: Mw(6, 0), up: Mw(2.5, 0), end: Mw(253, -16),
   boards: [{ ...Mw(136, -10.6), spot: Mw(136, -8.6), rot: 0 }, { ...Mw(148, -10.6), spot: Mw(148, -8.6), rot: 0 }, { ...Mw(142, 10.6), spot: Mw(142, 8.6), rot: Math.PI }],
-  heaters: [Mw(93, -9), Mw(101, 9), Mw(110, -1)], guardSpots: [Mw(132, -6), Mw(132, 6)], pillars: [],
+  heaters: [Mw(93, -9), Mw(101, 9), Mw(110, -1)], dealer: Mw(104, 11.4), guardSpots: [Mw(132, -6), Mw(132, 6)], pillars: [],
 };
 MARKET.wrects = MARKET.rects.map(r => ({ ...r, x0: r.x0 + MK.x, x1: r.x1 + MK.x, z0: r.z0 + MK.z, z1: r.z1 + MK.z }));
 MARKET.coldRect = MARKET.wrects.find(r => r.kind === "freezer"); MARKET.iceRect = MARKET.wrects.find(r => r.kind === "ice");

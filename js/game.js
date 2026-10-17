@@ -84,7 +84,8 @@ const FOODS = {
   tteok:  { ko: "떡볶이", price: 5000, fill: 50, buff: "speed", line: "r_p5000", plr: "p_tteok" },
   gimbap: { ko: "김밥 (포장)", price: 4000, fill: 50, takeaway: true, line: "r_takeout", plr: "p_gimbap" },
 };
-const BUFFS = { regen: { ko: "김치찌개: 회복 +50%" }, dmg: { ko: "비빔밥: 공격 +5%" }, speed: { ko: "떡볶이: 속도 +10%" } };
+const BUFFS = { regen: { ko: "김치찌개: 회복 +50%" }, dmg: { ko: "비빔밥: 공격 +5%" }, speed: { ko: "떡볶이: 속도 +10%" }, power: { ko: "삼계탕: 공격 +15%" }, vigor: { ko: "홍삼: 체력 +20%" } };
+const BUFF_FOODS = { samgye: { ko: "삼계탕", en: "ginseng chicken soup", price: 50000, fill: 100, buff: "power", dur: 120, plr: "p_samgye" }, hongsam: { ko: "홍삼", en: "red ginseng drink", price: 40000, fill: 20, buff: "vigor", dur: 120, plr: "p_hongsam" } };
 const POSKO = { noun: "명사", verb: "동사", adjective: "형용사", adverb: "부사", other: "기타" };
 
 // ---- cards: every copy of a word is its own card with a rarity and a modifier (decisions 17, 21, 22; Danny 2026-10-11) ----
@@ -363,7 +364,7 @@ function gainXp(n, at) {
   }
   save();
 }
-function recalcMax() { const keep = player.hp / player.maxHp; player.maxHp = Math.round(classDef().hp * (1 + bonus().hp + gearStat("hp")) * lvlHp() * (player.lsUntil > clock ? 1.3 : 1) * (player.cryUntil > clock ? 1.1 : 1)); player.hp = Math.min(player.maxHp, isFinite(keep) ? keep * player.maxHp : player.maxHp); }
+function recalcMax() { const keep = player.hp / player.maxHp; player.maxHp = Math.round(classDef().hp * (1 + bonus().hp + gearStat("hp")) * lvlHp() * (buffOn("vigor") ? 1.2 : 1) * (player.lsUntil > clock ? 1.3 : 1) * (player.cryUntil > clock ? 1.1 : 1)); player.hp = Math.min(player.maxHp, isFinite(keep) ? keep * player.maxHp : player.maxHp); }
 
 // ---- collision -----------------------------------------------------------------------------------
 const ZONES = ["street", "dungeon", "yeouido", "tower", "market", "museum"], RZONES = { dungeon: DUNGEON, tower: TOWER, yeouido: YEOUIDO, market: MARKET, museum: MUSEUM };
@@ -581,7 +582,7 @@ function castRitual() {
       if (!sk.pierce && sk.fire && tt.def.immune === "fire") { part = 0; imm = true; }
       total += part;
     }
-    total *= (1 + sumMod("dmg") + b.dmg + gearStat("dmg")) * (buffOn("dmg") ? 1.05 : 1) * (S.hunger <= 0 ? HUNGRY_MULT : 1) * (player.cryUntil > clock ? 1.15 : 1) * rand(.9, 1.1);
+    total *= (1 + sumMod("dmg") + b.dmg + gearStat("dmg")) * (buffOn("dmg") ? 1.05 : 1) * (buffOn("power") ? 1.15 : 1) * (S.hunger <= 0 ? HUNGRY_MULT : 1) * (player.cryUntil > clock ? 1.15 : 1) * rand(.9, 1.1);
     return { dmg: Math.max(imm && total < 1 ? 0 : 1, Math.round(total)), weak, imm };
   };
   const { dmg, weak: weakHit, imm: immuneHit } = calc(t, sk.execute ? (t.hp / t.maxHp < .25 ? 5 : 1) : sk.mult);
@@ -704,7 +705,7 @@ $("afterClose").onclick = () => $("after").hidden = true;
 function eat(food) {
   const fk = Object.keys(FOODS).find(k => FOODS[k] === food); if (fk) S.ate[fk] = 1;
   S.hunger = Math.min(100, S.hunger + food.fill);
-  if (food.buff) S.buffs[food.buff] = S.time + 60;
+  if (food.buff) { S.buffs[food.buff] = S.time + (food.dur || 60); recalcMax(); }
   SFX.heal(); floater(player.pos, food.ko + " 냠냠", "#ffe7a8", true, 2.6);
 }
 function eatGimbap() {
@@ -715,7 +716,7 @@ function eatGimbap() {
 }
 
 // ---- NPCs + dialogue ----------------------------------------------------------------------------------------
-const NPC_DEF = { driver: "기관사 아저씨", teacher: "시연 · 부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지유", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "다미 · 카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가현 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "유현 선생님 · 학원 강사", cupbap: "컵밥 아줌마", handong: "한동 · 박물관 카페" };
+const NPC_DEF = { driver: "기관사 아저씨", teacher: "시연 · 부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지유", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "다미 · 카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가현 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "유현 선생님 · 학원 강사", cupbap: "컵밥 아줌마", dealer: "수상한 경매사", handong: "한동 · 박물관 카페" };
 function placeNPCs() {
   const sp = world.npcSpots;
   sp.trader = { x: STATION.x + 5, z: STATION.z - 8.6, face: 0 };
@@ -737,8 +738,8 @@ function placeNPCs() {
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); world.colliders.yeouido.push({ x: at.x, z: at.z, r: .6 });
   }
-  for (const [kind, at, mdl] of [["gangsa", YEOUIDO.npcTeacher, () => kayReady() ? makeKay("gangsa") : makeNPC("sitter")], ["cupbap", YEOUIDO.npcCupbap, () => makeNPC("grandma")], ["handong", YEOUIDO.npcHandong, () => kayReady() ? makeKay("handong") : makeNPC("sitter")]]) {
-    const model = mdl(), n = { isNpc: true, kind, zone: "yeouido", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
+  for (const [kind, at, mdl] of [["gangsa", YEOUIDO.npcTeacher, () => kayReady() ? makeKay("gangsa") : makeNPC("sitter")], ["cupbap", YEOUIDO.npcCupbap, () => makeNPC("grandma")], ["handong", YEOUIDO.npcHandong, () => kayReady() ? makeKay("handong") : makeNPC("sitter")], ["dealer", MARKET.dealer, () => kayReady() ? makeKay("dealer") : makeNPC("sitter")]]) {
+    const model = mdl(), n = { isNpc: true, kind, zone: kind === "dealer" ? "market" : "yeouido", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = Math.PI; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); world.colliders.yeouido.push({ x: at.x, z: at.z, r: .6 });
@@ -796,7 +797,7 @@ function talkTo(n) {
     stranger: () => (S.hasMirror && !S.metMirror) ? (S.metMirror = true, save(), revealTalk(n)) : (S.towerClears && S.sawPoster && !S.metHaneul) ? (S.metHaneul = true, save(), showLine(n, "x_haneul", [{ plr: "p_haneul", act: () => endWith(n, "x_haneul2") }])) : (S.sawList && !S.metList) ? (S.metList = true, save(), endWith(n, "x_list")) : (S.dunClears && !S.metAgain) ? (S.metAgain = true, save(), endWith(n, "x_return")) : showLine(n, "x_again", [{ plr: "p_yes", act: () => { closeDialog(); openDeckPicker(false); } }, { plr: "p_who", act: () => endWith(n, "x_who") }, { plr: "p_no", act: () => endWith(n, "x_bye") }]),
     guard: () => showLine(n, S.hasMap ? "g_hello" : "g_map", [{ plr: "p_yes", act: () => endWith(n, "g_sleep") }]),
     driver: () => showLine(n, S.spells?.sleep || S.dunClears ? "d_hello" : "d_hint", [{ plr: "p_enter", act: () => { closeDialog(); fade(toDungeon); } }, { plr: "p_later", act: closeDialog }]),
-    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
+    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), dealer: () => dealerTalk(n), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
     minsu: () => endWith(n, "m_hello"), jieun: () => endWith(n, "j_hello"), gyeongbi: () => endWith(n, S.hasMapApt ? "b_hello" : "b_map"),
   }[n.kind];
   if (questTalk(n, normal)) return;
@@ -853,6 +854,7 @@ function nearestInteract() {
   if (player.zone === "market") {
     if (dist2(player.pos, MARKET.up) < 3) return { t: "marketOut", label: `${E} · 노량진으로 나가기 · back out to 노량진` };
     if (dist2(player.pos, MARKET.end) < 4 && !monsters.some(m => m.def.boss && !m.dead && m.zone === "market")) return { t: "marketOut", label: `${E} · 출구 · exit to 노량진` };
+    for (const n of npcs) if (n.zone === "market" && n.model.root.visible && dist2(n.pos, player.pos) < 3.4) return { t: "npc", n, label: `${E} · ${n.name}${wa(n.name)} 이야기하기` };
     for (let i = 0; i < 3; i++) if (dist2(player.pos, MARKET.boards[i].spot) < 2.4) return { t: "board", i, label: `${E} · 칠판 ${i + 1} · chalkboard ${i + 1}` };
     return null;
   }
@@ -1311,7 +1313,7 @@ $("actDeck").onclick = () => openDeckView();
 // ---- start --------------------------------------------------------------------------------------------
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
-  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); setTimeout(grantMissedSets, 3000); setTimeout(autoCreditBossQuests, 3500); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
+  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); syncDealer(); setTimeout(grantMissedSets, 3000); setTimeout(autoCreditBossQuests, 3500); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
   player.model = kayReady() ? makeKay(S.cls) : makeHero(S.cls); scene.add(player.model.root);
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
@@ -1690,6 +1692,7 @@ const ACH = [
   { id: "museum1", ko: "장군을 잠재우다", en: "The general sleeps again", desc: "Defeat the awakened general in the museum", prog: () => [S.museumClears ? 1 : 0, 1], reward: { won: 60000, xp: 400 } },
   { id: "truth", ko: "진실", en: "The truth", desc: "Hear the stranger's story", prog: () => [S.metMirror ? 1 : 0, 1], reward: { xp: 200 } },
   { id: "set1", ko: "세트 완성", en: "Full set", desc: "Own both pieces of a dungeon set", prog: () => [Object.values(SETS).some(st => ownsG(st.w) && ownsG(st.a)) ? 1 : 0, 1], reward: { won: 30000, xp: 150 } },
+  { id: "dealer", ko: "수상한 거래", en: "A shady deal", desc: "Buy a card from someone who isn't on any map", prog: () => [S.dealerBuys ? 1 : 0, 1], reward: { xp: 150 } },
   { id: "lvl5", ko: "생존자", en: "Survivor", desc: "Reach level 5", prog: () => [S.level, 5], reward: { won: 10000 } },
   { id: "epic", ko: "보물 사냥꾼", en: "Treasure hunter", desc: "Own an epic or legendary card", prog: () => [S.cards.some(c => c.rar >= 2) ? 1 : 0, 1], reward: { xp: 50 } },
   { id: "geared", ko: "완전 무장", en: "Fully equipped", desc: "Wear a better weapon, armour and a trinket", prog: () => [(weaponTier() >= 1) + (itemBy(S.equip.armor)?.g !== "a0" && !!S.equip.armor) + !!S.equip.trinket, 3], reward: { won: 8000 } },
@@ -2058,11 +2061,12 @@ function netTick(dt) {
   if (!remotes.size) return;
   const ms = monsters.filter(m => !m.dead).map(m => [m.id, m.kind, m.lvl, +m.pos.x.toFixed(2), +m.pos.z.toFixed(2), +m.yaw.toFixed(2), Math.round(m.hp), m.maxHp, m.moving ? 1 : 0, m.atkN || 0, +(m.slamAnim || 0).toFixed(2), m.state === "chase" ? 1 : 0, ZONES.indexOf(m.zone), m.caged ? 1 : 0, m.sleepUntil > clock ? 1 : 0, m.sp.guard ?? -1, m.shieldUntil > clock ? 1 : 0, +(m.grow || 0).toFixed(2)]);
   const ps = [["host", myState()], ...[...remotes.values()].map(r => [r.id, { nm: r.nm, cls: r.cls, lvl: r.lvl, x: +r.tpos.x.toFixed(2), z: +r.tpos.z.toFixed(2), yaw: r.tyaw, mv: r.moving ? 1 : 0, zone: r.zone, hp: r.hp, mx: r.mx, dead: r.dead ? 1 : 0 }])];
-  netSend({ t: "w", ms, ps, tw: [tw.solved, tw.open ? 1 : 0], mk: mk.boards, mu: mu.scrolls, time: (timeT += .125) > 2 ? (timeT = 0, S.time) : undefined });
+  netSend({ t: "w", ms, ps, tw: [tw.solved, tw.open ? 1 : 0], mk: mk.boards, dl: mk.dealer ? 1 : 0, mu: mu.scrolls, time: (timeT += .125) > 2 ? (timeT = 0, S.time) : undefined });
 }
 function applySnapshot(d) {
   if (d.time) S.time = d.time;
   if (d.mk) { mk.boards = d.mk; syncBoards(); }
+  if (d.dl !== undefined && !!d.dl !== !!mk.dealer) { mk.dealer = !!d.dl; mk.offers = null; syncDealer(); }
   if (d.mu) { mu.scrolls = d.mu; syncScrolls(); }
   if (d.tw) { tw.solved = d.tw[0]; if (!!d.tw[1] !== tw.open) { tw.open = !!d.tw[1]; setDoor(); } }
   const seen = new Set();
@@ -2321,16 +2325,22 @@ function spendMats(n) { const spent = {}; for (const k of Object.keys(MATS)) whi
 
 // ---- the smith's memory game: 20 stones (10 nouns + their meanings), 2 s to look, then find the pairs ----
 let memo = null;
+// set items go to +10; a level costs more the better the set is; from +5 on it also needs 2 of the set's boss material
+const SET_UP_COST = { tunnel: 20000, tower: 35000, market: 50000, museum: 70000 };
+const upMax = it => GEAR[it.g].set ? 10 : 5;
+const upCost = it => { const d = GEAR[it.g], up = it.up || 0; return d.set ? Math.round(SET_UP_COST[d.set] * (1 + .12 * up) / 1000) * 1000 : 3000 * (up + 1); };
+const upBossMat = it => { const d = GEAR[it.g]; return d.set && (it.up || 0) >= 5 ? SETS[d.set].mat : null; };
 function upgradeMenu(n) {
   const opts = [];
   for (const sl of Object.keys(SLOTS)) {
     const it = itemBy(S.equip[sl]); if (!it || it.g === "a0") continue;
-    const up = it.up || 0; if (up >= 5) continue;
-    const cost = 3000 * (up + 1);
-    opts.push({ ko: `${itemName(it)} → 강화 · ${cost.toLocaleString("en-US")}원 + 재료 3개`, en: `${SLOTS[sl]} · you have ${matCount()} materials`, act: () => {
-      if (matCount() < 3) { endWith(n, "s_no_mats"); return; }
+    const up = it.up || 0; if (up >= upMax(it)) continue;
+    const cost = upCost(it), bm = upBossMat(it);
+    opts.push({ ko: `${itemName(it)} → +${up + 1} · ${cost.toLocaleString("en-US")}원 + 재료 3개${bm ? ` + ${MATS[bm].ko} 2개` : ""}`, en: `${SLOTS[sl]} · up to +${upMax(it)} · you have ${matCount()} materials${bm ? `, ${S.mats?.[bm] || 0} ${MATS[bm].en}` : ""}`, act: () => {
+      if (bm && (S.mats?.[bm] || 0) < 2) { endWith(n, "s_no_mats"); toast(`${MATS[bm].ko} 2개가 필요해요 · needs 2 ${MATS[bm].en} (${SETS[GEAR[it.g].set].where}의 보스)`); return; }
+      if (matCount() < 3 + (bm ? 2 : 0)) { endWith(n, "s_no_mats"); return; }
       if (S.money < cost) { endWith(n, "s_short"); return; }
-      showLine(n, "s_up", [{ plr: "p_upgrade", act: () => { closeDialog(); S.money -= cost; const spent = spendMats(3); save(); startMemory(it, n, spent); } }]);
+      showLine(n, "s_up", [{ plr: "p_upgrade", act: () => { closeDialog(); S.money -= cost; if (bm) S.mats[bm] -= 2; const spent = spendMats(3); if (bm) spent[bm] = (spent[bm] || 0) + 2; save(); startMemory(it, n, spent); } }]);
     } });
   }
   if (!opts.length) { endWith(n, "s_best"); return; }
@@ -2363,7 +2373,7 @@ function flipStone(i) {
 function endMemory(giveUp) {
   const m = memo; if (!m) return; memo = null; $("memory").hidden = true; paused = false;
   const gain = giveUp ? 0 : m.miss <= 12 ? 2 : m.miss <= 20 ? 1 : 0;
-  m.item.up = Math.min(5, (m.item.up || 0) + gain); S.upgrades = (S.upgrades || 0) + gain;
+  m.item.up = Math.min(upMax(m.item), (m.item.up || 0) + gain); S.upgrades = (S.upgrades || 0) + gain;
   if (!gain) { for (const k in m.spent) S.mats[k] += m.spent[k]; toast("재료는 돌려받았어요 · your materials were returned"); }
   recalcMax(); save();
   showLine(m.n, gain === 2 ? "s_up_good" : gain ? "s_up_ok" : "s_up_bad", [{ plr: "p_yes", act: closeDialog }]);
@@ -2990,6 +3000,7 @@ function skillTick(dt) {
   if (player.storm) { const s = player.storm; if (clock > s.until || player.dead) player.storm = null; else if ((s.next -= dt) <= 0) { s.next = 1; for (const m of monsters) if (!m.dead && m.zone === player.zone && dist2(m.pos, player.pos) < s.r) hitT(m, s.calc(m).dmg); player.attackAnim = 1; SFX.dash(); } }
   if (player.hot) { if (clock > player.hot.until) player.hot = null; else player.hp = Math.min(player.maxHp, player.hp + player.maxHp * player.hot.v * dt); }
   if (player.absorb && clock > player.absorb.until) player.absorb = null;
+  if (!!buffOn("vigor") !== !!player.vigorOn) { player.vigorOn = !!buffOn("vigor"); recalcMax(); }
   if ((player.lsUntil && clock > player.lsUntil) || (player.cryUntil && clock > player.cryUntil)) { if (clock > player.lsUntil) player.lsUntil = 0; if (clock > player.cryUntil) player.cryUntil = 0; recalcMax(); }
 }
 
@@ -3088,11 +3099,28 @@ function sweepTick(m, dt, tg) {
 // the market dungeon
 const mkPoints = MARKET.spawns.map(s => ({ ...s, zone: "market", mon: null, respawnAt: 0 }));
 const mk = { boards: [0, 0, 0] };
+function syncDealer() { const d = npcs.find(n => n.kind === "dealer"); if (d) d.model.root.visible = !!mk.dealer; }
+const DEALER_PRICE = [0, 0, 120000, 350000];
+function dealerTalk(n) {
+  if (!mk.offers) {
+    const chs = S.chapters.length ? S.chapters : bookChapters().map(c => c.id), pool = bookWords().filter(w => chs.includes(w.ch)).map(w => w.id);
+    const owned = new Set(S.cards.map(c => c.id)), fresh = pool.filter(id => !owned.has(id));
+    mk.offers = [2, 3].map(rar => ({ id: pick(fresh.length ? fresh : pool), rar, mod: rollMod(rar), sold: false }));
+  }
+  const opts = mk.offers.map((o, i) => o.sold ? null : { ko: `[${RARITY[o.rar].ko}] ${WORD[o.id].kr} · ${DEALER_PRICE[o.rar].toLocaleString("en-US")}원`, en: `${WORD[o.id].en} · ${modText(o)}`, act: () => {
+    if (S.money < DEALER_PRICE[o.rar]) { endWith(n, "t_short"); return; }
+    S.money -= DEALER_PRICE[o.rar]; o.sold = true; S.dealerBuys = (S.dealerBuys || 0) + 1; S.cards.push({ uid: newUid(), id: o.id, rar: o.rar, mod: o.mod }); SFX.pickup(); save();
+    FX.pillarFx(player.pos, RARITY[o.rar].c); toast(`[${RARITY[o.rar].ko}] ${WORD[o.id].kr} → 가방 (K)`); endWith(n, "t_buy");
+  } }).filter(Boolean);
+  opts.push({ plr: "p_look", act: () => endWith(n, "q_bye") });
+  showLine(n, mk.offers.every(o => o.sold) ? "q_gone" : "q_hello", opts);
+}
 function syncBoards() { (MARKET.boardMeshes || []).forEach((m, i) => { m.material.color.set(mk.boards[i] === 1 ? "#9be6a5" : mk.boards[i] === -1 ? "#555555" : "#ffffff"); }); }
 function resetMarket() {
   for (let i = monsters.length - 1; i >= 0; i--) { const m = monsters[i]; if (m.zone !== "market") continue; scene.remove(m.model.root); m.plate.remove(); monsters.splice(i, 1); if (target === m) setTarget(null); }
   for (const sp of mkPoints) { sp.mon = null; spawnMonster(sp); }
   mk.boards = [0, 0, 0]; syncBoards();
+  mk.dealer = Math.random() < .5; mk.offers = null; syncDealer();
 }
 function toMarket() {
   cancelRitual(); setTarget(null); closeDialog();
@@ -3164,8 +3192,14 @@ function teacher2Talk(n) {
   showLine(n, "n_hello", opts);
 }
 function readList() { showLine({ name: "실종자 명단 · list of the missing" }, "o_list", [{ ko: "(닫기)", en: "close", act: closeDialog }]); if (!S.sawList) { S.sawList = true; save(); } }
+function buyBuffFood(n, k) {
+  const f = BUFF_FOODS[k];
+  if (S.money < f.price) { endWith(n, "r_short"); return; }
+  S.money -= f.price; SFX.pickup(); eat(f); save(); FX.pillarFx(player.pos, f.buff === "power" ? "#ff9a3a" : "#ff6a6a");
+  toast(`${f.ko} ${won(f.price)} · ${BUFFS[f.buff].ko} · 10분 · 10 min`); endWith(n, "k_thanks");
+}
 function cupbapTalk(n) {
-  showLine(n, "c_hello", [{ plr: "p_cupbap", act: () => { if (S.money < 3000) { endWith(n, "r_short"); return; } S.money -= 3000; S.snacks = S.snacks || {}; S.snacks.cupbap = (S.snacks.cupbap || 0) + 1; SFX.pickup(); save(); toast(`컵밥 ₩3,000 → 소모품 · ${keyName(SET.keys.food)}로 먹기`); endWith(n, "k_thanks"); } }, { plr: "p_leave", act: () => endWith(n, "k_thanks") }]);
+  showLine(n, "c_hello", [{ plr: "p_samgye", act: () => buyBuffFood(n, "samgye") }, { plr: "p_cupbap", act: () => { if (S.money < 3000) { endWith(n, "r_short"); return; } S.money -= 3000; S.snacks = S.snacks || {}; S.snacks.cupbap = (S.snacks.cupbap || 0) + 1; SFX.pickup(); save(); toast(`컵밥 ₩3,000 → 소모품 · ${keyName(SET.keys.food)}로 먹기`); endWith(n, "k_thanks"); } }, { plr: "p_leave", act: () => endWith(n, "k_thanks") }]);
 }
 
 // ---- friends (Danny 2026-10-12): every character has a permanent 4-letter friend code = its own room on the
@@ -3505,6 +3539,7 @@ function handongShop(n) {
     if (S.money < sn.price) { endWith(n, "r_short"); return; }
     S.money -= sn.price; S.snacks = S.snacks || {}; S.snacks[k] = (S.snacks[k] || 0) + 1; SFX.pickup(); save();
     toast(`${sn.ko} ${won(sn.price)} → 소모품 (${keyName(SET.keys.inv)}) · ${keyName(SET.keys.food)}로 먹기`); endWith(n, "k_thanks"); } }));
+  opts.push({ plr: "p_hongsam", act: () => buyBuffFood(n, "hongsam") });
   opts.push({ plr: "p_museum", act: () => endWith(n, "h_mirror") });
   opts.push({ plr: "p_leave", act: () => endWith(n, "k_thanks") });
   showLine(n, "h_hello", opts);

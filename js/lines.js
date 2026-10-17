@@ -1,6 +1,12 @@
 // Every spoken line in the game. key -> { ko, en, say? }  (say = what Piper reads, when it differs from ko)
 // After editing: node tools/gen-lines.js  (makes audio/lines/<key>.wav for new keys)
 export const LINES = {
+  // money sinks (2026-10-17): buff food, the hidden auctioneer in the fish market
+  p_samgye: { ko: "삼계탕 한 그릇 주세요.", en: "One bowl of samgyetang, please." },
+  p_hongsam: { ko: "홍삼 한 병 주세요.", en: "One bottle of red ginseng, please." },
+  q_hello: { ko: "쉿! 조용히 하세요. 좋은 카드가 있어요. 오늘만 팔아요.", en: "Shh! Keep it down. I have good cards. Today only." },
+  q_gone: { ko: "오늘은 다 팔았어요. 다음에 또 와요.", en: "I'm sold out today. Come again next time." },
+  q_bye: { ko: "저를 봤다고 아무한테도 말하지 마세요.", en: "Don't tell anyone you saw me." },
   // 용산 (area 5): 한동 at the museum café, the stranger's truth, the map, the area hint
   h_hello: { ko: "어서 오세요! 박물관 카페예요. 바나나우유 있어요.", en: "Welcome! This is the museum café. I have banana milk." },
   h_q: { ko: "박물관 밖에서 무인석들이 걸어 다녀요. 다섯 개만 쓰러뜨려 주세요.", en: "Tomb statues are walking around outside the museum. Please knock down just five." },
