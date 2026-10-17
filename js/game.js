@@ -10,6 +10,7 @@ import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MA
 import { makeHero, makeNPC, makeMonster } from "./models.js";
 import { loadKayKit, kayReady, makeKay } from "./kaykit.js";
 import { loadSua, suaReady, makeSua } from "./sua.js";
+import * as FX from "./fx.js";
 import { LINES } from "./lines.js";
 import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js";
 import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume } from "./audio.js";
@@ -198,6 +199,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 $("game").appendChild(renderer.domElement);
 const scene = new THREE.Scene();
+FX.initFx(scene);
 const camera = new THREE.PerspectiveCamera(55, 1, .1, 400);
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
@@ -356,7 +358,7 @@ function gainXp(n, at) {
   n = Math.round(n); S.xp += n;
   floater(at || player.pos, `+${n} XP`, "#c3b2ff", true, at ? 2 : 3.2);
   while (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) {
-    S.xp -= xpNeed(S.level); S.level++; recalcMax(); player.hp = player.maxHp; learnSkills(true); syncStory(true); setTimeout(aptHint, 2500);
+    S.xp -= xpNeed(S.level); S.level++; recalcMax(); player.hp = player.maxHp; FX.pillarFx(player.pos, "#ffd23d"); learnSkills(true); syncStory(true); setTimeout(aptHint, 2500);
     toast(`레벨 업! Lv ${S.level} · health +5%, damage +4%`); SFX.pickup(); floater(player.pos, "LEVEL UP!", "#ffd23d", false, 3.4);
   }
   save();
@@ -451,6 +453,7 @@ function hurt(amount, src, raw = false) {
   else player.hp -= amount;
   player.lastHurt = clock; player.model.trigger?.("hit");
   floater(player.pos, "-" + amount, "#ff7a6a", true, 2.2);
+  FX.shake(Math.min(1, .3 + amount / player.maxHp * 2.5)); FX.burst(player.pos, { n: 14, color: ["#ff5a4a", "#ffffff", "#ff9a8a"], speed: 6, size: .12, life: .45, shape: "spark", grav: 4 });
   $("vignette").classList.add("hit"); setTimeout(() => $("vignette").classList.remove("hit"), 120);
   SFX.hurt();
   if (src && src.def && src.def.root && !raw && Math.random() < src.def.root.chance) { player.rootedUntil = clock + src.def.root.dur; floater(player.pos, "덩굴에 묶임! · rooted", "#9be66a", true, 3); }
@@ -582,22 +585,25 @@ function castRitual() {
     return { dmg: Math.max(imm && total < 1 ? 0 : 1, Math.round(total)), weak, imm };
   };
   const { dmg, weak: weakHit, imm: immuneHit } = calc(t, sk.execute ? (t.hp / t.maxHp < .25 ? 5 : 1) : sk.mult);
+  if (sk.fx) fxCast(sk, t, castCols(sk, cards));
   if (sk.fx && extraFx(sk, t, calc, correct.length / sk.cards)) return;
   if (sk.leap) leapBack(t, sk.leap);
   player.yaw = Math.atan2(-(t.pos.x - player.pos.x), -(t.pos.z - player.pos.z)); player.attackAnim = 1; player.model.trigger?.("attack");
   const ls = sumMod("ls") + b.ls + gearStat("ls"), share = correct.length / sk.cards;
+  const fxCols = castCols(sk, cards), fxPow = Math.max(.7, (sk.mult || 1) * share * (r.k === "basic" ? 1 : 1.25));
   // skill effects that don't depend on hitting
   if (sk.heal) { const h = player.maxHp * sk.heal * share; player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "+" + Math.round(h), "#9be6a5", false, 2.6); SFX.heal(); }
   if (sk.guard) { player.guardUntil = clock + sk.guard.dur; floater(player.pos, "철벽!", "#9ec8ff", false, 3); }
   const land = () => {
     if (t.dead) return;
-    if (sk.noHit) { addDot(t, dmg, sk.burn.dur); if (dmg > 0) floater(t.pos, "🔥 " + sk.ko, "#ff8a3a", false, t.model.height); SFX.shotGood(); return; }
+    if (sk.noHit) { addDot(t, dmg, sk.burn.dur); FX.explosion(t.pos, FX.EL_COL.fire, .8); if (dmg > 0) floater(t.pos, "🔥 " + sk.ko, "#ff8a3a", false, t.model.height); SFX.shotGood(); return; }
     if (dealDamage(t, dmg, sk.slow ? sk.slow.dur : 0) === false) return;
     if (sk.burn) addDot(t, Math.round(dmg * sk.burn.mult / sk.mult), sk.burn.dur);
     if (sk.stun) applyCC(t, "stun", sk.stun);
     if (sk.slow) { floater(t.pos, "느려짐 · slowed", "#9ec8ff", true, t.model.height + .4); }
-    const col = weakHit ? "#ffb347" : immuneHit && dmg === 0 ? "#aaa" : "#fff";
-    floater(t.pos, dmg + (weakHit ? " 약점!" : "") + (immuneHit ? " (면역)" : ""), col, false, t.model.height);
+    FX.impact(t.pos, fxCols, fxPow, weakHit); if (S.cls === "geomgaek") FX.slash(t.pos, player.yaw, { color: fxCols[0], size: .8 + fxPow * .4 });
+    if (sk.stun) FX.burst(t.pos, { n: 10, color: ["#ffd23d", "#fff2a8"], speed: 2, size: .18, life: 1.2, grav: 0, shape: "star", y: t.model.height });
+    dmgNum(t, dmg, weakHit, immuneHit && dmg === 0, fxPow);
     if (ls > 0) { const h = dmg * ls; player.hp = Math.min(player.maxHp, player.hp + h); }
     SFX.shotGood();
   };
@@ -607,14 +613,57 @@ function castRitual() {
       if (d > 2.6) { player.pos.x += dx / d * (d - 2.2); player.pos.z += dz / d * (d - 2.2); collide(player.pos); }
     }
     SFX.dash(); setTimeout(land, 200);
-  } else shootSpell(t, land);
+  } else shootSpell(t, land, fxCols, fxPow);
+}
+// ---- combat effects (js/fx.js) ----
+function castCols(sk, cards) {
+  if (sk.fire) return FX.EL_COL.fire;
+  const n = {}; for (const c of cards || []) if (c.mod?.t === "el") n[c.mod.el] = (n[c.mod.el] || 0) + 1;
+  const top = Object.entries(n).sort((a, b) => b[1] - a[1])[0];
+  return top && FX.EL_COL[top[0]] ? FX.EL_COL[top[0]] : FX.CLASS_COL[S.cls] || FX.CLASS_COL.mudang;
+}
+function fxCast(sk, t, cols) {
+  const me = player.pos;
+  switch (sk.fx) {
+    case "heal": case "hot": case "healArrow": FX.healFx(me); break;
+    case "group": FX.healFx(me, true); break;
+    case "absorb": case "reflect": FX.shieldFx(me); break;
+    case "invuln": FX.pillarFx(me, "#ffd23d"); FX.shieldFx(me, "#ffd23d"); break;
+    case "laststand": case "cry": case "hawk": case "revive": FX.pillarFx(me, sk.fx === "revive" ? "#fff2a8" : "#ffd23d"); FX.shake(.3); break;
+    case "fear": FX.ring(me, { color: "#ffd23d", r: (sk.r || 8) * 1.2, life: .6 }); FX.ring(me, { color: "#ffffff", r: (sk.r || 8) * .7, life: .4 }); FX.shake(.45); break;
+    case "taunt": FX.ring(t.pos, { color: "#ff5a4a", r: 3.5 }); FX.burst(t.pos, { n: 18, color: ["#ff5a4a", "#ffd23d"], speed: 4, size: .16, life: .7, shape: "star", y: t.model.height }); break;
+    case "whirl": case "storm": for (let k = 0; k < 4; k++) setTimeout(() => FX.slash(player.pos, player.yaw + k * Math.PI / 2, { color: cols[0], size: 1.6, tilt: -1.5 }), k * 50); FX.ring(me, { color: cols[0], r: (sk.r || 4) * 1.3 }); FX.burst(me, { n: 40, color: cols, speed: 9, size: .14, life: .6, shape: "spark", grav: 2, flat: true }); FX.shake(.4); break;
+    case "rain": FX.ring(t.pos, { color: "#ffd23d", r: (sk.r || 6) * 1.2, life: .8 }); for (let w = 0; w < (sk.waves || 3); w++) setTimeout(() => { const at = t.pos; for (let k = 0; k < 6; k++) FX.burst({ x: at.x + rand(-3, 3), z: at.z + rand(-3, 3) }, { n: 4, color: cols, dir: new THREE.Vector3(0, -1, 0), speed: 16, size: .12, life: .4, shape: "spark", y: 8, grav: 20 }); FX.shake(.2); }, 600 + w * 1000); break;
+  }
+}
+function slamFx(at, r, wet) { if (wet) FX.waterSplash(at, r); else FX.dustSlam(at, r); if (player && dist2(player.pos, at) < r * 2.2) FX.shake(.6); }
+function lineFx(l) {
+  const cols = player.zone === "market" ? ["#5a3a7a", "#2a1a3a", "#c08aff"] : player.zone === "museum" && inRect(player.pos, MUSEUM.caveRect) ? ["#c8903a", "#8a6a3a", "#f0c87a"] : FX.EL_COL.fire;
+  for (let k = 0; k < l.len; k += 1.6) FX.burst({ x: l.x + Math.sin(l.ang) * k, z: l.z + Math.cos(l.ang) * k }, { n: 3, color: cols, speed: 4, up: 1, size: .15, life: .55, y: .4, shape: "spark" });
+  if (dist2(player.pos, { x: l.x, z: l.z }) < l.len + 4) FX.shake(.35);
+}
+function ccFx(m, kind) {
+  const h = m.model.height, at = m.pos;
+  const C = { stun: ["#ffd23d", "#fff2a8"], root: ["#5ad04a", "#b8f06a"], fear: ["#ffd23d", "#ffffff"], taunt: ["#ff5a4a", "#ffd23d"], sleep: ["#7ab8ff", "#d8ecff"], silence: ["#b47aff", "#e8d8ff"] }[kind] || ["#ffffff"];
+  FX.burst(at, { n: 16, color: C, speed: 2.5, size: .18, life: 1.1, grav: 0, shape: "star", y: h }); FX.ring(at, { color: C[0], r: 2.6 });
+}
+// damage numbers: big, they pop; weakness hits are gold and bigger
+function dmgNum(t, dmg, weak, immune, pow = 1) {
+  tmpV.set(t.pos.x, t.model.height + .2, t.pos.z).project(camera); if (tmpV.z > 1) return;
+  const d = document.createElement("div"); d.className = "fl dmg" + (weak ? " weak" : "") + (pow >= 2 ? " huge" : "") + (immune ? " imm" : "");
+  d.textContent = immune ? "면역" : dmg + (weak ? " 약점!" : "");
+  d.style.left = (tmpV.x * .5 + .5) * innerWidth + rand(-30, 30) + "px"; d.style.top = (-tmpV.y * .5 + .5) * innerHeight + "px";
+  $("floaters").appendChild(d); setTimeout(() => d.remove(), 1300);
 }
 const talismanMat = toon("#f2df7a", { emissive: new THREE.Color("#ffcc33"), emissiveIntensity: .6 });
-function shootSpell(t, land) {
+function shootSpell(t, land, cols = FX.CLASS_COL[S.cls] || FX.CLASS_COL.mudang, pow = 1) {
   const g = S.cls === "mudang" ? new THREE.BoxGeometry(.25, .4, .03) : new THREE.CylinderGeometry(.03, .03, 1.1, 5);
   const mesh = new THREE.Mesh(g, S.cls === "mudang" ? talismanMat : toon("#d9c7a0"));
+  mesh.scale.setScalar(S.cls === "mudang" ? 1.8 : 1.4);
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(.28, 10, 8), new THREE.MeshBasicMaterial({ color: cols[0], transparent: true, opacity: .8, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })); mesh.add(halo);
   mesh.position.set(player.pos.x, 1.6, player.pos.z); scene.add(mesh);
-  projectiles.push({ mesh, target: t, speed: S.cls === "mudang" ? 16 : 30, land, life: 3, spin: S.cls === "mudang" });
+  FX.burst({ x: player.pos.x - Math.sin(player.yaw) * .8, z: player.pos.z - Math.cos(player.yaw) * .8 }, { n: 10, color: cols, speed: 4, size: .1, life: .35, grav: 0, y: 1.6, shape: "spark" });
+  projectiles.push({ mesh, target: t, speed: S.cls === "mudang" ? 16 : 30, land, life: 3, spin: S.cls === "mudang", trail: cols, tsize: .08 + .04 * Math.min(3, pow) });
   SFX.shot();
 }
 function updateProjectiles(dt) {
@@ -625,11 +674,13 @@ function updateProjectiles(dt) {
       if (d < .6 || p.life <= 0) { p.land(); scene.remove(p.mesh); projectiles.splice(i, 1); continue; }
       p.mesh.position.add(to.sub(p.mesh.position).normalize().multiplyScalar(Math.min(d, p.speed * dt)));
       p.mesh.lookAt(p.target.pos.x, 1.4, p.target.pos.z); if (!p.spin) p.mesh.rotateX(Math.PI / 2); else p.mesh.rotation.z += dt * 12;
+      if (p.trail) FX.burst(p.mesh.position, { n: 3, color: p.trail, speed: .8, size: p.tsize, life: .4, grav: 0, y: 0 });
     } else {
       p.mesh.position.addScaledVector(p.vel, dt); p.mesh.rotation.x += dt * 8;
+      if (p.trail) FX.burst(p.mesh.position, { n: p.r ? 4 : 2, color: p.trail, speed: .7, size: p.r ? .2 : .1, life: .45, grav: 0, y: 0 });
       const pp = player.pos;
-      if (!player.dead && player.zone !== "station" && Math.hypot(p.mesh.position.x - pp.x, p.mesh.position.z - pp.z) < (p.r || .7) && p.mesh.position.y < 2.4) { hurt(p.dmg, p.src); scene.remove(p.mesh); projectiles.splice(i, 1); continue; }
-      if (p.life <= 0) { scene.remove(p.mesh); projectiles.splice(i, 1); }
+      if (!player.dead && player.zone !== "station" && Math.hypot(p.mesh.position.x - pp.x, p.mesh.position.z - pp.z) < (p.r || .7) && p.mesh.position.y < 2.4) { if (p.trail) FX.explosion({ x: p.mesh.position.x, y: p.mesh.position.y - 1.2, z: p.mesh.position.z }, p.trail, p.r ? .8 : .4); hurt(p.dmg, p.src); scene.remove(p.mesh); projectiles.splice(i, 1); continue; }
+      if (p.life <= 0) { if (p.r && p.trail) FX.explosion({ x: p.mesh.position.x, y: p.mesh.position.y - 1.2, z: p.mesh.position.z }, p.trail, .5); scene.remove(p.mesh); projectiles.splice(i, 1); }
     }
   }
 }
@@ -1826,7 +1877,7 @@ function updateMonsters(dt) {
           if (m.slamT > 0) {
             m.slamT -= dt; m.slamAnim = 1 - m.slamT / def.slam.tele;
             if (m.slamT <= 0) {
-              m.slamCd = def.slam.every; m.slamAnim = 0; SFX.slam();
+              m.slamCd = def.slam.every; m.slamAnim = 0; SFX.slam(); slamFx(m.slamAt, def.slam.radius, m.kind === "kkotge" || m.zone === "market");
               if (def.armor) { m.flippedUntil = clock + 3; floater(m.pos, "뒤집혔어요! 지금! · flipped — hit it now!", "#ffd23d", false, m.model.height); }
               if (!player.dead && player.zone === m.zone && dist2(player.pos, m.slamAt) < def.slam.radius) hurt(def.slam.dmg * m.mul, m);
               else if (tg.id === myId()) floater(player.pos, "피했다! · dodged", "#9be6a5", true);
@@ -1863,12 +1914,13 @@ function shootThorn(m, at) {
   netSend({ t: "th", x: from.x, y: from.y, z: from.z, vx: vel.x, vy: vel.y, vz: vel.z, dmg: m.def.dmg * m.mul, sh: m.def.shock ? 1 : 0, lv: m.lvl });
 }
 function spawnThorn(from, vel, dmg, src) {
-  const mesh = new THREE.Mesh(thornGeo, src?.def?.shock ? shockMat : thornMat); mesh.position.copy(from); scene.add(mesh);
-  projectiles.push({ mesh, vel, life: 2.2, hostile: true, dmg, src: src || { def: MONS.vine } });
+  const mesh = new THREE.Mesh(thornGeo, src?.def?.shock ? shockMat : thornMat); mesh.position.copy(from); mesh.scale.setScalar(1.6); scene.add(mesh);
+  projectiles.push({ mesh, vel, life: 2.2, hostile: true, dmg, src: src || { def: MONS.vine }, trail: src?.def?.shock ? ["#fff36a", "#ffffff", "#9fd8ff"] : ["#9be66a", "#5a8a3a", "#d8ffb0"] });
   SFX.orb();
 }
 // a monster dies: the host (or solo game) decides, every player near enough gets the rewards on their own side
 function killMonster(m, by = myId()) {
+  FX.deathPoof(m.pos, !!m.def.boss);
   if (NET.role !== "guest") burstAt(m);
   m.dead = true; m.sp.mon = null; m.sp.respawnAt = clock + (night > .5 ? 15 : 30); m.plate.remove();
   const near = [...remotes.values()].filter(r => r.zone === m.zone && dist2(r.pos, m.pos) < 40).map(r => r.id);
@@ -1889,8 +1941,8 @@ function rewardKill(m) {
 }
 // damage from your ritual: applied here (solo / host) or sent to the host (guest)
 function dealDamage(t, dmg, slow) {
-  if (t.shieldUntil > clock) { floater(t.pos, "방어막 · shielded", "#c8a8ff", true, t.model.height); SFX.resist(); return false; }
-  t.sleepUntil = 0;
+  if (t.shieldUntil > clock) { FX.shieldFx(t.pos, "#c8a8ff"); floater(t.pos, "방어막 · shielded", "#c8a8ff", true, t.model.height); SFX.resist(); return false; }
+  t.sleepUntil = 0; t.punch = 1;
   if (NET.role === "guest") { netSend({ t: "hit", mid: t.id, dmg, slow: slow || 0 }); t.hp = Math.max(1, t.hp - dmg); return; }
   { const am = armorMul(t); if (am < 1) { dmg = Math.round(dmg * am); floater(t.pos, "갑옷 · armour", "#c9c4b8", true, t.model.height + .6); } }
   t.hp -= dmg; if (!(t.tauntUntil > clock)) t.tgtId = myId(); aggro(t);
@@ -1983,10 +2035,10 @@ function onNet(d, from) {
     case "rev": if (NET.role === "host" && d.to !== "host") { netSend({ ...d }); break; } if (d.to === myId()) revived(); break;
     case "hit": if (NET.role === "host") { const m = monsters.find(x => x.id === d.mid && !x.dead && !(x.shieldUntil > clock)); if (m) { m.sleepUntil = 0; m.hp -= Math.round(d.dmg * armorMul(m)); if (!(m.tauntUntil > clock)) m.tgtId = from; aggro(m); if (d.slow) m.slowUntil = clock + d.slow; if (m.hp <= 0) killMonster(m, from); } } break;
     case "w": if (NET.role === "guest") applySnapshot(d); break;
-    case "kill": if (NET.role === "guest") { const m = monsters.find(x => x.id === d.mid); if (m && !m.dead) { m.dead = true; m.deadT = 0; m.plate.remove(); if (d.near.includes(myId())) rewardKill(m); else if (target === m) setTarget(null); } } break;
+    case "kill": if (NET.role === "guest") { const m = monsters.find(x => x.id === d.mid); if (m && !m.dead) { FX.deathPoof(m.pos, !!m.def.boss); m.dead = true; m.deadT = 0; m.plate.remove(); if (d.near.includes(myId())) rewardKill(m); else if (target === m) setTarget(null); } } break;
     case "hurt": if (d.to === myId() && !player.dead && player.zone !== "station") { hurt(d.dmg, { lvl: d.lv }); if (d.root) { player.rootedUntil = clock + 2; floater(player.pos, "덩굴에 묶임! · rooted", "#9be66a", true, 3); } } break;
     case "th": if (NET.role === "guest" && d.orb) { spawnOrb(new THREE.Vector3(d.x, d.y, d.z), new THREE.Vector3(d.vx, d.vy, d.vz), d.dmg, { lvl: d.lv }); break; } if (NET.role === "guest") spawnThorn(new THREE.Vector3(d.x, d.y, d.z), new THREE.Vector3(d.vx, d.vy, d.vz), d.dmg, d.sh ? { def: MONS.jangeo, lvl: d.lv } : { lvl: d.lv }); break;
-    case "sl": if (NET.role === "guest") { const at = new THREE.Vector3(d.x, 0, d.z); makeRing(at, d.r, d.tele); setTimeout(() => { SFX.slam(); if (!player.dead && player.zone !== "station" && dist2(player.pos, at) < d.r) hurt(d.dmg, { lvl: d.lv }); }, d.tele * 1000); } break;
+    case "sl": if (NET.role === "guest") { const at = new THREE.Vector3(d.x, 0, d.z); makeRing(at, d.r, d.tele); setTimeout(() => { SFX.slam(); slamFx(at, d.r, player.zone === "market"); if (!player.dead && player.zone !== "station" && dist2(player.pos, at) < d.r) hurt(d.dmg, { lvl: d.lv }); }, d.tele * 1000); } break;
     case "chat": if (NET.role === "host") netSend({ t: "chat", id: from, nm: d.nm, text: d.text }); showRemoteChat(d.id || from, d.nm, d.text); break;
     case "em": if (NET.role === "host") netSend({ t: "em", id: from, e: d.e }); { const r = remotes.get(d.id || from); if (r) { r.model.emote?.(d.e); remoteBubble(r, d.e === "wave" ? "👋" : "🙇"); } } break;
     case "gift": if (NET.role === "host" && d.to !== "host") { netSend({ ...d, from }); break; } if (d.to === myId()) sendMail(d.nm, "선물을 보내요. 잘 쓰세요!", "I'm sending you a present. Use it well!", d.attach); break;
@@ -2187,6 +2239,7 @@ function drawDungeonMap(ctx, W, H, cx, cz, span, full, D = DUNGEON, zone = "dung
 
 // ---- sleep talisman (taught by the 부적 선생님) ----
 function applySleep(t, dur) {
+  ccFx(t, "sleep");
   if (NET.role === "guest") netSend({ t: "sleep", mid: t.id, dur });
   t.sleepUntil = clock + dur; t.state = "idle"; t.tgtId = null; t.slamT = 0;
   floater(t.pos, "💤 잠들었어요 · asleep", "#9ec8ff", false, t.model.height + .3); SFX.heal();
@@ -2221,6 +2274,7 @@ $("dnNow").onclick = () => { clearInterval(downedT); respawnNow(); };
 
 // ---- aliens (decisions 3, 8, 16): rare, dangerous; the caster charges an orb you must dodge or silence ----------
 function applySilence(t, dur) {
+  ccFx(t, "silence");
   if (NET.role === "guest") netSend({ t: "silence", mid: t.id, dur });
   t.silencedUntil = clock + dur; t.charging = 0;
   if (t.shieldUntil > clock) { t.shieldUntil = 0; floater(t.pos, "방어막이 깨졌어요! · shield broken", "#ffd23d", false, t.model.height + 1); }
@@ -2244,8 +2298,10 @@ function fireOrb(m) {
   }
 }
 function spawnOrb(from, vel, dmg, src) {
-  const mesh = new THREE.Mesh(orbGeo, orbMat); mesh.position.copy(from); scene.add(mesh);
-  projectiles.push({ mesh, vel, life: 3, hostile: true, dmg, src: src || { def: MONS.alien_caster }, r: 1 });
+  const mesh = new THREE.Mesh(orbGeo, orbMat); mesh.position.copy(from); mesh.scale.setScalar(2.2); scene.add(mesh);
+  mesh.add(new THREE.Mesh(new THREE.SphereGeometry(.5, 12, 10), new THREE.MeshBasicMaterial({ color: "#ff6aff", transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })));
+  FX.burst(from, { n: 16, color: ["#c08aff", "#ff6aff", "#ffffff"], speed: 4, size: .14, life: .5, grav: 0, y: 0, shape: "spark" });
+  projectiles.push({ mesh, vel, life: 3, hostile: true, dmg, src: src || { def: MONS.alien_caster }, r: 1, trail: ["#c08aff", "#ff6aff", "#ffffff"] });
   SFX.orb();
 }
 // a silenced caster can't cast: it walks up and hits you with its hands instead
@@ -2871,8 +2927,9 @@ function applyCC(m, kind, dur, by = myId()) {
   if (kind === "stun") { m.charging = 0; m.slamT = 0; }
   if (kind === "taunt") { m.tgtId = by; m.state = "chase"; m.feebleUntil = clock + dur; }
   floater(m.pos, CC_TEXT[kind], "#ffd23d", true, m.model.height);
+  ccFx(m, kind);
 }
-function hitT(m, dmg) { if (m.dead) return; if (dealDamage(m, dmg) !== false) floater(m.pos, String(dmg), "#fff", false, m.model.height); }
+function hitT(m, dmg) { if (m.dead) return; if (dealDamage(m, dmg) !== false) { FX.impact(m.pos, FX.CLASS_COL[S.cls] || FX.CLASS_COL.mudang, .8); dmgNum(m, dmg, false, false, .8); } }
 const dots = [];
 function addDot(t, total, dur) { if (total <= 0) { floater(t.pos, "면역 · immune", "#aaa", true, t.model.height); return; } dots.push({ t, per: Math.max(1, Math.round(total / dur)), left: dur, next: 1 }); }
 function hurtAlly(range) {
@@ -2928,7 +2985,7 @@ function extraFx(sk, t, calc, share) {
 }
 const rains = [];
 function skillTick(dt) {
-  for (let i = dots.length - 1; i >= 0; i--) { const d = dots[i]; if (d.t.dead) { dots.splice(i, 1); continue; } if ((d.next -= dt) > 0) continue; d.next += 1; d.left--; if (dealDamage(d.t, d.per) !== false) floater(d.t.pos, `-${d.per} 🔥`, "#ff8a3a", true, d.t.model.height); if (d.left <= 0) dots.splice(i, 1); }
+  for (let i = dots.length - 1; i >= 0; i--) { const d = dots[i]; if (d.t.dead) { dots.splice(i, 1); continue; } if ((d.next -= dt) > 0) continue; d.next += 1; d.left--; FX.burst(d.t.pos, { n: 8, color: FX.EL_COL.fire, speed: 2.5, up: 1.5, size: .14, life: .6, grav: -2 }); if (dealDamage(d.t, d.per) !== false) floater(d.t.pos, `-${d.per} 🔥`, "#ff8a3a", true, d.t.model.height); if (d.left <= 0) dots.splice(i, 1); }
   for (let i = rains.length - 1; i >= 0; i--) { const r = rains[i]; if ((r.next -= dt) > 0) continue; r.next = 1; r.waves--; for (const m of monsters) if (!m.dead && m.zone === player.zone && dist2(m.pos, r.at) < r.r) hitT(m, r.calc(m).dmg); SFX.shotGood(); if (r.waves <= 0) rains.splice(i, 1); }
   if (player.storm) { const s = player.storm; if (clock > s.until || player.dead) player.storm = null; else if ((s.next -= dt) <= 0) { s.next = 1; for (const m of monsters) if (!m.dead && m.zone === player.zone && dist2(m.pos, player.pos) < s.r) hitT(m, s.calc(m).dmg); player.attackAnim = 1; SFX.dash(); } }
   if (player.hot) { if (clock > player.hot.until) player.hot = null; else player.hp = Math.min(player.maxHp, player.hp + player.maxHp * player.hot.v * dt); }
@@ -2999,15 +3056,15 @@ const lines = [];
 function makeLine(x, z, ang, len, w, tele, dmg, lv) {
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, len), lineMat); mesh.rotation.x = -Math.PI / 2; mesh.rotation.z = ang;
   mesh.position.set(x + Math.sin(ang) * len / 2, .06, z + Math.cos(ang) * len / 2); scene.add(mesh);
-  lines.push({ mesh, x, z, ang, len, w, t: 0, tele, dmg });
+  lines.push({ mesh, x, z, ang, len, w, t: 0, tele, dmg, lv });
 }
 function lineTick(dt) {
   for (let i = lines.length - 1; i >= 0; i--) {
     const l = lines[i]; l.t += dt; l.mesh.material.opacity = .2 + .4 * Math.min(1, l.t / l.tele);
     if (l.t >= l.tele && !l.hit) {
-      l.hit = true; SFX.slam();
+      l.hit = true; SFX.slam(); lineFx(l);
       const dx = player.pos.x - l.x, dz = player.pos.z - l.z, along = dx * Math.sin(l.ang) + dz * Math.cos(l.ang), side = Math.abs(dx * Math.cos(l.ang) - dz * Math.sin(l.ang));
-      if (!player.dead && isDun(player.zone) && along > 0 && along < l.len && side < l.w / 2) hurt(l.dmg, { lvl: lv }); else if (along > -2 && along < l.len + 2 && side < l.w + 3) floater(player.pos, "피했다! · dodged", "#9be6a5", true);
+      if (!player.dead && isDun(player.zone) && along > 0 && along < l.len && side < l.w / 2) hurt(l.dmg, { lvl: l.lv }); else if (along > -2 && along < l.len + 2 && side < l.w + 3) floater(player.pos, "피했다! · dodged", "#9be6a5", true);
     }
     if (l.t > l.tele + .3) { scene.remove(l.mesh); lines.splice(i, 1); }
   }
@@ -3332,7 +3389,8 @@ function burstAt(m) {
   makeRing(at, b.radius, b.tele, "#5fd0b0");
   netSend({ t: "sl", x: at.x, z: at.z, r: b.radius, tele: b.tele, dmg, lv });
   if (player.zone === zone && dist2(player.pos, at) < b.radius + 3) floater(at, "깨져요! 피하세요 · it's bursting — step away!", "#9fe0c8", false, 2.4);
-  setTimeout(() => { SFX.slam(); if (!player.dead && player.zone === zone && dist2(player.pos, at) < b.radius) hurt(dmg, { lvl: lv }); }, b.tele * 1000);
+  FX.burst(at, { n: 12, color: ["#8fc4b0", "#5f9a86"], speed: 3, size: .16, life: .6, additive: false });
+  setTimeout(() => { SFX.slam(); FX.burst(at, { n: 50, color: ["#8fc4b0", "#5f9a86", "#e8fff4"], speed: 12, up: .6, size: .22, life: .9, grav: 12, additive: false, flat: true, y: .8 }); FX.ring(at, { color: "#9fe0c8", r: b.radius * 1.2 }); FX.shake(.3); if (!player.dead && player.zone === zone && dist2(player.pos, at) < b.radius) hurt(dmg, { lvl: lv }); }, b.tele * 1000);
 }
 // 선사관: the painted hunters throw spears across the room
 let caveT = 3, caveTold = false;
@@ -3545,6 +3603,11 @@ function musicMood() {
   return clock - lastFight < 4 ? "fight" : night > .5 ? "night" : "day";
 }
 function render(dt) {
+  FX.fxTick(dt);
+  for (const m of monsters) if (m.punch > 0) {   // a hit squashes the monster for a moment
+    m.punch = Math.max(0, m.punch - dt * 7); const b = m.baseScale * (1 + (m.grow || 0)), k = m.punch;
+    if (k > 0) m.model.root.scale.set(b * (1 + .16 * k), b * (1 - .2 * k), b * (1 + .16 * k)); else m.model.root.scale.setScalar(b);
+  }
   setMusicMood(musicMood()); musicTick(dt); memoryTick(dt);
   if (started) {
     const p = player.pos, m = player.model.root;
@@ -3565,6 +3628,7 @@ function render(dt) {
     else if (player.zone === "street") { camera.position.x = Math.min(STREET.maxX + 1, Math.max(STREET.minX - 1, camera.position.x)); camera.position.z = Math.min(STREET.maxZ + 1, Math.max(STREET.minZ - 1, camera.position.z)); }
     else if (player.zone === "station") { camera.position.x = Math.min(STATION.x + 17, Math.max(STATION.x - 17, camera.position.x)); camera.position.z = Math.min(STATION.z + 9.4, Math.max(STATION.z - 9.4, camera.position.z)); camera.position.y = Math.min(4.6, camera.position.y); }
     camera.lookAt(p.x, 1.6, p.z);
+    camera.position.x += FX.shakeState.x; camera.position.y += FX.shakeState.y; camera.position.z += FX.shakeState.z;
     if (player.zone === "street") world.occlude(camera.position, p);
     // pillars between the camera and you turn see-through
     for (const o of world.npcSpots.occluders) {
@@ -3590,7 +3654,7 @@ function render(dt) {
 }
 function loop(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
-  step(dt); render(dt);
+  step(performance.now() < FX.hitStop.until ? dt * .06 : dt); render(dt);
   requestAnimationFrame(loop);
 }
 
@@ -3628,7 +3692,7 @@ window.__seoul = {
   tp(x, z) { player.pos.set(x, 0, z); },
   spawn(kind, lvl, x, z, zone = "street") { spawnMonster({ kind, lvl, x, z, mon: null, zone }); return monsters[monsters.length - 1]; },
   wordCounts: () => wordCounts(), drawFriends: () => drawFriends(),
-  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
+  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
   get memo() { return memo; }, heart: n => addHeart(n), get comp() { return comp; }, get fishing() { return fishing; }, flip: i => flipStone(i), upgrade: () => upgradeMenu(npcs.find(n => n.kind === "smith")),
   talk: kind => talkTo(npcs.find(n => n.kind === kind)), get dialog() { return dialog; }, opt(i) { $("dOpts").children[i]?.click(); }, get quiz() { return quiz; }, quizAnswer(right = true) { if (quiz) answerQuiz(right ? quiz.opts.indexOf(quiz.answer) : (quiz.opts.indexOf(quiz.answer) + 1) % quiz.opts.length); },
 };

@@ -479,3 +479,12 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .ivSlot .gi,.ivItem .gi{position:absolute;right:10px;top:10px;width:44px;height:44px}
 .gi.rw{width:40px;height:40px;display:block;margin:auto}.gi.rw.lg{width:48px;height:48px}
 .rwHead{font:700 13px var(--display);letter-spacing:.06em;opacity:.75;text-align:left;margin-top:6px}
+
+/* damage numbers (Danny 2026-10-17: over the top) */
+.fl.dmg{color:#fff;font:900 30px var(--display);-webkit-text-stroke:1.5px rgba(0,0,0,.75);text-shadow:0 3px 0 rgba(0,0,0,.5),0 0 14px rgba(255,255,255,.35);animation:dmgPop 1.25s ease-out forwards}
+.fl.dmg.huge{font-size:42px}
+.fl.dmg.weak{color:#ffd23d!important;font-size:40px;text-shadow:0 3px 0 rgba(0,0,0,.5),0 0 22px rgba(255,190,40,.9)}
+.fl.dmg.weak.huge{font-size:52px}
+.fl.dmg.imm{color:#aaa;font-size:22px}
+@keyframes dmgPop{0%{transform:translate(-50%,0) scale(2.2);opacity:0}10%{transform:translate(-50%,-6px) scale(1.25);opacity:1}25%{transform:translate(-50%,-14px) scale(1)}100%{transform:translate(-50%,-90px) scale(.85);opacity:0}}
+@media (prefers-reduced-motion:reduce){.fl.dmg{animation-duration:.01s}}
