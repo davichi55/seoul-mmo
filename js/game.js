@@ -231,6 +231,7 @@ addEventListener("keydown", e => {
   const toggles = { char: "charView", deck: "deckView", inv: "invView", quests: "questView", map: "mapView", ach: "achView", book: "bookView", friends: "friendsView" };
   if (started && act && toggles[act] && !$(toggles[act]).hidden) { showScreen(null); paused = false; return; }
   if (order && started) { if (/^[1-9]$/.test(e.key)) orderPick(+e.key - 1); else if (k === "backspace") orderUndo(); return; }
+  if (started && !$("rewardView").hidden && (k === "enter" || k === " " || k === "1")) { e.preventDefault(); closeReward(); return; }   /* the reward window: Enter / Space / 1 = OK */
   if (started && quiz) { const n = +e.key; if (n >= 1 && n <= 4) { e.preventDefault(); answerQuiz(n - 1); } return; }
   if (started && dialog) { const n = +e.key; if (n >= 1 && n <= 9) { const b = $("dOpts").children[n - 1]; if (b) b.click(); } return; }
   if (!started || paused) return;
