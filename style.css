@@ -664,3 +664,6 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 #mmGrid.hint .stone.en:not(.up):not(.done){background:radial-gradient(circle at 35% 30%,#7aa8e8,#24407a);border-color:#2f6db3}
 #dvAuto{justify-self:start;margin:2px 0 8px;font-weight:700;background:#3a2f10;border:1px solid #e0b040;color:#ffe08a}
 #dvAuto:disabled{opacity:.55;border-color:#666;color:#bbb;background:#2a2620}
+
+/* character screen: the class look switch (2026-10-19) */
+.cvLook{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 4px}.cvLook>span{color:#b8aec4;font-size:14px;margin-right:4px}.cvLook small{opacity:.7}

@@ -5,7 +5,8 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import { toon, outline } from "./world.js?v=mvdxix7r";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
+import { toon, outline } from "./world.js?v=mve02afd";
 
 const BLACK = "#16141a", INK = "#232028", WINE = "#6a1a2a", GOLD = "#c9a43a", SILVER = "#c8ccd6";
 // hair: what the original hair material is (recoloured) or hides (hats, hoods, the mohawk: then `cap` builds a new crown);
@@ -40,9 +41,16 @@ export const CHARS = {
 
 const lib = {};
 let ready = false;
+// the men (Ultimate Modular Men, same rig and animations) live in assets/quaternius/men/ and are named "men/<file>"; their clips are
+// called "CharacterArmature|Idle", so the prefix is cut off to match the women
+const loader = new GLTFLoader();
+export async function loadBase(b, base = "assets/quaternius/") {
+  if (!lib[b]) { const g = await loader.loadAsync(`${base}${b}.glb`); for (const a of g.animations) a.name = a.name.replace(/^.*|/, ""); lib[b] = g; }
+  return lib[b];
+}
 export async function loadWomen(base = "assets/quaternius/") {
-  const loader = new GLTFLoader(), need = [...new Set(Object.values(CHARS).map(c => c.base))];
-  try { await Promise.all(need.map(async b => { lib[b] = await loader.loadAsync(`${base}${b}.glb`); })); ready = true; }
+  const need = [...new Set(Object.values(CHARS).map(c => c.base))];
+  try { await Promise.all(need.map(b => loadBase(b, base))); ready = true; }
   catch (e) { console.warn("women models not loaded, using KayKit", e); }
   return ready;
 }
@@ -50,20 +58,21 @@ export const womenReady = () => ready;
 
 function outlineMat(t) {   // the same skinned outline as the KayKit characters
   const m = new THREE.MeshBasicMaterial({ color: "#2a1f17", side: THREE.BackSide });
-  m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>\n transformed += normalize(normal) * ${t.toFixed(4)};`); };
+  m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>\n transformed += normalize(normal) * ${t.toFixed(6)};`); };
+  m.customProgramCacheKey = () => "outline" + t.toFixed(6);   // otherwise three reuses the first outline shader it compiled, whatever its thickness (2026-10-18)
   return m;
 }
 const partOf = o => ((o.parent && o.parent.name) || o.name).replace(/^[A-Za-z]+_/, "");
 
 // hair, (수아's) fox ears + tails + bag: built in the model's own units and hung on its bones so they move with the animations
-function addExtras(scene, c) {
+function addExtras(scene, c, src) {
   scene.updateMatrixWorld(true);
   const bone = n => scene.getObjectByName(n), wp = n => bone(n).getWorldPosition(new THREE.Vector3());
   const box = new THREE.Box3(); scene.traverse(o => { if (o.isSkinnedMesh && o.visible) box.expandByObject(o); });
   const neck = wp("Neck"), chest = wp("Chest"), hips = wp("Hips"), head = wp("Head");
   const H = neck.y * 1.16, hr = H * .068;   // the body height from the neck, so hats and mohawks don't count
   const headC = new THREE.Vector3(head.x, neck.y + hr * 1.9, head.z), top = headC.y + hr * 1.05;
-  const h = c.hair, hairM = toon(h.color, { side: THREE.DoubleSide }), ol = H * .006;
+  const h = c.hair || { len: 0 }, hairM = toon(h.color || "#222", { side: THREE.DoubleSide }), ol = H * .006;
   const hang = (mesh, b, line = true) => { if (line && mesh.isMesh) outline(mesh, ol); scene.add(mesh); mesh.updateMatrixWorld(true); bone(b).attach(mesh); };
   if (h.cap) {   // a new crown where a hat, hood or mohawk was
     const cap = new THREE.Mesh(new THREE.SphereGeometry(hr * 1.12, 20, 12, 0, Math.PI * 2, 0, Math.PI * .56), hairM);
@@ -89,6 +98,7 @@ function addExtras(scene, c) {
     const side = h.bangs === "side", g = new THREE.CylinderGeometry(hr * 1.1, hr * 1.16, hr * (side ? .5 : .55), 16, 1, true, -1.05, 2.1);
     const b = new THREE.Mesh(g, hairM); b.position.set(headC.x, headC.y + hr * .52, headC.z + hr * .02); if (side) b.rotation.set(0, -.2, .3); hang(b, "Head");
   }
+  if (c.weapon) addWeapon(scene, c.weapon, H, ol, hang, wp, src);
   if (!c.fox) return H;
   for (const s of [-1, 1]) {   // 수아: fox ears
     const e = new THREE.Mesh(new THREE.ConeGeometry(hr * .36, hr * .85, 4), toon(h.color)); e.position.set(headC.x + s * hr * .55, top + hr * .15, headC.z - hr * .05); e.rotation.set(0, Math.PI / 4, -s * .32); hang(e, "Head");
@@ -109,26 +119,91 @@ function addExtras(scene, c) {
   return H;
 }
 
-export function makeWoman(key, height = 2.1) {
-  const c = CHARS[key], src = lib[c.base];
+// the class weapons (2026-10-18): 검 for the 검객, a Korean horn bow (각궁) for the 궁수, a 방울 bell rattle for the 무당. Built along the
+// line across the knuckles (pinky -> index), so they sit in the fist in any rest pose, and hung on the wrist so they follow the hand
+function addWeapon(scene, kind, H, ol, hang, wp, src) {
+  // placed in the idle pose (the two packs' hand bones point different ways in their rest poses): bow and bell straight up, the sword
+  // up and a little forward; then hung on the wrist, so every other animation carries it along
+  const saved = []; scene.traverse(o => { if (o.isBone) saved.push([o, o.position.clone(), o.quaternion.clone(), o.scale.clone()]); });
+  const mixer = new THREE.AnimationMixer(scene), clip = THREE.AnimationClip.findByName(src.animations, "Idle");
+  if (clip) { mixer.clipAction(clip).play(); mixer.update(.4); } scene.updateMatrixWorld(true);
+  const side = kind === "bow" ? "L" : "R", idx = wp("Index1" + side), pk = wp("Pinky1" + side), wr = wp("Wrist" + side);   // three drops the dots: Wrist.R -> WristR
+  const axis = kind === "sword" ? new THREE.Vector3(0, 1, .45).normalize() : new THREE.Vector3(0, 1, 0);
+  const grip = idx.clone().add(pk).add(wr).multiplyScalar(1 / 3), Y = new THREE.Vector3(0, 1, 0);
+  const g = new THREE.Group(), add = (geo, col, x, y, z, line = true) => { const m = new THREE.Mesh(geo, toon(col)); m.position.set(x, y, z); g.add(m); if (line) outline(m, ol); return m; };
+  if (kind === "sword") {
+    add(new THREE.CylinderGeometry(H * .012, H * .012, H * .1, 8), "#3a1a22", 0, 0, 0);                       // the grip
+    add(new THREE.BoxGeometry(H * .07, H * .012, H * .03), "#c9a43a", 0, H * .055, 0);                       // the guard
+    const bl = add(new THREE.BoxGeometry(H * .022, H * .4, H * .006), "#dfe4ea", 0, H * .26, 0); bl.scale.x = 1;   // the blade
+    add(new THREE.ConeGeometry(H * .0156, H * .05, 4), "#dfe4ea", 0, H * .485, 0, false).scale.z = .3;
+  } else if (kind === "bow") {
+    const L = H * .34, pts = [];   // a recurve: bends back towards the archer, the tips flick forward again
+    for (let i = 0; i <= 24; i++) { const t = i / 12 - 1, a = Math.abs(t); pts.push(new THREE.Vector3(0, t * L, -H * .07 * (1 - t * t) + (a > .8 ? H * .05 * ((a - .8) / .2) ** 2 : 0))); }
+    add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 40, H * .009, 6), "#5a2e1a", 0, 0, 0);
+    add(new THREE.CylinderGeometry(H * .014, H * .014, H * .08, 8), "#c9a43a", 0, 0, -H * .07, false);         // the grip wrap
+    add(new THREE.CylinderGeometry(H * .0016, H * .0016, L * 1.9, 4), "#f2efe6", 0, 0, -H * .005, false);     // the string
+  } else if (kind === "bell") {
+    add(new THREE.CylinderGeometry(H * .01, H * .012, H * .16, 8), "#7a1f2b", 0, 0, 0);                       // the handle
+    for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, r = i ? H * .028 : 0; add(new THREE.SphereGeometry(H * .018, 10, 8), "#d8b040", Math.cos(a) * r, H * (.1 + (i ? 0 : .02)) + (i % 2) * H * .02, Math.sin(a) * r); }
+    ["#c8402f", "#2f6db3", "#e0b020", "#f2efe6", "#2f8a4a"].forEach((c, i) => { const r = add(new THREE.BoxGeometry(H * .012, H * .16, H * .002), c, (i - 2) * H * .01, -H * .15, 0, false); r.rotation.z = (i - 2) * .12; });   // 오방색 ribbons
+  }
+  g.position.copy(grip); g.quaternion.setFromUnitVectors(Y, axis); hang(g, "Wrist" + side, false);
+  mixer.stopAllAction(); mixer.uncacheRoot(scene); for (const [o, p, q, sc] of saved) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(sc); } scene.updateMatrixWorld(true);
+}
+// all the coloured parts of one person in ONE skinned mesh with the colours per vertex (Danny 2026-10-19 asked what the new models cost:
+// a man is 10-17 coloured parts, each drawn for itself, its outline and its shadow; merged he is one). Only when the parts share one
+// bind pose, otherwise they stay as they are.
+function mergeParts(skinned) {
+  const sk = skinned.filter(o => o.isSkinnedMesh && o.visible), rest = skinned.filter(o => !sk.includes(o));
+  if (sk.length < 2) return skinned;
+  const a = sk[0];   // a skinned part is placed by its bones, not by its parent, so parts merge when they share the bind pose
+  if (!sk.every(o => o.bindMode === "attached" && o.bindMatrix.equals(a.bindMatrix))) return skinned;
+  const bones = [], idx = new Map(), inv = [];
+  for (const o of sk) o.skeleton.bones.forEach((b, i) => { if (!idx.has(b)) { idx.set(b, bones.length); bones.push(b); inv.push(o.skeleton.boneInverses[i].clone()); } });
+  const indexed = sk.every(o => o.geometry.index);
+  const geos = sk.map(o => {
+    let g = o.geometry.clone(); if (!indexed && g.index) g = g.toNonIndexed();
+    for (const n of Object.keys(g.attributes)) if (!["position", "normal", "skinIndex", "skinWeight"].includes(n)) g.deleteAttribute(n);
+    const n = g.attributes.position.count, col = new Float32Array(n * 3), c = o.material.color;
+    for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+    g.setAttribute("color", new THREE.BufferAttribute(col, 3));
+    const si = g.attributes.skinIndex, out = new Uint16Array(si.count * 4);
+    for (let i = 0; i < si.count; i++) for (let j = 0; j < 4; j++) out[i * 4 + j] = idx.get(o.skeleton.bones[si.getComponent(i, j)]) ?? 0;
+    g.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(out, 4));
+    g.morphAttributes = {}; return g;
+  });
+  const merged = mergeGeometries(geos, false); if (!merged) return skinned;
+  const m = new THREE.SkinnedMesh(merged, toon("#ffffff", { vertexColors: true, side: THREE.DoubleSide }));
+  m.position.copy(a.position); m.quaternion.copy(a.quaternion); m.scale.copy(a.scale); m.castShadow = true; m.frustumCulled = false; m.name = "merged";
+  a.parent.add(m); m.bind(new THREE.Skeleton(bones, inv), a.bindMatrix);
+  for (const o of sk) o.parent.remove(o);
+  return [m, ...rest];
+}
+export const makeWoman = (key, height = 2.1) => makePerson(CHARS[key], height);
+// any body from either pack, dressed by a description like the ones in CHARS (also used by the model comparison page)
+export function makePerson(c, height = 2.1) {
+  const src = lib[c.base];
   const scene = SkeletonUtils.clone(src.scene);
   const root = new THREE.Group(), inner = new THREE.Group(), skinned = [];
   for (const n of c.hideNodes || []) { const o = scene.getObjectByName(n); if (o) o.visible = false; }
-  const hairMats = new Set(c.hair.mat || []), hideMats = new Set(c.hair.hide || []);
+  const hairMats = new Set(c.hair?.mat || []), hideMats = new Set(c.hair?.hide || []), col0 = c.col || {};
   scene.traverse(o => {
     if (!o.isMesh || !o.visible) return;
     const part = partOf(o), m = o.material.name, key2 = part + "/" + m;
     if (hideMats.has(key2)) { o.visible = false; return; }
-    const col = hairMats.has(key2) ? c.hair.color : c.col[key2] ?? c.col[m] ?? "#" + o.material.color.getHexString();
+    const col = hairMats.has(key2) ? c.hair.color : col0[key2] ?? col0[m] ?? "#" + o.material.color.getHexString();
     o.material = toon(col, { side: THREE.DoubleSide }); o.castShadow = true; o.frustumCulled = false; skinned.push(o);
   });
-  const om = outlineMat(.012);
+  if (!c.noMerge) skinned.splice(0, skinned.length, ...mergeParts(skinned));
+  // the outline thickness is in the mesh's own units: the women's meshes are ~1.84 tall, the men's are stored 100x smaller
+  let gy = 0; for (const o of skinned) { o.geometry.computeBoundingBox(); gy = Math.max(gy, o.geometry.boundingBox.max.y - o.geometry.boundingBox.min.y); }
+  const om = outlineMat(.012 * Math.min(1, (gy || 1.84) / 1.84));
   for (const o of skinned) {
     const l = o.isSkinnedMesh ? new THREE.SkinnedMesh(o.geometry, om) : new THREE.Mesh(o.geometry, om); if (o.isSkinnedMesh) l.bind(o.skeleton, o.bindMatrix);
     l.position.copy(o.position); l.quaternion.copy(o.quaternion); l.scale.copy(o.scale); l.frustumCulled = false; l.raycast = () => {};
     o.parent.add(l);
   }
-  const H = addExtras(scene, c);
+  const H = addExtras(scene, c, src);
   inner.add(scene); root.add(inner);
   inner.rotation.y = Math.PI;                    // the model faces +z, our characters face -z
   inner.scale.setScalar(height / H);
@@ -141,15 +216,21 @@ export function makeWoman(key, height = 2.1) {
     a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.setEffectiveWeight(1); a.fadeIn(fade).play(); if (cur) cur.fadeOut(fade); oneShot = a;
     if (n !== "Death") setTimeout(() => { if (oneShot === a) { a.fadeOut(.15); oneShot = null; if (cur) cur.fadeIn(.15); } }, a.getClip().duration * 900);
   }
-  play("Idle", 0); mixer.update(Math.random() * 2);
+  // which clip does what (the player classes swing, aim or shake their weapon; shopkeepers now and then do something with their hands)
+  const A = { idle: "Idle", attack: "Interact", hit: "HitRecieve", cast: null, busy: null, ...(c.anims || {}) };
+  let busyT = 4 + Math.random() * 6;
+  play(A.idle, 0); mixer.update(Math.random() * 2);
   return {
     root, height: height + .35,
     emote(name) { once(name === "wave" ? "Wave" : "Interact", .2); },
-    trigger(evt) { if (evt === "hit" && !deadPlayed) once("HitRecieve"); else if (evt === "attack") once("Interact"); },
+    trigger(evt) { if (evt === "hit" && !deadPlayed) once(A.hit); else if (evt === "attack") once(A.attack); },
     anim(dt, s = {}) {
       if (s.dead) { if (!deadPlayed) { deadPlayed = true; once("Death"); } mixer.update(dt); return; }
       if (deadPlayed) { deadPlayed = false; act("Death")?.stop(); cur = null; }
-      play(s.moving ? (s.walk ? "Walk" : "Run") : "Idle");
+      if (s.moving) play(s.walk ? "Walk" : "Run");
+      else if (s.casting && A.cast) play(A.cast);
+      else if (A.busy && (busyT -= dt) < 0) { busyT = 6 + Math.random() * 8; once(A.busy, .3); play(A.idle); }
+      else play(A.idle);
       mixer.update(dt);
     },
   };

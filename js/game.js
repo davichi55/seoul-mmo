@@ -6,14 +6,18 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdxix7r";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdxix7r";
-import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdxix7r";
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdxix7r";
-import * as FX from "./fx.js?v=mvdxix7r";
-import { LINES } from "./lines.js?v=mvdxix7r";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdxix7r";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdxix7r";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mve02afd";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mve02afd";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mve02afd";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mve02afd";
+// Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
+const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
+const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mve02afd";
+import * as FX from "./fx.js?v=mve02afd";
+import { LINES } from "./lines.js?v=mve02afd";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mve02afd";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mve02afd";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -804,13 +808,13 @@ function placeNPCs() {
   const sp = world.npcSpots;
   sp.trader = { x: STATION.x + 5, z: STATION.z - 8.6, face: 0 };
   for (const kind of ["grandma", "smith", "stranger", "guard", "trader", "driver"]) {
-    const model = npcWoman(kind) || (kayReady() && (kind === "smith" || kind === "stranger" || kind === "trader") ? makeKay(kind) : makeNPC(kind === "trader" ? "sitter" : kind === "driver" ? "guard" : kind)), at = sp[kind], n = { isNpc: true, kind, model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
+    const model = npcWoman(kind) || (kind === "guard" || kind === "driver" ? makeMan("guard") : kind === "grandma" ? makeMan("grandma") : null) || (kayReady() && (kind === "smith" || kind === "stranger" || kind === "trader") ? makeKay(kind) : makeNPC(kind === "trader" ? "sitter" : kind === "driver" ? "guard" : kind)), at = sp[kind], n = { isNpc: true, kind, model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = at.face; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; n.plate.textContent = NPC_DEF[kind]; $("plates").appendChild(n.plate);
     npcs.push(n);
   }
   for (const kind of ["minsu", "jieun", "gyeongbi", "teacher", "sua", "clerk"]) {
-    const at = STREET_NPCS[kind], model = kind === "gyeongbi" ? makeNPC("guard") : npcWoman(kind) || (kayReady() ? makeKay(kind) : makeNPC("sitter")), n = { isNpc: true, kind, zone: "street", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
+    const at = STREET_NPCS[kind], model = kind === "gyeongbi" ? (makeMan("guard") || makeNPC("guard")) : npcWoman(kind) || (kayReady() ? makeKay(kind) : makeNPC("sitter")), n = { isNpc: true, kind, zone: "street", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = at.face; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); colliders_street_push(n.pos);
@@ -821,7 +825,7 @@ function placeNPCs() {
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); world.colliders.yeouido.push({ x: at.x, z: at.z, r: .6 });
   }
-  for (const [kind, at, mdl] of [["gangsa", YEOUIDO.npcTeacher, () => kayReady() ? makeKay("gangsa") : makeNPC("sitter")], ["cupbap", YEOUIDO.npcCupbap, () => makeNPC("grandma")], ["handong", YEOUIDO.npcHandong, () => kayReady() ? makeKay("handong") : makeNPC("sitter")], ["dealer", MARKET.dealer, () => kayReady() ? makeKay("dealer") : makeNPC("sitter")]]) {
+  for (const [kind, at, mdl] of [["gangsa", YEOUIDO.npcTeacher, () => kayReady() ? makeKay("gangsa") : makeNPC("sitter")], ["cupbap", YEOUIDO.npcCupbap, () => (makeMan("grandma") || makeNPC("grandma"))], ["handong", YEOUIDO.npcHandong, () => kayReady() ? makeKay("handong") : makeNPC("sitter")], ["dealer", MARKET.dealer, () => kayReady() ? makeKay("dealer") : makeNPC("sitter")]]) {
     const model = npcWoman(kind) || mdl(), n = { isNpc: true, kind, zone: kind === "dealer" ? "market" : "yeouido", model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = Math.PI; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
@@ -833,7 +837,7 @@ function placeNPCs() {
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); if (c.at.zone === "street") colliders_street_push(n.pos); else world.colliders.yeouido.push({ x: c.at.x, z: c.at.z, r: .6 });
   }
-  for (const [kind, at, zone, mdl] of [["mike", MIKE_SPOTS[0], MIKE_SPOTS[0].zone, () => kayReady() ? makeKay("mike") : makeNPC("sitter")], ["granny", { x: 5, z: 121 }, "street", () => makeNPC("grandma")]]) {
+  for (const [kind, at, zone, mdl] of [["mike", MIKE_SPOTS[0], MIKE_SPOTS[0].zone, () => kayReady() ? makeKay("mike") : makeNPC("sitter")], ["granny", { x: 5, z: 121 }, "street", () => (makeMan("grandma") || makeNPC("grandma"))]]) {
     const model = mdl(), n = { isNpc: true, kind, zone, model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
     if (kind === "mike") { const bag = new THREE.Mesh(new THREE.BoxGeometry(.6, .8, .35), toon("#c8402f")); bag.position.set(0, 1.4, .32); bag.castShadow = true; model.root.add(bag); }
     model.root.position.copy(n.pos); model.root.rotation.y = Math.PI; model.root.userData.ent = n; scene.add(model.root);
@@ -1409,6 +1413,9 @@ function openCharView() {
   const cd = classDef(), b = bonus();
   const hit = BASE_ATTACK / CARDS_PER_ATTACK * cd.dmg * weaponMult() * lvlDmg() * (1 + b.dmg + gearStat("dmg")) * (buffOn("dmg") ? 1.05 : 1) * (S.hunger <= 0 ? HUNGRY_MULT : 1);
   $("cvTitle").textContent = `${cd.ko} · ${cd.en} · Lv ${S.level}`;
+  const looks = LOOKS[S.cls] || [];
+  $("cvLook").innerHTML = peopleReady() && looks.length ? `<span>외모 · look</span>` + looks.map((l, i) => `<button class="chip" data-i="${i}" aria-pressed="${(S.look || 0) === i}">${i + 1} · ${l.ko} <small>${l.en}</small></button>`).join("") : "";
+  $("cvLook").querySelectorAll("button").forEach(b => b.onclick = () => { S.look = +b.dataset.i; save(); setPlayerModel(); SFX.select(); openCharView(); });
   $("cvXp").innerHTML = S.level >= MAX_LEVEL ? "최고 레벨 · max level" : `<div class="bar xp xpbig"><i style="width:${S.xp / xpNeed(S.level) * 100}%"></i><span>XP ${S.xp} / ${xpNeed(S.level)} · 다음 레벨까지 ${xpNeed(S.level) - S.xp}</span></div>`;
   const minsLeft = k => Math.max(0, Math.round((S.buffs[k] - S.time) / GAME_MIN_PER_SEC / 60));
   const food = Object.keys(BUFFS).filter(buffOn).map(k => `${BUFFS[k].ko} (${minsLeft(k)} min)`).join("<br>") || "없음 · none";
@@ -1487,10 +1494,11 @@ $("actFood").onclick = () => eatGimbap();
 $("actDeck").onclick = () => openDeckView();
 
 // ---- start --------------------------------------------------------------------------------------------
+function setPlayerModel() { if (player.model) scene.remove(player.model.root); player.model = classModel(S.cls, S.look); scene.add(player.model.root); }
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
   ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); syncDealer(); setTimeout(grantMissedSets, 3000); if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) { examPending = true; drawExamBtn(); } setTimeout(autoCreditBossQuests, 3500); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
-  player.model = kayReady() ? makeKay(S.cls) : makeHero(S.cls); scene.add(player.model.root);
+  setPlayerModel();
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
 }
@@ -2369,16 +2377,17 @@ function netLeave(quiet) {
   if (!quiet) { netStatus("혼자 · solo"); drawCoop(); }
 }
 function netStatus(t) { NET.status = t; if (!$("menu").hidden) drawCoop(); }
-const myState = () => ({ nm: S.name || classDef().ko, cls: S.cls, lvl: S.level, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), yaw: +player.yaw.toFixed(2), mv: player.moving ? 1 : 0, zone: player.zone, hp: Math.round(player.hp), mx: player.maxHp, dead: player.dead ? 1 : 0 });
+const myState = () => ({ nm: S.name || classDef().ko, cls: S.cls, lk: S.look || 0, lvl: S.level, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), yaw: +player.yaw.toFixed(2), mv: player.moving ? 1 : 0, zone: player.zone, hp: Math.round(player.hp), mx: player.maxHp, dead: player.dead ? 1 : 0 });
 function upsertRemote(id, st) {
   if (id === myId()) return;
   let r = remotes.get(id);
   if (!r) {
-    const model = kayReady() ? makeKay(st.cls) : makeHero(st.cls); scene.add(model.root);
+    const model = classModel(st.cls, st.lk); scene.add(model.root);
     const plate = document.createElement("div"); plate.className = "plate ally"; $("plates").appendChild(plate);
-    r = { id, model, plate, pos: new THREE.Vector3(st.x, 0, st.z), tpos: new THREE.Vector3(st.x, 0, st.z), yaw: st.yaw };
+    r = { id, model, plate, pos: new THREE.Vector3(st.x, 0, st.z), tpos: new THREE.Vector3(st.x, 0, st.z), yaw: st.yaw, lk: st.lk | 0 };
     remotes.set(id, r); logChat("system", `👋 ${st.nm} 님이 왔어요 · joined`);
   }
+  if ((st.lk | 0) !== r.lk && st.cls) { scene.remove(r.model.root); r.model = classModel(st.cls, st.lk); scene.add(r.model.root); r.lk = st.lk | 0; }   // they changed their look
   Object.assign(r, { nm: st.nm, cls: st.cls, lvl: st.lvl, moving: !!st.mv, zone: st.zone, hp: st.hp, mx: st.mx, dead: !!st.dead }); r.tpos.set(st.x, 0, st.z); r.tyaw = st.yaw;
   if (r.zone !== "street" && player.zone === "station") { /* both underground: positions are the station's */ }
 }
@@ -3994,7 +4003,7 @@ function buildArena() {
   const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
   add(new THREE.PlaneGeometry(14, 3.5), new THREE.MeshBasicMaterial({ map: tx, toneMapped: false }), 0, 6.4, -9);
   for (let i = 0; i < 9; i++) { const a = -1.1 + i * .275; add(new THREE.BoxGeometry(.4, rand(6, 10), .4), toon("#3a3442"), Math.sin(a) * 15, 4, -Math.cos(a) * 12); }
-  const qm = kayReady() ? makeKay("qm") : makeNPC("guard"); qm.root.position.set(ARENA.x, 0, ARENA.z - 4.5); g.parent.add(qm.root);
+  const qm = kayReady() ? makeKay("qm") : (makeMan("guard") || makeNPC("guard")); qm.root.position.set(ARENA.x, 0, ARENA.z - 4.5); g.parent.add(qm.root);
   arena = { g, qm }; return arena;
 }
 function startDuel(kind) {
@@ -4342,7 +4351,7 @@ function cgStart(o) {
   if (mine.length < CG_DECK) { cgNeedDeck(); return; }
   let rnd = Math.random, opp, rank = 0, oppName, oppModel;
   if (o.npc) { const c = CB[o.npc], d = cgNpcDeck(o.npc); opp = d.cards; rank = d.rank; oppName = c.name; oppModel = (c.woman && womenReady() ? makeWoman(c.woman) : null) || (kayReady() ? makeKay(c.model || "stuA") : makeNPC("sitter")); }
-  else { rnd = mulberry(o.pvp.seed); opp = o.pvp.deck; oppName = o.pvp.nm; oppModel = kayReady() ? makeKay(o.pvp.cls || "geomgaek") : makeHero(o.pvp.cls || "geomgaek"); }
+  else { rnd = mulberry(o.pvp.seed); opp = o.pvp.deck; oppName = o.pvp.nm; oppModel = classModel(o.pvp.cls || "geomgaek", o.pvp.lk); }
   const challenger = o.npc ? true : o.pvp.challenger, A = challenger ? mine : opp, B = challenger ? opp : mine;
   const oA = sShuffle(A, rnd), oB = sShuffle(B, rnd), rules = [0, 1, 2].map(() => cgRule(rnd));
   buildCardArena(); cancelRitual(); setTarget(null); closeDialog(); if (comp) comp.model.root.visible = false;
@@ -4635,17 +4644,17 @@ function cgOnNet(d, src) {
     if (cg || duel || exam) { netSend({ t: "cgNo", to: src, why: "busy" }); return; }
     const box = $("inviteBox"); box.hidden = false;
     box.innerHTML = `<b>🃏 ${esc(d.nm)}</b> 님이 카드 배틀을 신청했어요 · challenges you to a card battle<div class="ib"><button id="cgYes">배틀! · accept</button><button id="cgNo">거절 · decline</button></div>`;
-    $("cgYes").onclick = () => { box.hidden = true; if (battleDeck().length < CG_DECK) { cgNeedDeck(); netSend({ t: "cgNo", to: src, why: "deck" }); return; } const mine = battleDeck().slice(0, CG_DECK).map(id => ({ id, rar: bestRar(id) })); cgAccepted = { id: src, mine }; netSend({ t: "cgAcc", to: src, nm: myName(), cls: S.cls, deck: mine }); };
+    $("cgYes").onclick = () => { box.hidden = true; if (battleDeck().length < CG_DECK) { cgNeedDeck(); netSend({ t: "cgNo", to: src, why: "deck" }); return; } const mine = battleDeck().slice(0, CG_DECK).map(id => ({ id, rar: bestRar(id) })); cgAccepted = { id: src, mine }; netSend({ t: "cgAcc", to: src, nm: myName(), cls: S.cls, lk: S.look || 0, deck: mine }); };
     $("cgNo").onclick = () => { box.hidden = true; netSend({ t: "cgNo", to: src, why: "no" }); };
     clearTimeout(showInvite.t); showInvite.t = setTimeout(() => { box.hidden = true; }, 30000); SFX.pickup(); logChat("system", `🃏 ${d.nm} challenges you to a card battle`);
   } else if (d.t === "cgAcc") {
     if (!cgAsk || cgAsk.id !== src || cg) return; cgAsk = null;
     const mine = battleDeck().slice(0, CG_DECK).map(id => ({ id, rar: bestRar(id) })), seed = Math.floor(Math.random() * 2 ** 31);
-    netSend({ t: "cgGo", to: src, nm: myName(), cls: S.cls, deck: mine, seed });
-    cgStart({ pvp: { id: src, nm: d.nm, cls: d.cls, deck: d.deck, mine, seed, challenger: true } });
+    netSend({ t: "cgGo", to: src, nm: myName(), cls: S.cls, lk: S.look || 0, deck: mine, seed });
+    cgStart({ pvp: { id: src, nm: d.nm, cls: d.cls, lk: d.lk, deck: d.deck, mine, seed, challenger: true } });
   } else if (d.t === "cgGo") {
     if (!cgAccepted || cgAccepted.id !== src || cg) return; const mine = cgAccepted.mine; cgAccepted = null;
-    cgStart({ pvp: { id: src, nm: d.nm, cls: d.cls, deck: d.deck, mine, seed: d.seed, challenger: false } });
+    cgStart({ pvp: { id: src, nm: d.nm, cls: d.cls, lk: d.lk, deck: d.deck, mine, seed: d.seed, challenger: false } });
   } else if (d.t === "cgQz") { if (cg?.pvp?.id === src) { const o = { r: d.r, c: d.c, t: d.tm }; if (cg.qz?.r === d.r) { cg.qzOpp = o; cgQzTry(); } else (cg.qzOppEarly = cg.qzOppEarly || {})[d.r] = o; } }
   else if (d.t === "cgSteal") { if (cg?.pvp?.id === src && d.r === cg.round) cgStolen(d.h); }
   else if (d.t === "cgPick") { if (cg?.pvp?.id === src) { cg.picks[d.r] = { sel: d.sel || [], t: d.tm }; if (d.r === cg.round) { $("cgOppState").textContent = "✓ 다 골랐어요 · done"; cgTryResolve(); } } }
@@ -4825,7 +4834,7 @@ function loop(now) {
 async function boot() {
   try { await Promise.race([Promise.all([document.fonts.load('64px "Black Han Sans"'), document.fonts.load('700 20px "Noto Sans KR"', '가나다')]), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
   world = buildWorld(scene);
-  await Promise.all([loadKayKit(), loadWomen()]);
+  await Promise.all([loadKayKit(), loadWomen(), loadPeople()]);
   placeNPCs(); buildSideSpots(); placeMapItem(); placeRacks(); buildCampParts(); applyQuality(); refreshKeyLabels(); setMusicVolume(SET.music); makeSpawnPoints();
   buildClassPick();
   const has = load();

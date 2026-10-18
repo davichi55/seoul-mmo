@@ -4,7 +4,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import { toon } from "./world.js?v=mvdxix7r";
+import { toon } from "./world.js?v=mve02afd";
 
 const FILES = { knight: "Knight", mage: "Mage", rogue: "Rogue", hooded: "Rogue_Hooded", barbarian: "Barbarian" };
 const lib = {};
@@ -25,7 +25,8 @@ export const kayReady = () => ready;
 // outline: a back-face copy pushed out along the normal BEFORE skinning, so it bends with the character
 function outlineMat(t) {
   const m = new THREE.MeshBasicMaterial({ color: "#2a1f17", side: THREE.BackSide });
-  m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>\n transformed += normalize(normal) * ${t.toFixed(4)};`); };
+  m.onBeforeCompile = sh => { sh.vertexShader = sh.vertexShader.replace("#include <begin_vertex>", `#include <begin_vertex>\n transformed += normalize(normal) * ${t.toFixed(6)};`); };
+  m.customProgramCacheKey = () => "outline" + t.toFixed(6);   // otherwise three reuses the first outline shader it compiled, whatever its thickness (2026-10-18)
   return m;
 }
 
