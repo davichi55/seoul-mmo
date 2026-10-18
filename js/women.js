@@ -28,6 +28,12 @@ export const CHARS = {
   stu_seoyeon: { base: "Suit", ko: "서연", col: { Black: "#1f2a4a", White: "#f4f2ec", "Legs/Black": "#3a3048", Brown: "#3b2620", Hair_Brown: "#1a1210" }, hair: { mat: ["Head/Hair_Blond"], color: "#1a1416", len: .42, bangs: "full" } },
   stu_haeun: { base: "Casual", ko: "하은", col: { White: "#f4f2ec", Orange: "#2a3352", Grey: "#f0efe8", Brown: "#3b2620", Hair_Brown: "#4a2e1e" }, hair: { mat: ["Head/Hair_Blond"], color: "#5a3a22", len: 0, bangs: "side" } },
   stu_subin: { base: "Formal", ko: "수빈", col: { "Body/LimeGreen": "#1f2a4a", "Legs/LimeGreen": "#6a2a3a", Gold: "#c8402f", "Feet/Red": "#1a1a1e", Brown: "#3b2620" }, hair: { mat: ["Head/Red"], color: "#2a1a14", len: .5, locks: true } },
+  // 서강대학교 (2026-10-18): four of the ranked card battlers, and the 카드 선생님
+  sg_minseo: { base: "Casual", ko: "민서", col: { White: "#f4f2ec", Orange: "#7a2a3a", Grey: "#f0efe8", Brown: "#3b2620", Hair_Brown: "#2a1a14" }, hair: { mat: ["Head/Hair_Blond"], color: "#2a1a14", len: .5, bangs: "full" } },
+  sg_yuna: { base: "Suit", ko: "유나", col: { Black: "#2a4a3a", White: "#f4f2ec", "Legs/Black": "#2a2a30", Brown: "#3b2620", Hair_Brown: "#4a2e1e" }, hair: { mat: ["Head/Hair_Blond"], color: "#5a3a22", len: .3, bangs: "side" } },
+  sg_soyul: { base: "Formal", ko: "소율", col: { "Body/LimeGreen": "#5a3a7a", "Legs/LimeGreen": "#2a2a30", Gold: "#e0b43a", "Feet/Red": "#1a1a1e", Brown: "#3b2620" }, hair: { mat: ["Head/Red"], color: "#1a1214", len: .7, locks: true } },
+  sg_dain: { base: "Casual", ko: "다인", col: { White: "#2a2a30", Orange: "#c8a050", Grey: "#ecebe6", Brown: "#3b2620", Hair_Brown: "#8a5a3a" }, hair: { mat: ["Head/Hair_Blond"], color: "#9a6a42", len: .2, bangs: "side" } },
+  card_ssaem: { base: "Formal", ko: "카드 선생님", col: { "Body/LimeGreen": "#7a1f2b", "Legs/LimeGreen": "#2a2a30", Gold: "#f4f2ec", "Feet/Red": "#1a1a1e", Brown: "#3b2620" }, hair: { mat: ["Head/Red"], color: "#2a1c19", len: .35, bangs: "side" } },
   handong: { base: "Witch", ko: "한동", col: { Purple: "#2a1430", Brown2: BLACK, Gold: GOLD, "Legs/Brown": BLACK, Brown: "#3b2620" },
     hair: { mat: ["Head/Hair_Black"], hide: ["Head/Purple", "Head/Gold"], cap: true, color: "#d9b46a", len: .6, bangs: "full", locks: true } },
 };

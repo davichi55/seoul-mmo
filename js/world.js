@@ -46,7 +46,7 @@ export const SPAWNS = [
 // the tourist information booth where the Hongdae map lies, and where the quest people stand on the street
 export const MAPSPOT = { x: -40, z: 31 };
 // 연남동 + 신촌 (2026-10-18): map stands, and their monsters (연남동 like 홍대, 신촌 like the complex)
-export const MAPSPOT_YN = { x: -42, z: -165 }, MAPSPOT_SC = { x: 224, z: -141 }, MAPSPOT_DI = { x: 322, z: 152 };
+export const MAPSPOT_YN = { x: -42, z: -165 }, MAPSPOT_SC = { x: 224, z: -141 }, MAPSPOT_DI = { x: 322, z: 152 }, MAPSPOT_SG = { x: 318, z: -200 };
 export const DANGIN_SPAWNS = [
   { x: 335, z: 170, kind: "jeongi", lvl: 6 }, { x: 372, z: 158, kind: "jeongi", lvl: 6 }, { x: 405, z: 185, kind: "dokkaebi", lvl: 7 }, { x: 440, z: 165, kind: "jeongi", lvl: 7 },
   { x: 458, z: 190, kind: "haetae", lvl: 7 }, { x: 420, z: 148, kind: "jeongi", lvl: 7, night: true }, { x: 350, z: 192, kind: "jeongi", lvl: 7, night: true },
@@ -1472,6 +1472,71 @@ export function buildWorld(scene) {
       ML("이태원로", 575, 40); ML("클럽 거리", 575, 80); ML("이태원", 520, -24); ML("호텔", 667, -15);
     }
   }
+  // ===== 서강대학교 (Danny 2026-10-18): east of 신촌's campus through a gap in its east wall; the card battlers' plaza (8 ranks,
+  // one per chapter) and the 카드 선생님's stall. No monsters here. Built last (seeded layout of everything before stays the same).
+  {
+    const brd = (text, bg, w, h, fs = 54, fg = "#fff") => { const c = document.createElement("canvas"); c.width = 512; c.height = Math.max(32, Math.round(512 * h / w)); const x = c.getContext("2d"); x.fillStyle = bg; x.fillRect(0, 0, c.width, c.height); x.fillStyle = fg; x.font = `${fs}px ${FONT}`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(text, 256, c.height / 2 + 3); return toon("#ffffff", { map: canvasTex(c) }); };
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0), v = new THREE.Vector3();
+    for (const o of [...street.children]) if (o.isMesh && o.geometry.type === "DodecahedronGeometry" && o.position.x > 306 && o.position.x < 314 && o.position.z > -217 && o.position.z < -201) street.remove(o);
+    leafM.forEach((m, i) => { v.setFromMatrixPosition(m); if (v.x > 306 && v.x < 314 && v.z > -217 && v.z < -201 && v.y < 4) leafM[i] = zero; });
+    { const i = colliders.street.findIndex(c => c.x0 !== undefined && Math.abs(c.x0 - 308.6) < .01 && Math.abs(c.x1 - 311.4) < .01 && Math.abs(c.z0 + 251.4) < .01); if (i >= 0) colliders.street.splice(i, 1); }
+    colliders.street.push({ x0: 308.6, x1: 311.4, z0: -251.4, z1: -216 }, { x0: 308.6, x1: 311.4, z0: -202, z1: -108.6 });
+    barricade(310, -110, 470, -110); barricade(470, -110, 470, -250); barricade(310, -250, 470, -250);
+    for (const m of street.children) { const p = m.geometry?.parameters; if (!m.isMesh || m.geometry.type !== "ConeGeometry" || p.radialSegments !== 7 || p.radius < 60) continue;
+      const a = Math.atan2(m.position.z, m.position.x - 110); let d = Math.hypot(m.position.x - 110, m.position.z), n = 0;
+      while (Math.hypot(Math.max(305, Math.min(476, m.position.x)) - m.position.x, Math.max(-256, Math.min(-104, m.position.z)) - m.position.z) < p.radius + 15 && n++ < 120) { d += 10; m.position.x = 110 + Math.cos(a) * d; m.position.z = Math.sin(a) * d; } }
+    // the gate, lawn, paths and the plaza
+    for (const z of [-216.5, -201.5]) add(new THREE.BoxGeometry(1.6, 5.5, 1.6), toon("#8a7a6a"), 312, 2.75, z, street, .06);
+    add(new THREE.BoxGeometry(1.4, 1.2, 16.4), toon("#7a1f2b"), 312, 6, -209, street, .05);
+    for (const s of [-1, 1]) { const p = add(new THREE.PlaneGeometry(14, 1), brd("서강대학교", "#7a1f2b", 14, 1, 64), 312 + s * .72, 6, -209, street, 0, false); p.rotation.y = s * Math.PI / 2; }
+    flat(156, 136, 390, -180, "#6fa24e", .03);
+    flat(56, 6, 340, -209, "#d7c9a6", .04); flat(6, 40, 390, -226, "#d7c9a6", .04); flat(6, 40, 390, -135, "#d7c9a6", .04); flat(40, 6, 432, -180, "#d7c9a6", .04);
+    { const pl = new THREE.Mesh(new THREE.CircleGeometry(24, 40), toon("#c9b9a0")); pl.rotation.x = -Math.PI / 2; pl.position.set(390, .05, -180); pl.receiveShadow = true; pl.name = "ground"; street.add(pl);
+      const rg = new THREE.Mesh(new THREE.RingGeometry(14, 16, 40), toon("#b8a688")); rg.rotation.x = -Math.PI / 2; rg.position.set(390, .06, -180); street.add(rg); }
+    // the albatross (서강's bird) on a pedestal in the middle of the plaza
+    { add(new THREE.CylinderGeometry(1.3, 1.6, 3, 10), toon("#b8b0a0"), 390, 1.5, -180, street, .05); colliders.street.push({ x: 390, z: -180, r: 1.8 });
+      const wM = toon("#f4f2ec"), g = new THREE.Group(); g.position.set(390, 3.6, -180); street.add(g);
+      const b = new THREE.Mesh(new THREE.SphereGeometry(.6, 12, 8), wM); b.scale.set(.8, .7, 1.6); b.castShadow = true; g.add(b); outline(b, .04);
+      const h = new THREE.Mesh(new THREE.SphereGeometry(.32, 10, 8), wM); h.position.set(0, .35, -1); g.add(h); outline(h, .03);
+      const bk = new THREE.Mesh(new THREE.ConeGeometry(.1, .6, 6), toon("#e0b43a")); bk.rotation.x = -Math.PI / 2; bk.position.set(0, .3, -1.45); g.add(bk);
+      for (const s of [-1, 1]) { const wg = new THREE.Mesh(new THREE.BoxGeometry(3.4, .08, .8), wM); wg.position.set(s * 1.9, .25, 0); wg.rotation.z = s * .25; wg.castShadow = true; g.add(wg); outline(wg, .02);
+        const tip = new THREE.Mesh(new THREE.BoxGeometry(.9, .085, .6), toon("#2a2522")); tip.position.set(s * 3.4, .62, .05); tip.rotation.z = s * .25; g.add(tip); } }
+    // a banner at the plaza and a numbered flag next to every battler (rank 1 nearest the gate, going round)
+    { for (const z of [-200.5, -191.5]) add(new THREE.BoxGeometry(.2, 4.6, .2), toon("#555"), 362, 2.3, z, street);
+      const p = add(new THREE.PlaneGeometry(8.6, 1.3), brd("🃏 카드 배틀 광장", "#2f5aa8", 8.6, 1.3, 60), 362, 4, -196, street, 0, false); p.rotation.y = -Math.PI / 2; }
+    for (let k = 0; k < 8; k++) { const a = Math.PI + k * Math.PI / 4, fx = 390 + Math.cos(a) * 17.6, fz = -180 + Math.sin(a) * 17.6;
+      add(new THREE.CylinderGeometry(.06, .06, 3, 6), toon("#555"), fx, 1.5, fz, street);
+      const f = add(new THREE.PlaneGeometry(1, .8), brd(String(k + 1), ["#c9c4b8", "#7ab8ff", "#5aa8ff", "#b47aff", "#9a5aff", "#ff9a3a", "#ff7a2a", "#ffd23d"][k], 1, .8, 340, "#1d1612"), fx + .55, 2.6, fz, street, 0, false); f.material.side = THREE.DoubleSide; f.rotation.y = -a; }
+    for (let k = 0; k < 8; k++) { const a = Math.PI / 8 + k * Math.PI / 4, bx = 390 + Math.cos(a) * 21.5, bz = -180 + Math.sin(a) * 21.5; const bn = add(new THREE.BoxGeometry(3, .45, .7), toon("#6b4a32"), bx, .25, bz, street, .03); bn.rotation.y = -a + Math.PI / 2; colliders.street.push({ x: bx, z: bz, r: 1.2 }); }
+    // buildings: 본관 (north), 로욜라 도서관 (east), 강의동 (south)
+    const bldg = (x, z, w, d, h, col, name, face) => {
+      add(new THREE.BoxGeometry(w, h, d), toon(col), x, h / 2, z, street, .12); solid(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
+      add(new THREE.BoxGeometry(w + .6, .6, d + .6), toon("#5a4a44"), x, h + .3, z, street, .06);
+      const along = face[1] === "z" ? w : d, s = face[0] === "+" ? 1 : -1, ry = face === "+z" ? 0 : face === "-z" ? Math.PI : face === "+x" ? Math.PI / 2 : -Math.PI / 2;
+      for (let k = 0; k < Math.floor(along / 4); k++) for (let f = 0; f < Math.floor(h / 4); f++) { const o = -along / 2 + 2 + k * 4, p = add(new THREE.PlaneGeometry(1.4, 2.2), toon("#6a8aa0"), face[1] === "z" ? x + o : x + s * (w / 2 + .03), 2 + f * 4, face[1] === "z" ? z + s * (d / 2 + .03) : z + o, street, 0, false); p.rotation.y = ry; }
+      const n = add(new THREE.PlaneGeometry(Math.min(along * .5, 12), 1.1), brd(name, "#7a1f2b", Math.min(along * .5, 12), 1.1, 60), face[1] === "z" ? x : x + s * (w / 2 + .06), h - 1.4, face[1] === "z" ? z + s * (d / 2 + .06) : z, street, 0, false); n.rotation.y = ry;
+    };
+    bldg(390, -238, 50, 14, 16, "#d8d4cc", "본관", "+z");
+    bldg(452, -180, 14, 44, 14, "#c8b8a0", "로욜라 도서관", "-x");
+    bldg(390, -122, 50, 12, 12, "#e2ddd2", "강의동", "-z");
+    // 카드 선생님's stall by the gate
+    { add(new THREE.BoxGeometry(5, 1, 1.4), toon("#8a5a32"), 330, .5, -222, street, .04); const aw = add(new THREE.BoxGeometry(5.6, .1, 2.2), toon("#2f5aa8"), 330, 2.8, -222.4, street, .03); aw.rotation.x = .12;
+      for (const dx of [-2.6, 2.6]) add(new THREE.CylinderGeometry(.05, .05, 2.8, 6), toon("#555"), 330 + dx, 1.4, -223.1, street);
+      add(new THREE.PlaneGeometry(4.6, .8), brd("단어 카드 가게 · 희귀 카드", "#2f5aa8", 4.6, .8, 50), 330, 1.9, -221.28, street, 0, false);
+      for (let i = 0; i < 5; i++) { const c = add(new THREE.BoxGeometry(.5, .04, .7), toon(["#5aa8ff", "#7ab8ff", "#5aa8ff", "#9ac8ff", "#5aa8ff"][i]), 328.2 + i * .9, 1.03, -222, street); c.rotation.y = (i - 2) * .12; }
+      colliders.street.push({ x0: 327.4, x1: 332.6, z0: -222.8, z1: -221.2 }); }
+    // the map on a stand just inside the gate
+    add(new THREE.BoxGeometry(1.6, 1.2, .9), toon("#7a1f2b"), 318, .6, -199.65, street, .04); add(new THREE.PlaneGeometry(1.4, .5), brd("안내 · info", "#1f2a3a", 1.4, .5, 60), 318, .8, -200.11, street, 0, false).rotation.y = Math.PI;
+    colliders.street.push({ x0: 317.1, x1: 318.9, z0: -200.2, z1: -199.1 });
+    for (let i = 0; i < 40; i++) { const tx = rand(316, 466), tz = rand(-246, -114);
+      if (Math.hypot(tx - 390, tz + 180) < 28 || (tx > 361 && tx < 419 && (tz < -228 || tz > -131)) || (tx > 441 && tz > -206 && tz < -154) || Math.abs(tz + 209) < 5 && tx < 370 || Math.abs(tx - 390) < 5 || Math.abs(tz + 180) < 5 && tx > 410 || Math.hypot(tx - 330, tz + 221) < 6 || Math.hypot(tx - 318, tz + 200) < 4) continue;
+      tree(tx, tz); }
+    for (let i = 0; i < 1100; i++) { const tx = rand(312, 468), tz = rand(-248, -112); if (Math.hypot(tx - 390, tz + 180) > 25) tuft(tx, tz, rand(.7, 1.3)); }
+    const SR = (x0, x1, z0, z1, c) => ydMap.rects.push({ x0, x1, z0, z1, c, area: "sogang" });
+    SR(310, 470, -250, -110, "rgba(111,162,78,.95)"); SR(366, 414, -204, -156, "rgba(201,185,160,.95)"); SR(312, 368, -212, -206, "rgba(215,201,166,.95)");
+    SR(365, 415, -245, -231, "rgba(216,212,204,.95)"); SR(445, 459, -202, -158, "rgba(200,184,160,.95)"); SR(365, 415, -128, -116, "rgba(226,221,210,.95)");
+    for (const L of [["서강대학교", 340, -230], ["카드 배틀 광장", 390, -168], ["본관", 390, -238], ["로욜라 도서관", 452, -180, -Math.PI / 2], ["강의동", 390, -122], ["카드 가게", 330, -228]]) ydMap.labels.push({ t: L[0], x: L[1], z: L[2], rot: L[3], area: "sogang" });
+  }
   // instanced foliage, cel outline on leaves too
   const leafGeo = new THREE.IcosahedronGeometry(1, 1), tuftGeo = new THREE.ConeGeometry(.07, .5, 4);
   const lm = new THREE.InstancedMesh(leafGeo, toon("#ffffff", {}), leafM.length);
@@ -1514,7 +1579,7 @@ export function buildWorld(scene) {
     R2(256, 288, -138, -126, "slab", "sinchon"), R2(234, 258, -234, -222, "slab", "sinchon"), R2(281.5, 288.5, -198.5, -191.5, "slab", "sinchon"));
   labels.push({ t: "연트럴파크", x: 30, z: -173, area: "yeonnam" }, { t: "연남로", x: 30, z: -214, area: "yeonnam" }, { t: "양화로", x: -70, z: -200, rot: -Math.PI / 2, area: "yeonnam" }, { t: "꽃집", x: 40, z: -159, area: "yeonnam" },
     { t: "연세로", x: 211, z: -200, rot: -Math.PI / 2, area: "sinchon" }, { t: "먹자골목", x: 146, z: -185, area: "sinchon" }, { t: "신촌대학교", x: 268, z: -165, area: "sinchon" }, { t: "도서관", x: 246, z: -241, area: "sinchon" }, { t: "버스", x: 232, z: -139, area: "sinchon" });
-  const areas = { yongsan: { minX: YD.x + 149, maxX: YD.x + 460, minZ: YD.z - 32, maxZ: YD.z + 427 }, noryangjin: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z + 330, maxZ: YD.z + 562 }, yeouido: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z - 4, maxZ: YD.z + 332 }, hongdae: { minX: -84, maxX: 108, minZ: -108, maxZ: 108 }, yeonnam: { minX: -84, maxX: 108, minZ: -250, maxZ: -108 }, dangin: { minX: 310, maxX: 470, minZ: 108, maxZ: 250 }, seonyudo: { minX: YD.x - 402, maxX: YD.x - 148, minZ: YD.z + 145, maxZ: YD.z + 305 }, sayuksin: { minX: YD.x - 385, maxX: YD.x - 148, minZ: YD.z + 420, maxZ: YD.z + 565 }, itaewon: { minX: YD.x + 455, maxX: YD.x + 685, minZ: YD.z - 36, maxZ: YD.z + 118 }, sinchon: { minX: 108, maxX: 310, minZ: -250, maxZ: -108 }, apt: { minX: 108, maxX: 310, minZ: -108, maxZ: 108 }, river: { minX: -84, maxX: 310, minZ: 108, maxZ: 250 } };
+  const areas = { yongsan: { minX: YD.x + 149, maxX: YD.x + 460, minZ: YD.z - 32, maxZ: YD.z + 427 }, noryangjin: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z + 330, maxZ: YD.z + 562 }, yeouido: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z - 4, maxZ: YD.z + 332 }, hongdae: { minX: -84, maxX: 108, minZ: -108, maxZ: 108 }, yeonnam: { minX: -84, maxX: 108, minZ: -250, maxZ: -108 }, dangin: { minX: 310, maxX: 470, minZ: 108, maxZ: 250 }, seonyudo: { minX: YD.x - 402, maxX: YD.x - 148, minZ: YD.z + 145, maxZ: YD.z + 305 }, sayuksin: { minX: YD.x - 385, maxX: YD.x - 148, minZ: YD.z + 420, maxZ: YD.z + 565 }, itaewon: { minX: YD.x + 455, maxX: YD.x + 685, minZ: YD.z - 36, maxZ: YD.z + 118 }, sinchon: { minX: 108, maxX: 310, minZ: -250, maxZ: -108 }, sogang: { minX: 310, maxX: 470, minZ: -250, maxZ: -108 }, apt: { minX: 108, maxX: 310, minZ: -108, maxZ: 108 }, river: { minX: -84, maxX: 310, minZ: 108, maxZ: 250 } };
   const map = { bounds: STREET, rects, labels, areas };
   return { street, station, dungeon, yeouido, tower, market, museum, colliders, camBlocks, npcSpots, setNight, update, occlude, sun, hemi, map };
 }

@@ -6,7 +6,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js";
 import { makeHero, makeNPC, makeMonster } from "./models.js";
 import { loadKayKit, kayReady, makeKay } from "./kaykit.js";
 import { loadWomen, womenReady, makeWoman } from "./women.js";
@@ -822,7 +822,7 @@ function placeNPCs() {
     npcs.push(n); if (kind === "granny") colliders_street_push(n.pos);
   }
   for (const [kind, d] of Object.entries(SQ_NPC)) {   /* side-quest people (2026-10-18) */
-    const model = d.npc ? makeNPC(d.npc) : kayReady() ? makeKay(d.role) : makeNPC("sitter"), n = { isNpc: true, kind, zone: d.at.zone, model, pos: new THREE.Vector3(d.at.x, 0, d.at.z), name: NPC_DEF[kind] };
+    const model = (d.woman && womenReady() ? makeWoman(d.woman) : null) || (d.npc ? makeNPC(d.npc) : kayReady() ? makeKay(d.role) : makeNPC("sitter")), n = { isNpc: true, kind, zone: d.at.zone, model, pos: new THREE.Vector3(d.at.x, 0, d.at.z), name: NPC_DEF[kind] };
     model.root.position.copy(n.pos); model.root.rotation.y = d.face ?? Math.PI; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); if (d.at.zone === "street") colliders_street_push(n.pos); else world.colliders.yeouido.push({ x: d.at.x, z: d.at.z, r: .6 });
@@ -878,7 +878,7 @@ function talkTo(n) {
     stranger: () => (S.hasMirror && !S.metMirror) ? (S.metMirror = true, save(), revealTalk(n)) : (S.towerClears && S.sawPoster && !S.metHaneul) ? (S.metHaneul = true, save(), showLine(n, "x_haneul", [{ plr: "p_haneul", act: () => endWith(n, "x_haneul2") }])) : (S.sawList && !S.metList) ? (S.metList = true, save(), endWith(n, "x_list")) : (S.dunClears && !S.metAgain) ? (S.metAgain = true, save(), endWith(n, "x_return")) : showLine(n, "x_again", [{ plr: "p_yes", act: () => { closeDialog(); openDeckPicker(false); } }, { plr: "p_who", act: () => endWith(n, "x_who") }, { plr: "p_no", act: () => endWith(n, "x_bye") }]),
     guard: () => showLine(n, S.hasMap ? "g_hello" : "g_map", [{ plr: "p_yes", act: () => endWith(n, "g_sleep") }]),
     driver: () => showLine(n, S.spells?.sleep || S.dunClears ? "d_hello" : "d_hint", [{ plr: "p_enter", act: () => { closeDialog(); fade(toDungeon); } }, { plr: "p_later", act: closeDialog }]),
-    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), dealer: () => dealerTalk(n), ...Object.fromEntries(Object.keys(CB).map(k => [k, () => cbTalk(n)])), ...Object.fromEntries(Object.keys(SQ_NPC).map(k => [k, () => endWith(n, SQ_NPC[k].hi)])), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
+    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), dealer: () => dealerTalk(n), ...Object.fromEntries(Object.keys(CB).map(k => [k, () => cbTalk(n)])), ...Object.fromEntries(Object.keys(SQ_NPC).map(k => [k, () => endWith(n, SQ_NPC[k].hi)])), cardteacher: () => dailyShop(n), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
     minsu: () => endWith(n, "m_hello"), jieun: () => endWith(n, S.quests.sister?.st === "done" ? "j_home" : "j_hello"), gyeongbi: () => endWith(n, S.hasMapApt ? "b_hello" : "b_map"),
   }[n.kind];
   const dc = DREAM_TEAM.includes(n.kind) ? () => dcMenu(n, normal) : normal;
@@ -1557,11 +1557,12 @@ const SQ_NPC = {
   photog: { name: "사진작가", at: { x: YD.x + 30, z: YD.z + 150, zone: "yeouido" }, role: "sqPhoto", hi: "sq_ph_hi" },
   gongsi: { name: "태민 · 공시생", at: { x: YD.x + 92, z: YD.z + 515, zone: "yeouido" }, role: "sqGongsi", hi: "sq_go_hi" },
   florist: { name: "꽃집 사장님", at: { x: 40, z: -157.5, zone: "street" }, role: "sqFlorist", hi: "sq_fl_hi" },
-  student: { name: "하은 · 대학생", at: { x: 245, z: -172, zone: "street" }, role: "sqStudent", hi: "sq_st_hi" },
+  student: { name: "예린 · 대학생", at: { x: 245, z: -172, zone: "street" }, role: "sqStudent", hi: "sq_st_hi" },
   engineer: { name: "기술자 아저씨 · 발전소", at: { x: 350, z: 152, zone: "street" }, role: "sqEngineer", hi: "sq_en_hi" },
   researcher: { name: "수질 연구원", at: { x: YD.x - 318, z: YD.z + 212, zone: "yeouido" }, role: "sqResearcher", hi: "sq_re_hi" },
   caretaker: { name: "관리인 할아버지", at: { x: YD.x - 205, z: YD.z + 468, zone: "yeouido" }, role: "sqCaretaker", hi: "sq_ct_hi" },
   shopowner: { name: "이태원 가게 사장님", at: { x: YD.x + 536, z: YD.z + 51.5, zone: "yeouido" }, role: "sqShop", hi: "sq_sh_hi" },
+  cardteacher: { name: "카드 선생님 · 단어 카드 가게", at: { x: 330, z: -219, zone: "street" }, woman: "card_ssaem", role: "qm", hi: "kt_hi" },
   docent: { name: "도슨트 · 박물관 해설사", at: { x: YD.x + 312, z: YD.z + 20, zone: "yeouido" }, role: "sqDocent", hi: "sq_do_hi" },
 };
 const SQ = (giver, ko, en, kind, more, lines, desc, reward) => ({ giver, ko, en, kind, ...more, offer: lines + "_q", wait: lines + "_wait", done: lines + "_done", turn: "p_done", reward, desc });
@@ -1577,7 +1578,7 @@ const SIDE_QUESTS = {
   campfood: SQ("gayoung", "가현의 캠프 요리", "Food for the camp", "bring", { item: "cupbap", n: 2 }, "sq_ga", "노량진 컵밥 아줌마에게서 컵밥 두 개를 사서 가현에게 · buy 2 cup rice from the 컵밥 lady in 노량진, bring them to 가현", { won: 22000, xp: 240 }),
   gongsi: SQ("gongsi", "공시생의 단어장", "The exam student's word list", "quiz", { quiz: "words" }, "sq_go", "태민과 같이 단어 다섯 개를 맞히세요 · get 5 of 태민's words right together with him", { won: 26000, xp: 300 }),
   flowers: SQ("florist", "꽃밭에 물 주기", "Water the flower beds", "collect", { n: 3, icon: "🌼", verb: "꽃에 물 주기 · water the flowers", spots: [{ x: -25, z: -171, zone: "street" }, { x: 35, z: -178, zone: "street" }, { x: 88, z: -171, zone: "street" }] }, "sq_fl", "연트럴파크의 꽃밭 세 곳에 물을 주고 꽃집 사장님에게 · water the 3 flower beds in 연트럴파크, then see the florist", { won: 8000, xp: 70 }),
-  books: SQ("student", "잃어버린 교과서", "The lost textbooks", "collect", { n: 3, icon: "📚", verb: "교과서 줍기 · pick up the textbook", spots: [{ x: 300, z: -150, zone: "street" }, { x: 238, z: -200, zone: "street" }, { x: 290, z: -244, zone: "street" }] }, "sq_st", "신촌대학교 캠퍼스에서 하은의 교과서 세 권을 찾으세요 · find 하은's 3 textbooks on the campus", { won: 12000, xp: 110 }),
+  books: SQ("student", "잃어버린 교과서", "The lost textbooks", "collect", { n: 3, icon: "📚", verb: "교과서 줍기 · pick up the textbook", spots: [{ x: 300, z: -150, zone: "street" }, { x: 238, z: -200, zone: "street" }, { x: 290, z: -244, zone: "street" }] }, "sq_st", "신촌대학교 캠퍼스에서 예린의 교과서 세 권을 찾으세요 · find 예린's 3 textbooks on the campus", { won: 12000, xp: 110 }),
   fuses: SQ("engineer", "발전소 퓨즈 갈기", "Fix the fuses", "collect", { n: 3, icon: "⚡", verb: "퓨즈 갈기 · replace the fuse", spots: [{ x: 345, z: 144, zone: "street" }, { x: 420, z: 139, zone: "street" }, { x: 462, z: 155, zone: "street" }] }, "sq_en", "당인리 발전소의 퓨즈 상자 세 개를 고치고 기술자 아저씨에게 · fix the 3 fuse boxes around the power plant", { won: 15000, xp: 140 }),
   samples: SQ("researcher", "수질 검사", "Water samples", "collect", { n: 3, icon: "🧪", verb: "물 샘플 뜨기 · take a water sample", spots: [{ x: YD.x - 350, z: YD.z + 202, zone: "yeouido" }, { x: YD.x - 300, z: YD.z + 202, zone: "yeouido" }, { x: YD.x - 350, z: YD.z + 248, zone: "yeouido" }] }, "sq_re", "선유도의 옛 정수지 세 곳에서 물 샘플을 떠서 연구원에게 · take water samples at the 3 old basins of 선유도", { won: 22000, xp: 240 }),
   incense: SQ("caretaker", "향 피우기", "Incense for the six", "collect", { n: 3, icon: "🕯", verb: "향 피우기 · light the incense", spots: [{ x: YD.x - 314, z: YD.z + 520, zone: "yeouido" }, { x: YD.x - 262, z: YD.z + 520, zone: "yeouido" }, { x: YD.x - 210, z: YD.z + 520, zone: "yeouido" }] }, "sq_ct", "사육신 묘 앞의 향로 세 개에 향을 피우고 관리인 할아버지에게 · light the incense at the 3 burners in front of the tombs", { won: 28000, xp: 320 }),
@@ -1600,6 +1601,28 @@ const MUSEUM_Q = [
   ["왕의 무덤을 지키는, 돌로 만든 사람이에요.", "A stone figure guarding a king's tomb.", "무인석", ["훈민정음", "금관", "청자"]],
   ["불을 붙여서 한꺼번에 많이 쏘던 화살이에요.", "Fire arrows shot many at once.", "신기전", ["청자", "무인석", "금관"]],
 ];
+const SHOP_BUNDLE = 5, SHOP_PRICE = 5000, SHOP_MAX = 2;
+const calDay = () => { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`; };
+function dailyStock() {
+  const t = calDay(); if (S.dailyShop?.day !== t) {
+    const chs = S.mode === "story" ? bookChapters().filter(c => S.chapters.includes(c.id)) : bookChapters();
+    const owned = new Set(S.cards.map(c => c.id)), pool = bookWords().filter(w => chs.some(c => c.id === w.ch));
+    S.dailyShop = { day: t, words: [...shuffle(pool.filter(w => !owned.has(w.id))), ...shuffle(pool.filter(w => owned.has(w.id)))].slice(0, SHOP_BUNDLE * SHOP_MAX).map(w => w.id), sold: 0 }; save();
+  }
+  return S.dailyShop;
+}
+function dailyShop(n) {
+  const st = dailyStock(), b = st.words.slice(st.sold * SHOP_BUNDLE, (st.sold + 1) * SHOP_BUNDLE), cost = SHOP_PRICE * b.length;
+  if (st.sold >= SHOP_MAX || !b.length) { endWith(n, "kt_sold"); return; }
+  showLine(n, "kt_hi", [
+    { ko: `📦 묶음 ${st.sold + 1} / ${SHOP_MAX} 사기 · ${won(cost)}`, en: `5 rare (희귀) cards: ${b.map(id => WORD[id].kr).join(", ")}`, act: () => {
+      if (S.money < cost) { endWith(n, "kt_poor"); return; }
+      S.money -= cost; st.sold++; SFX.coin?.();
+      const rows = b.map(id => { const c = newCard(id, 1); S.cards.push(c); return { icon: "🃏", ko: `${WORD[id].kr} · ${RARITY[1].ko}`, en: `${WORD[id].en} · ${modText(c)}` }; });
+      save(); showLine(n, "kt_buy", [{ ko: "(계속 · continue)", en: "", act: () => { closeDialog(); showReward("📦 단어 카드 묶음 · card bundle", rows); } }]);
+    } },
+    { ko: "(대화 끝내기)", en: `${SHOP_MAX - st.sold} bundle(s) left today (${won(SHOP_PRICE)} a card) · new cards tomorrow`, act: closeDialog }]);
+}
 function sideQuiz(id, n) {
   closeDialog();
   const q = QUESTS[id];
@@ -1733,7 +1756,7 @@ function onKillForQuests(m) {
 }
 // quest marker over an NPC: "!" = new quest, "?" gold = hand in, "…" = you're on it
 function npcMarker(n) {
-  if (CB[n.kind]) return S.seoulCards?.[CB[n.kind].area] ? "" : "🃏";
+  if (CB[n.kind]) return CB[n.kind].rank ? (rankOpen(n.kind) && !S.cbWins?.[n.kind] ? "🃏" : "") : S.seoulCards?.[CB[n.kind].area] ? "" : "🃏";
   if (n.kind === "sua") return suaMarker();
   for (const id in QUESTS) { const q = QUESTS[id]; if (qReady(id) && qTurnInNpc(q) === n.kind) return "?"; }
   for (const id in QUESTS) if (QUESTS[id].giver === n.kind && qAvailable(id)) return "!";
@@ -1780,7 +1803,7 @@ function findTalk(n, id) {
 
 // ---- maps: the minimap shows the 60 m around you; the full map (M) shows each area you've found a map for ----
 // 홍대 지도 at the 관광안내소 (park), 서교 아파트 지도 on the 경비실 counter at the apartment gate
-const MAP_ITEMS = { dangin: { spot: MAPSPOT_DI, flag: "hasMapDi", line: "x_map9", ko: "당인리 지도", en: "Danginri map" }, seonyudo: { spot: MAPSPOT_SY, flag: "hasMapSy", line: "x_map10", ko: "선유도 지도", en: "Seonyudo map", zone: "yeouido" }, sayuksin: { spot: MAPSPOT_SA, flag: "hasMapSa", line: "x_map11", ko: "사육신 공원 지도", en: "Sayuksin park map", zone: "yeouido" }, itaewon: { spot: MAPSPOT_IT, flag: "hasMapIt", line: "x_map12", ko: "이태원 지도", en: "Itaewon map", zone: "yeouido" }, yeonnam: { spot: MAPSPOT_YN, flag: "hasMapYn", line: "x_map7", ko: "연남동 지도", en: "Yeonnam-dong map" }, sinchon: { spot: MAPSPOT_SC, flag: "hasMapSc", line: "x_map8", ko: "신촌 지도", en: "Sinchon map" }, hongdae: { spot: MAPSPOT, flag: "hasMap", line: "x_map", ko: "홍대 지도", en: "Hongdae map" }, apt: { spot: MAPSPOT_APT, flag: "hasMapApt", line: "x_map2", ko: "서교 아파트 지도", en: "apartment map" }, river: { spot: MAPSPOT_RIVER, flag: "hasMapRiver", line: "x_map3", ko: "한강공원 지도", en: "Han River park map" }, yeouido: { spot: MAPSPOT_YD, flag: "hasMapYd", line: "x_map4", ko: "여의도 지도", en: "Yeouido map", zone: "yeouido" }, noryangjin: { spot: MAPSPOT_NR, flag: "hasMapNr", line: "x_map5", ko: "노량진 지도", en: "Noryangjin map", zone: "yeouido" }, yongsan: { spot: MAPSPOT_YS, flag: "hasMapYs", line: "x_map6", ko: "용산 지도", en: "Yongsan map", zone: "yeouido" } };
+const MAP_ITEMS = { sogang: { spot: MAPSPOT_SG, flag: "hasMapSg", line: "x_map13", ko: "서강대학교 지도", en: "Sogang University map" }, dangin: { spot: MAPSPOT_DI, flag: "hasMapDi", line: "x_map9", ko: "당인리 지도", en: "Danginri map" }, seonyudo: { spot: MAPSPOT_SY, flag: "hasMapSy", line: "x_map10", ko: "선유도 지도", en: "Seonyudo map", zone: "yeouido" }, sayuksin: { spot: MAPSPOT_SA, flag: "hasMapSa", line: "x_map11", ko: "사육신 공원 지도", en: "Sayuksin park map", zone: "yeouido" }, itaewon: { spot: MAPSPOT_IT, flag: "hasMapIt", line: "x_map12", ko: "이태원 지도", en: "Itaewon map", zone: "yeouido" }, yeonnam: { spot: MAPSPOT_YN, flag: "hasMapYn", line: "x_map7", ko: "연남동 지도", en: "Yeonnam-dong map" }, sinchon: { spot: MAPSPOT_SC, flag: "hasMapSc", line: "x_map8", ko: "신촌 지도", en: "Sinchon map" }, hongdae: { spot: MAPSPOT, flag: "hasMap", line: "x_map", ko: "홍대 지도", en: "Hongdae map" }, apt: { spot: MAPSPOT_APT, flag: "hasMapApt", line: "x_map2", ko: "서교 아파트 지도", en: "apartment map" }, river: { spot: MAPSPOT_RIVER, flag: "hasMapRiver", line: "x_map3", ko: "한강공원 지도", en: "Han River park map" }, yeouido: { spot: MAPSPOT_YD, flag: "hasMapYd", line: "x_map4", ko: "여의도 지도", en: "Yeouido map", zone: "yeouido" }, noryangjin: { spot: MAPSPOT_NR, flag: "hasMapNr", line: "x_map5", ko: "노량진 지도", en: "Noryangjin map", zone: "yeouido" }, yongsan: { spot: MAPSPOT_YS, flag: "hasMapYs", line: "x_map6", ko: "용산 지도", en: "Yongsan map", zone: "yeouido" } };
 const ownedAreas = () => Object.keys(MAP_ITEMS).filter(a => S[MAP_ITEMS[a].flag]);
 const inAreas = (p, areas) => areas.some(a => { const b = world.map.areas[a]; return p.x >= b.minX && p.x <= b.maxX && p.z >= b.minZ && p.z <= b.maxZ; });
 function drawMap(ctx, W, H, cx, cz, span, full, areas = Object.keys(MAP_ITEMS)) {
@@ -1956,6 +1979,7 @@ const ACH = [
   { id: "map10", ko: "선유교 건너", en: "Over the 선유교", desc: "Find the 선유도 map", prog: () => [S.hasMapSy ? 1 : 0, 1], reward: { xp: 80 } },
   { id: "map11", ko: "여섯 신하", en: "The six ministers", desc: "Find the 사육신 공원 map", prog: () => [S.hasMapSa ? 1 : 0, 1], reward: { xp: 100 } },
   { id: "map12", ko: "네온 거리", en: "Neon streets", desc: "Find the 이태원 map", prog: () => [S.hasMapIt ? 1 : 0, 1], reward: { xp: 120 } },
+  { id: "map13", ko: "카드 배틀 광장", en: "The card plaza", desc: "Find the 서강대학교 map", prog: () => [S.hasMapSg ? 1 : 0, 1], reward: { xp: 40 } },
   { id: "map8", ko: "대학가", en: "The university street", desc: "Find the 신촌 map", prog: () => [S.hasMapSc ? 1 : 0, 1], reward: { xp: 40 } },
   { id: "museum1", ko: "장군을 잠재우다", en: "The general sleeps again", desc: "Defeat the awakened general in the museum", prog: () => [S.museumClears ? 1 : 0, 1], reward: { won: 60000, xp: 400 } },
   { id: "truth", ko: "진실", en: "The truth", desc: "Hear the stranger's story", prog: () => [S.metMirror ? 1 : 0, 1], reward: { xp: 200 } },
@@ -4019,6 +4043,29 @@ const CB = {
   cb5: { name: "도윤", area: "noryangjin", ch: 4, at: { x: YD.x - 39.5, z: YD.z + 424.5, zone: "yeouido" }, model: "stuC" },
   cb6: { name: "수빈", area: "yongsan", ch: 5, at: { x: YD.x + 189.5, z: YD.z + 100.5, zone: "yeouido" }, woman: "stu_subin" },
 };
+// 서강대학교 (Danny 2026-10-18): eight ranked battlers in a ring on the plaza; beating one gives 2 cards of their chapter (missing words first)
+[["민서", "sg_minseo"], ["준호", 0, "sgA"], ["유나", "sg_yuna"], ["태윤", 0, "sgB"], ["소율", "sg_soyul"], ["건우", 0, "sgC"], ["다인", "sg_dain"], ["현우", 0, "sgD"]].forEach(([name, woman, model], k) => {
+  const a = Math.PI + k * Math.PI / 4;
+  CB["sg" + (k + 1)] = { name, area: "sogang", ch: k, rank: k + 1, at: { x: 390 + Math.cos(a) * 15, z: -180 + Math.sin(a) * 15, zone: "street" }, ...(woman ? { woman } : { model }) };
+  NPC_DEF["sg" + (k + 1)] = `${name} · 랭크 ${k + 1} 카드 배틀러`;
+});
+// your own 카드 랭크: 1 + every rank you've beaten in a row from the bottom; a student above it won't battle you
+const cardRank = () => { let r = 1; while (r <= 8 && (S.cbWins?.["sg" + r] || 0) > 0) r++; return Math.min(r, 8); };
+const rankOpen = kind => CB[kind].rank <= cardRank();
+const RANK_CARDS = 2;
+function chapterCards(ch, n) {
+  const owned = new Set(S.cards.map(c => c.id)), pool = bookWords().filter(w => w.ch === ch.id), miss = shuffle(pool.filter(w => !owned.has(w.id)));
+  const got = []; for (let i = 0; i < n; i++) { const w = miss[i] || pick(pool); if (!w) break; const c = newCard(w.id, rollRarity()); S.cards.push(c); got.push(c); }
+  return got;
+}
+function rankTalk(n) {
+  const c = CB[n.kind], ch = cbChapter(n.kind), beaten = S.cbWins?.[n.kind] || 0;
+  const my = cardRank();
+  if (!rankOpen(n.kind)) { const gap = c.rank - my; showLine(n, gap >= 3 ? "rb_mock3" : pick(["rb_mock1", "rb_mock2"]), [{ ko: "(대화 끝내기)", en: `your 카드 랭크 is ${my} · beat ${CB["sg" + my].name} (랭크 ${my}) to climb`, act: closeDialog }]); SFX.resist(); return; }
+  showLine(n, beaten ? "rb_again" : "rb_hi", [
+    { ko: "🃏 카드 배틀! · card battle", en: `your 카드 랭크 ${my} · their rank ${c.rank} · ${ch.title} words · win ${RANK_CARDS} ${ch.title} cards${beaten >= 2 ? " (longer words now)" : ""}`, act: () => { closeDialog(); startCardBattle(n.kind); } },
+    { ko: "(대화 끝내기)", en: "leave", act: closeDialog }]);
+}
 const SEOUL_CARDS = {
   hongdae: { ko: "홍대", en: "Hongdae", icon: "🎸", c: ["#ff3a8a", "#7a1a4a"], sub: "버스킹의 거리 · street of buskers" },
   apt: { ko: "서교 아파트", en: "Seogyo Apartments", icon: "🏢", c: ["#5aa8ff", "#1a3a7a"], sub: "경비실의 지도 · the guard's map" },
@@ -4031,7 +4078,7 @@ const seoulCardHTML = (k, owned = true, n = 0) => { const c = SEOUL_CARDS[k]; re
   ? `<div class="sCard" style="--c1:${c.c[0]};--c2:${c.c[1]}"><span class="sNo">${String(Object.keys(SEOUL_CARDS).indexOf(k) + 1).padStart(2, "0")} / 06</span><span class="sIc">${c.icon}</span><b>${c.ko}</b><small>${c.en}</small><em>${c.sub}</em><span class="sTag">SEOUL CARD</span></div>`
   : `<div class="sCard locked"><span class="sNo">${String(Object.keys(SEOUL_CARDS).indexOf(k) + 1).padStart(2, "0")} / 06</span><span class="sIc">?</span><b>???</b><small>${c.en}의 학생을 이기세요 · beat the student</small></div>`; };
 const syl = s => [...s.replace(/\s/g, "")];
-const cbChapter = kind => { const chs = bookChapters(); return chs[Math.min(CB[kind].ch + (S.cbWins?.[kind] || 0), chs.length - 1)]; };
+const cbChapter = kind => { const chs = bookChapters(); return chs[Math.min(CB[kind].ch + (CB[kind].rank ? 0 : S.cbWins?.[kind] || 0), chs.length - 1)]; };
 const cbWords = kind => {
   const ch = cbChapter(kind), wins = S.cbWins?.[kind] || 0;
   const ok = (w, min = 2) => w.pos === "noun" && (window.DEFS || {})[w.id] && syl(w.kb || w.kr).length >= min && syl(w.kb || w.kr).length <= 4;
@@ -4040,6 +4087,7 @@ const cbWords = kind => {
   return pool.length >= 4 ? pool : bookWords().filter(w => ok(w));
 };
 function cbTalk(n) {
+  if (CB[n.kind].rank) { rankTalk(n); return; }
   const won = S.seoulCards?.[CB[n.kind].area];
   showLine(n, won ? "cb_again" : "cb_hi", [
     { ko: "🃏 카드 배틀! · card battle", en: won ? `rematch · ${cbChapter(n.kind).title} words${(S.cbWins?.[n.kind] || 0) >= 2 ? ", longer ones" : ""}` : `win the ${SEOUL_CARDS[CB[n.kind].area].ko} Seoul card`, act: () => { closeDialog(); startCardBattle(n.kind); } },
@@ -4092,11 +4140,16 @@ function cbCheck() {
   cbHearts(); setTimeout(cbNext, ok ? 1500 : 2600);
 }
 function cbEnd() {
-  const d = cb, win = d.me >= 3, area = CB[d.kind].area, first = win && !S.seoulCards?.[area];
+  const d = cb, win = d.me >= 3, area = CB[d.kind].area, rk = CB[d.kind].rank, first = win && !rk && !S.seoulCards?.[area];
   $("cardb").hidden = true; cb = null; paused = false;
   const rows = [{ big: true, icon: win ? "🏆" : "🃏", ko: `${d.me} : ${d.her}`, en: win ? `you beat ${CB[d.kind].name}` : `${CB[d.kind].name} won · 3 of 4 wins` }];
   if (win) (S.cbWins = S.cbWins || {})[d.kind] = (S.cbWins[d.kind] || 0) + 1;
   if (first) { (S.seoulCards = S.seoulCards || {})[area] = Date.now(); rows.push({ iconHtml: seoulCardHTML(area), ko: `서울 카드 · ${SEOUL_CARDS[area].ko}`, en: `Seoul card ${Object.keys(S.seoulCards).length} / 6 (inventory → 서울 카드)` }); }
+  else if (win && rk) {
+    const ch = cbChapter(d.kind); for (const c of chapterCards(ch, RANK_CARDS)) rows.push({ icon: "🃏", ko: `${WORD[c.id].kr} · ${RARITY[c.rar].ko}`, en: `${WORD[c.id].en} · ${ch.title} · ${modText(c)}` });
+    if (S.cbWins[d.kind] === 1 && rk < 8) rows.push({ big: true, icon: "🏅", ko: `카드 랭크 업! 랭크 ${rk + 1}`, en: `card rank up: ${CB["sg" + (rk + 1)].name} (랭크 ${rk + 1}, ${bookChapters()[Math.min(rk, bookChapters().length - 1)].title}) will battle you now` });
+    else if (S.cbWins[d.kind] === 1) rows.push({ big: true, icon: "👑", ko: "최고 랭크!", en: "you beat every rank on the plaza" });
+  }
   else if (win) { rows.push({ icon: "✨", ko: "+60 XP", en: "rematch practice" }); setTimeout(() => gainXp(60), 400); }
   save();
   const n = npcs.find(x => x.kind === d.kind);
@@ -4112,12 +4165,12 @@ addEventListener("keydown", e => {
 // ---- main loop ------------------------------------------------------------------------------------------
 let last = performance.now(), saveT = 0;
 // ---- area guidance (Danny 2026-10-17) -------------------------------------------------------------------
-const AREA_LV = { hongdae: 1, yeonnam: 1, sinchon: 4, apt: 4, dangin: 6, seonyudo: 9, sayuksin: 12, itaewon: 15, river: 6, yeouido: 9, tower: 10, noryangjin: 12, market: 15, yongsan: 15, museum: 16 };
-const AREA_KO = { hongdae: "홍대 거리", yeonnam: "연남동", sinchon: "신촌", dangin: "당인리 발전소", seonyudo: "선유도공원", sayuksin: "사육신 공원", itaewon: "이태원", apt: "서교 아파트", river: "한강공원", yeouido: "여의도", tower: "63빌딩", noryangjin: "노량진", market: "수산시장", yongsan: "용산", museum: "국립중앙박물관" };
+const AREA_LV = { hongdae: 1, yeonnam: 1, sinchon: 4, sogang: 4, apt: 4, dangin: 6, seonyudo: 9, sayuksin: 12, itaewon: 15, river: 6, yeouido: 9, tower: 10, noryangjin: 12, market: 15, yongsan: 15, museum: 16 };
+const AREA_KO = { hongdae: "홍대 거리", yeonnam: "연남동", sinchon: "신촌", sogang: "서강대학교", dangin: "당인리 발전소", seonyudo: "선유도공원", sayuksin: "사육신 공원", itaewon: "이태원", apt: "서교 아파트", river: "한강공원", yeouido: "여의도", tower: "63빌딩", noryangjin: "노량진", market: "수산시장", yongsan: "용산", museum: "국립중앙박물관" };
 const AREA_GO = ["hongdae", "apt", "river", "yeouido", "noryangjin", "yongsan"];   // where 민수 sends you instead (overworld only)
 function areaOf() {
   const p = player.pos, z = player.zone;
-  if (z === "street") return p.z >= 108 ? (p.x > 310 ? "dangin" : "river") : p.z < -110 ? (p.x > 108 ? "sinchon" : "yeonnam") : p.x > 108 ? "apt" : "hongdae";
+  if (z === "street") return p.z >= 108 ? (p.x > 310 ? "dangin" : "river") : p.z < -110 ? (p.x > 310 ? "sogang" : p.x > 108 ? "sinchon" : "yeonnam") : p.x > 108 ? "apt" : "hongdae";
   if (z === "yeouido") return p.x > YD.x + 462 ? "itaewon" : p.x < YD.x - 152 ? (p.z > YD.z + 400 ? "sayuksin" : "seonyudo") : p.x > YD.x + 152 ? "yongsan" : p.z > YD.z + 330 ? "noryangjin" : "yeouido";
   return z === "tower" || z === "market" || z === "museum" ? z : null;
 }

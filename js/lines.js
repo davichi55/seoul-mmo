@@ -1,6 +1,17 @@
 // Every spoken line in the game. key -> { ko, en, say? }  (say = what Piper reads, when it differs from ko)
 // After editing: node tools/gen-lines.js  (makes audio/lines/<key>.wav for new keys)
 export const LINES = {
+  rb_mock1: { ko: "하하, 그 랭크로 저한테 도전해요? 아직 멀었어요.", en: "Ha, you challenge me with that rank? You've got a long way to go." },
+  rb_mock2: { ko: "저는 아무하고나 배틀 안 해요. 먼저 실력을 보여 주세요.", en: "I don't battle just anyone. Prove yourself first." },
+  rb_mock3: { ko: "뭐라고요? 그 정도 랭크로 저랑요? 단어 공부부터 하고 오세요.", en: "What? Someone that low wants to battle me? Go study your words first." },
+  x_map13: { ko: "서강대학교 지도를 찾았어요!", en: "You found the Sogang University map!" },
+  rb_hi: { ko: "카드 배틀 할래요? 저를 이기면 제 과의 카드를 줄게요.", en: "Want a card battle? Beat me and I'll give you cards from my chapter." },
+  rb_again: { ko: "또 왔어요? 좋아요, 이번에는 더 어려운 단어로 해요.", en: "You're back? Fine, this time with harder words." },
+  rb_locked: { ko: "먼저 랭크가 낮은 학생을 이기고 오세요.", en: "Beat the student with the lower rank first." },
+  kt_hi: { ko: "어서 와요. 오늘의 단어 카드예요. 다섯 장씩 묶어서 팔아요.", en: "Welcome. These are today's word cards. I sell them in bundles of five." },
+  kt_buy: { ko: "좋은 선택이에요. 열심히 공부하세요!", en: "Good choice. Study hard!" },
+  kt_sold: { ko: "오늘 카드는 다 팔렸어요. 내일 다시 오세요.", en: "Today's cards are sold out. Come back tomorrow." },
+  kt_poor: { ko: "돈이 모자라요. 한 묶음에 이만 오천 원이에요.", en: "You don't have enough money. One bundle is twenty-five thousand won." },
   x_map9: { ko: "당인리 지도를 찾았어요!", en: "You found the Danginri map!" },
   x_map10: { ko: "선유도 지도를 찾았어요!", en: "You found the Seonyudo map!" },
   x_map11: { ko: "사육신 공원 지도를 찾았어요!", en: "You found the Sayuksin park map!" },
