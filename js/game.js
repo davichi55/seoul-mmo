@@ -170,8 +170,8 @@ const ACTIONS = {
   bar0: "칸 1 · slot 1", bar1: "칸 2 · slot 2", bar2: "칸 3 · slot 3", bar3: "칸 4 · slot 4", bar4: "칸 5 · slot 5", bar5: "칸 6 · slot 6", bar6: "칸 7 · slot 7", bar7: "칸 8 · slot 8", bar8: "칸 9 · slot 9", bar9: "칸 10 · slot 10",
 };
 const DEFAULT_KEYS = { basic: "1", s2: "2", s3: "3", interact: "e", food: "f", target: "tab", inv: "i", char: "c", deck: "k", quests: "l", map: "m", ach: "y", chat: "enter", wave: "g", bow: "b", sleep: "4", silence: "5", bike: "r", book: "p", friends: "o", bar0: "6", bar1: "7", bar2: "8", bar3: "9", bar4: "0", bar5: "q", bar6: "z", bar7: "x", bar8: "v", bar9: "t" };
-const SET = { keys: { ...DEFAULT_KEYS }, sens: 1, quality: "high", music: .5 };
-try { const s = JSON.parse(localStorage.getItem(SET_KEY)); if (s) { Object.assign(SET, s); SET.keys = Object.assign({ ...DEFAULT_KEYS }, s.keys || {}); } } catch (e) {}
+const SET = { keys: { ...DEFAULT_KEYS }, sens: 1, quality: "high", music: .35, musicV: 2 };   /* Danny 2026-10-18: the default music was too loud (.5 → .35) */
+try { const s = JSON.parse(localStorage.getItem(SET_KEY)); if (s) { Object.assign(SET, s); SET.keys = Object.assign({ ...DEFAULT_KEYS }, s.keys || {}); if (!s.musicV) { if (s.music === .5 || s.music == null) SET.music = .35; SET.musicV = 2; } } } catch (e) {}
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch (e) {} }
 const keyName = k => k === " " ? "Space" : k === "tab" ? "Tab" : k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1);
 const actionFor = k => Object.keys(SET.keys).find(a => SET.keys[a] === k);
@@ -815,6 +815,12 @@ function placeNPCs() {
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); if (kind === "granny") colliders_street_push(n.pos);
   }
+  for (const [kind, d] of Object.entries(SQ_NPC)) {   /* side-quest people (2026-10-18) */
+    const model = d.npc ? makeNPC(d.npc) : kayReady() ? makeKay(d.role) : makeNPC("sitter"), n = { isNpc: true, kind, zone: d.at.zone, model, pos: new THREE.Vector3(d.at.x, 0, d.at.z), name: NPC_DEF[kind] };
+    model.root.position.copy(n.pos); model.root.rotation.y = d.face ?? Math.PI; model.root.userData.ent = n; scene.add(model.root);
+    n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
+    npcs.push(n); if (d.at.zone === "street") colliders_street_push(n.pos); else world.colliders.yeouido.push({ x: d.at.x, z: d.at.z, r: .6 });
+  }
   sp.sitters.forEach((s, i) => {
     const m = kayReady() ? makeKay(i ? "sitterB" : "sitterA") : makeNPC("sitter");
     m.root.position.set(s.x, kayReady() ? 0 : -.45, s.z); m.root.rotation.y = -Math.PI / 2; scene.add(m.root); decor.push(m);
@@ -866,7 +872,7 @@ function talkTo(n) {
     stranger: () => (S.hasMirror && !S.metMirror) ? (S.metMirror = true, save(), revealTalk(n)) : (S.towerClears && S.sawPoster && !S.metHaneul) ? (S.metHaneul = true, save(), showLine(n, "x_haneul", [{ plr: "p_haneul", act: () => endWith(n, "x_haneul2") }])) : (S.sawList && !S.metList) ? (S.metList = true, save(), endWith(n, "x_list")) : (S.dunClears && !S.metAgain) ? (S.metAgain = true, save(), endWith(n, "x_return")) : showLine(n, "x_again", [{ plr: "p_yes", act: () => { closeDialog(); openDeckPicker(false); } }, { plr: "p_who", act: () => endWith(n, "x_who") }, { plr: "p_no", act: () => endWith(n, "x_bye") }]),
     guard: () => showLine(n, S.hasMap ? "g_hello" : "g_map", [{ plr: "p_yes", act: () => endWith(n, "g_sleep") }]),
     driver: () => showLine(n, S.spells?.sleep || S.dunClears ? "d_hello" : "d_hint", [{ plr: "p_enter", act: () => { closeDialog(); fade(toDungeon); } }, { plr: "p_later", act: closeDialog }]),
-    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), dealer: () => dealerTalk(n), ...Object.fromEntries(Object.keys(CB).map(k => [k, () => cbTalk(n)])), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
+    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), dealer: () => dealerTalk(n), ...Object.fromEntries(Object.keys(CB).map(k => [k, () => cbTalk(n)])), ...Object.fromEntries(Object.keys(SQ_NPC).map(k => [k, () => endWith(n, SQ_NPC[k].hi)])), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
     minsu: () => endWith(n, "m_hello"), jieun: () => endWith(n, S.quests.sister?.st === "done" ? "j_home" : "j_hello"), gyeongbi: () => endWith(n, S.hasMapApt ? "b_hello" : "b_map"),
   }[n.kind];
   const dc = DREAM_TEAM.includes(n.kind) ? () => dcMenu(n, normal) : normal;
@@ -916,6 +922,7 @@ function nearestInteract0() {
   if (player.dead) return null;
   const E = keyName(SET.keys.interact);
   for (const r of remotes.values()) if (r.dead && r.zone === player.zone && dist2(r.pos, player.pos) < 2.8) return { t: "revive", r, label: `${E} · ${r.nm} 살리기 · revive (word challenge)` };
+  { const q = sqSpotNear(); if (q) return { t: "qspot", q, label: `${E} · ${QUESTS[q.id].verb}` }; }
   if (player.zone === "museum") {
     if (dist2(player.pos, MUSEUM.up) < 3) return { t: "museumOut", label: `${E} · 용산으로 나가기 · back out to 용산` };
     if (dist2(player.pos, MUSEUM.end) < 4 && !monsters.some(m => m.def.boss && !m.dead && m.zone === "museum")) return { t: "museumOut", label: `${E} · 출구 · exit to 용산` };
@@ -986,6 +993,7 @@ function interact() {
   else if (it.t === "bank") openBank();
   else if (it.t === "mail") openMail();
   else if (it.t === "fish") startFishing();
+  else if (it.t === "qspot") sqPick(it.q.id, it.q.i);
   else if (it.t === "bridge") { if (S.level < 8) toast("위험해요! Lv 9 이상 추천 · dangerous: level 9+ recommended"); fade(toYeouido); }
   else if (it.t === "ydBack") fade(toStreetBridge);
   else if (it.t === "tower") fade(toTower);
@@ -1530,6 +1538,113 @@ const QUESTS = {
            offer: "q_t1", wait: "q_t1_wait", done: "q_t1_done", turn: "p_pay", reward: { won: 6000, xp: 60, card: 2 },
            desc: "이 단어 카드 세 장을 가방에 모아서 카드 상인에게 · collect these 3 word cards (loose, in your bag) for the card trader" },
 };
+// ---- side quests (Danny 2026-10-18: "all of them"): helping people, no fighting needed; every quest ends with a 🃏 card pack ----
+// kinds: collect (pick up / leave something at marked spots), bring (a snack from a shop), fish (catches in the drill),
+// ride (a 따릉이 to a spot within a time), quiz (a few questions with the person; wrong ones come back)
+const SQ_NPC = {
+  busker: { name: "버스커 · 거리 가수", at: { x: -32, z: -44, zone: "street" }, role: "sqBusker", hi: "sq_bu_hi" },
+  tourist: { name: "엠마 · 관광객", at: { x: -46, z: 8, zone: "street" }, role: "sqTourist", hi: "sq_to_hi" },
+  pcbang: { name: "PC방 사장님", at: { x: 23.5, z: -35.8, zone: "street" }, role: "sqPc", hi: "sq_pc_hi" },
+  catgran: { name: "고양이 할머니", at: { x: 210, z: 30, zone: "street" }, npc: "grandma", hi: "sq_ca_hi" },
+  fisher: { name: "낚시꾼 아저씨", at: { x: -12, z: 188, zone: "street" }, role: "sqFisher", hi: "sq_fi_hi" },
+  bikeguy: { name: "따릉이 직원", at: { x: 66, z: 158, zone: "street" }, role: "sqBike", hi: "sq_bi_hi" },
+  photog: { name: "사진작가", at: { x: YD.x + 30, z: YD.z + 150, zone: "yeouido" }, role: "sqPhoto", hi: "sq_ph_hi" },
+  gongsi: { name: "태민 · 공시생", at: { x: YD.x + 92, z: YD.z + 515, zone: "yeouido" }, role: "sqGongsi", hi: "sq_go_hi" },
+  docent: { name: "도슨트 · 박물관 해설사", at: { x: YD.x + 312, z: YD.z + 20, zone: "yeouido" }, role: "sqDocent", hi: "sq_do_hi" },
+};
+const SQ = (giver, ko, en, kind, more, lines, desc, reward) => ({ giver, ko, en, kind, ...more, offer: lines + "_q", wait: lines + "_wait", done: lines + "_done", turn: "p_done", reward, desc });
+const SIDE_QUESTS = {
+  lyrics: SQ("busker", "버스커의 가사", "The busker's lyrics", "collect", { n: 3, icon: "📄", verb: "가사 종이 줍기 · pick up the lyric sheet", spots: [{ x: -70, z: 60, zone: "street" }, { x: -10, z: 20, zone: "street" }, { x: -75, z: -90, zone: "street" }] }, "sq_bu", "홍대 거리에 날아간 가사 종이 세 장을 찾아 버스커에게 · find 3 lyric sheets blown around Hongdae, bring them to the busker", { won: 9000, xp: 80 }),
+  tourist: SQ("tourist", "길 잃은 관광객", "The lost tourist", "quiz", { quiz: "tourist" }, "sq_to", "역 출구 앞의 엠마의 질문에 한국어로 대답하세요 · answer Emma's questions in Korean (by the station exit)", { won: 8000, xp: 80 }),
+  pcbang: SQ("pcbang", "PC방 야식", "A late-night snack", "bring", { item: "ramyeon", n: 1 }, "sq_pc", "편의점에서 컵라면을 사서 걷고싶은거리의 PC방 사장님에게 · buy a cup ramyeon at the 편의점, bring it to the PC방 owner on 걷고싶은거리", { won: 7000, xp: 70 }),
+  parcels: SQ("gyeongbi", "경비실 택배", "Parcels for the buildings", "collect", { n: 3, icon: "📦", verb: "택배 놓기 · leave the parcel at the door", spots: [{ x: 150, z: -62, zone: "street" }, { x: 232, z: -62, zone: "street" }, { x: 272, z: 12, zone: "street" }] }, "sq_pa", "택배 세 개를 아파트 문 앞에 놓고 경비 아저씨에게 · leave 3 parcels at the apartment doors, then see the guard", { won: 12000, xp: 110 }),
+  cat: SQ("catgran", "할머니의 고양이", "Grandma's cat", "collect", { n: 1, icon: "🐈", verb: "나비 데려오기 · pick up Nabi the cat", spots: [{ x: 288, z: 77, zone: "street" }] }, "sq_ca", "서교 아파트 어딘가에 숨은 하얀 고양이 나비를 찾아 할머니에게 · find Nabi, the white cat hiding in the complex", { won: 12000, xp: 110 }),
+  fishing: SQ("fisher", "낚시 대회", "The fishing contest", "fish", { n: 10 }, "sq_fi", "한강 낚시터에서 물고기 열 마리를 잡고 낚시꾼에게 · catch 10 fish at the 한강 pier", { won: 15000, xp: 140 }),
+  ride: SQ("bikeguy", "따릉이 배달", "The 따릉이 delivery", "ride", { time: 60, spots: [{ x: 196, z: 162, zone: "street" }] }, "sq_bi", "따릉이를 타고 60초 안에 부서진 다리 앞의 빛까지, 그리고 직원에게 · ride a 따릉이 to the light by the broken bridge within 60 s, then back to the staff", { won: 15000, xp: 140 }),
+  photos: SQ("photog", "벚꽃 사진", "Cherry-blossom photos", "collect", { n: 3, icon: "📷", verb: "사진 찍기 · take a photo", spots: [{ x: YD.x - 100, z: YD.z + 170, zone: "yeouido" }, { x: YD.x + 62, z: YD.z + 205, zone: "yeouido" }, { x: YD.x - 92, z: YD.z + 225, zone: "yeouido" }] }, "sq_ph", "여의도의 반짝이는 벚꽃 앞에서 사진 세 장을 찍고 사진작가에게 · take 3 photos at the sparkling cherry trees", { won: 20000, xp: 220 }),
+  campfood: SQ("gayoung", "가현의 캠프 요리", "Food for the camp", "bring", { item: "cupbap", n: 2 }, "sq_ga", "노량진 컵밥 아줌마에게서 컵밥 두 개를 사서 가현에게 · buy 2 cup rice from the 컵밥 lady in 노량진, bring them to 가현", { won: 22000, xp: 240 }),
+  gongsi: SQ("gongsi", "공시생의 단어장", "The exam student's word list", "quiz", { quiz: "words" }, "sq_go", "태민과 같이 단어 다섯 개를 맞히세요 · get 5 of 태민's words right together with him", { won: 26000, xp: 300 }),
+  docent: SQ("docent", "박물관 도슨트", "Museum docent", "quiz", { quiz: "museum" }, "sq_do", "설명을 듣고 맞는 유물을 고르세요 · hear each description and pick the right relic", { won: 30000, xp: 360 }),
+};
+Object.assign(QUESTS, SIDE_QUESTS);
+for (const [k, d] of Object.entries(SQ_NPC)) NPC_DEF[k] = d.name;
+// the quizzes
+const TOURIST_Q = [
+  ["홍대입구역이 어디예요?", "Where is 홍대입구역?", "저쪽으로 쭉 가면 있어요.", ["저는 커피를 좋아해요.", "어제 영화를 봤어요.", "천천히 드세요."]],
+  ["여기서 얼마나 걸려요?", "How long does it take from here?", "걸어서 오 분쯤 걸려요.", ["세 개 주세요.", "토요일에 만나요.", "저는 학생이에요."]],
+  ["근처에 편의점이 있어요?", "Is there a convenience store nearby?", "네, 길 건너편에 있어요.", ["아니요, 배불러요.", "노래를 잘 불러요.", "생일 축하해요!"]],
+  ["도와주셔서 감사합니다!", "Thank you for helping!", "아니에요. 좋은 여행 되세요!", ["얼마예요?", "다시 말해 주세요.", "저는 바빠요."]],
+];
+const MUSEUM_Q = [
+  ["고려 시대에 만든 푸른빛 도자기예요.", "A blue-green pottery from the Goryeo era.", "청자", ["금관", "훈민정음", "무인석"]],
+  ["신라의 왕이 머리에 썼던 금으로 만든 관이에요.", "A gold crown a Silla king wore.", "금관", ["청자", "신기전", "무인석"]],
+  ["세종대왕이 만든 한국의 글자예요.", "The Korean letters King Sejong made.", "훈민정음", ["금관", "청자", "신기전"]],
+  ["왕의 무덤을 지키는, 돌로 만든 사람이에요.", "A stone figure guarding a king's tomb.", "무인석", ["훈민정음", "금관", "청자"]],
+  ["불을 붙여서 한꺼번에 많이 쏘던 화살이에요.", "Fire arrows shot many at once.", "신기전", ["청자", "무인석", "금관"]],
+];
+function sideQuiz(id, n) {
+  closeDialog();
+  const q = QUESTS[id];
+  let items;
+  if (q.quiz === "tourist") items = TOURIST_Q.map(([qq, en, a, wrong]) => ({ prompt: `<span class="qzKo">${esc(qq)}</span><span class="qzEn">${esc(en)} · 맞는 대답은? · the right reply?</span>`, a: { id: "x", noStat: true, kr: a }, wrong }));
+  else if (q.quiz === "museum") items = MUSEUM_Q.map(([d, en, a, wrong]) => ({ prompt: `<span class="qzKo">${esc(d)}</span><span class="qzEn">${esc(en)} · 무슨 유물이에요? · which relic?</span>`, a: { id: "x", noStat: true, kr: a }, wrong }));
+  else { const ch = storyNext().cur, pool = shuffle(bookWords().filter(w => w.ch === ch.id)); items = pool.slice(0, 5).map((w, i) => ({ word: w, pool, koToEn: i % 2 === 0 })); }
+  const queue = items.slice(); let right = 0, need = items.length;
+  const next = () => {
+    if (right >= need) { completeQuest(id); showLine(n, q.done, [{ plr: "p_yes", act: closeDialog }]); return; }
+    const it = queue.shift();
+    let ans, opts, prompt;
+    if (it.word) { const w = it.word, others = shuffle(it.pool.filter(x => x !== w)).slice(0, 3); ans = it.koToEn ? { id: w.id, kr: w.en } : w; opts = shuffle([ans, ...others.map(o => it.koToEn ? { id: o.id, kr: o.en } : o)]); prompt = it.koToEn ? `<span class="qzKo">${esc(w.kr)}</span><span class="qzEn">무슨 뜻이에요? · what does it mean?</span>` : `<span class="qzKo">${esc(w.en)}</span><span class="qzEn">이 뜻의 단어는? · which word means this?</span>`; }
+    else { ans = it.a; opts = shuffle([ans, ...it.wrong.map(t => ({ id: "x", noStat: true, kr: t }))]); prompt = it.prompt; }
+    openQuiz({ title: `${q.ko} · ${right} / ${need}`, prompt, answer: ans, opts, onDone: ok => { if (ok) right++; else queue.push(it); next(); } });
+  };
+  next();
+}
+// marked spots: built once, shown while the quest needs them
+const sqSpots = [];
+function buildSideSpots() {
+  const ringM = c => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+  for (const [id, q] of Object.entries(SIDE_QUESTS)) (q.spots || []).forEach((sp, i) => {
+    const g = new THREE.Group(); g.position.set(sp.x, 0, sp.z);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(.9, 1.15, 28), ringM(q.kind === "ride" ? "#7ae8ff" : "#ffd23d")); ring.rotation.x = -Math.PI / 2; ring.position.y = .06; g.add(ring);
+    let obj;
+    if (q.kind === "ride") obj = new THREE.Mesh(new THREE.CylinderGeometry(.8, .8, 14, 16, 1, true), ringM("#7ae8ff"));
+    else if (q.icon === "📄") obj = new THREE.Mesh(new THREE.BoxGeometry(.5, .02, .7), toon("#f8f6ee"));
+    else if (q.icon === "📦") obj = new THREE.Mesh(new THREE.BoxGeometry(.7, .5, .7), toon("#b8864a"));
+    else if (q.icon === "🐈") { obj = new THREE.Group(); const w = toon("#f6f4ee"); const b = new THREE.Mesh(new THREE.SphereGeometry(.35, 10, 8), w); b.scale.set(1.3, .8, .9); b.position.y = .3; obj.add(b); const h = new THREE.Mesh(new THREE.SphereGeometry(.22, 10, 8), w); h.position.set(.42, .5, 0); obj.add(h); for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.ConeGeometry(.07, .16, 4), w); e.position.set(.45, .72, s * .1); obj.add(e); } }
+    else obj = new THREE.Mesh(new THREE.OctahedronGeometry(.35, 0), new THREE.MeshBasicMaterial({ color: "#ffe8f0", toneMapped: false }));
+    obj.position.y = q.kind === "ride" ? 7 : obj.position.y || .35; g.add(obj);
+    g.visible = false; scene.add(g); sqSpots.push({ id, i, g, obj, sp });
+  });
+}
+const sqNeeds = (id, i) => { const q = QUESTS[id], st = S.quests[id]; return st?.st === "active" && (q.kind === "ride" ? st.c < 1 : !(st.got || [])[i]); };
+function sqSpotNear() {
+  for (const s of sqSpots) if (s.sp.zone === player.zone && QUESTS[s.id].kind === "collect" && sqNeeds(s.id, s.i) && dist2(player.pos, s.sp) < 2.6) return s;
+  return null;
+}
+function sqPick(id, i) {
+  const q = QUESTS[id], st = S.quests[id]; if (!st || st.st !== "active") return;
+  st.got = st.got || []; if (st.got[i]) return; st.got[i] = 1; st.c = st.got.filter(Boolean).length;
+  SFX.pickup(); FX.burst(player.pos, { n: 18, color: ["#ffd23d", "#ffffff"], speed: 4, size: .14, life: .7, shape: "star", grav: 1 });
+  if (q.icon === "📷") { FX.glow(player.pos, { color: "#ffffff", r: 3, life: .25 }); snd("field", .4, 1.8); }
+  toast(`${q.icon} ${q.ko} ${st.c} / ${q.n}` + (st.c >= q.n ? ` · 완료! ${NPC_DEF[q.giver]?.split(" · ")[0] || ""}에게 돌아가세요 · go back` : ""));
+  save();
+}
+let rideT = 0, rideFail = false, sqT = 0;
+function sqTick(dt) {
+  if ((sqT -= dt) <= 0) { sqT = .5; for (const s of sqSpots) s.g.visible = sqNeeds(s.id, s.i); }
+  for (const s of sqSpots) if (s.g.visible) { s.obj.rotation.y += dt * 1.5; if (QUESTS[s.id].kind !== "ride") s.obj.position.y = .35 + Math.sin(clock * 3 + s.i) * .1; }
+  const st = S.quests.ride, q = QUESTS.ride;
+  if (st?.st === "active" && st.c < 1) {
+    if (!player.riding) { rideFail = false; if (rideT) { rideT = 0; toast("자전거에서 내렸어요 · you got off — get on a 따릉이 to start again"); } }
+    else if (!rideFail) {
+      if (!rideT) { rideT = clock + q.time; toast(`⏱ ${q.time}초! 부서진 다리 앞의 빛까지 · ${q.time} s — ride to the light by the broken bridge!`); }
+      const left = rideT - clock;
+      if (player.zone === "street" && dist2(player.pos, q.spots[0]) < 5) { st.c = 1; rideT = 0; SFX.kill(); FX.pillarFx(player.pos, "#7ae8ff"); toast("🚲 도착! 따릉이 직원에게 돌아가세요 · made it! back to the 따릉이 staff"); save(); }
+      else if (left <= 0) { rideT = 0; rideFail = true; toast("⏱ 시간 초과! 내렸다가 다시 타면 다시 시작 · time's up — get off and on again to retry"); }
+    }
+  }
+}
 const qState = id => S.quests[id];
 const qAvailable = id => { const q = QUESTS[id]; return q.kind !== "custom" && !S.quests[id] && (!q.needs || S.quests[q.needs]?.st === "done"); };
 const qTurnInNpc = q => q.kind === "deliver" ? q.to : q.giver;
@@ -1539,6 +1654,10 @@ function qProgress(id) {
   if (q.kind === "cards") return `${cardsHave(st).length} / ${q.n}`;
   if (q.kind === "find") return st.found ? "찾았어요 · found" : "찾는 중 · searching";
   if (id === "sua") return S.gimbap ? "김밥 있음 → 수아" : "김밥 사기 · buy a gimbap";
+  if (q.kind === "collect" || q.kind === "fish") return `${Math.min(st.c, q.n)} / ${q.n}`;
+  if (q.kind === "bring") { const h = S.snacks?.[q.item] || 0; return `${SNACKS[q.item].ko} ${Math.min(h, q.n)} / ${q.n}`; }
+  if (q.kind === "ride") return st.c ? "도착! · arrived" : "따릉이를 타면 시작 · get on a 따릉이 to start";
+  if (q.kind === "quiz") return "대화하기 · talk to them";
   return "";
 }
 function cardsHave(st) { const bag = bagCards(); return st.words.filter(id => bag.some(c => c.id === id)); }
@@ -1547,6 +1666,10 @@ function qReady(id) {
   if (q.kind === "kill") return st.c >= q.n;
   if (q.kind === "cards") return cardsHave(st).length >= q.n;
   if (q.kind === "find") return !!st.found;
+  if (q.kind === "collect" || q.kind === "fish") return st.c >= q.n;
+  if (q.kind === "ride") return st.c >= 1;
+  if (q.kind === "bring") return (S.snacks?.[q.item] || 0) >= q.n;
+  if (q.kind === "quiz") return false;             // the quiz itself completes it
   return q.kind === "deliver";                     // ready as soon as you reach the person
 }
 function acceptQuest(id) {
@@ -1568,6 +1691,7 @@ function autoCreditBossQuests() {
 function completeQuest(id) {
   const q = QUESTS[id], st = S.quests[id], r = q.reward;
   if (q.kind === "cards") for (const w of st.words) { const c = bagCards().filter(x => x.id === w).sort((a, b) => a.rar - b.rar)[0]; if (c) S.cards = S.cards.filter(x => x !== c); }
+  if (q.kind === "bring") S.snacks[q.item] -= q.n;
   st.st = "done"; addHeart(3);
   if (r.won) S.money += r.won;
   const att = {};
@@ -1594,7 +1718,7 @@ function npcMarker(n) {
   return "";
 }
 // talking: hand in first, then a new quest, then a reminder, then the NPC's normal business
-function questTalk(n, normal) {
+function questTalk(n, normal, skip = 0) {
   for (const id in QUESTS) {
     const q = QUESTS[id];
     if (q.kind === "find" && q.to === n.kind && S.quests[id]?.st === "active" && !S.quests[id].found) { findTalk(n, id); return true; }
@@ -1607,15 +1731,16 @@ function questTalk(n, normal) {
   for (const id in QUESTS) {
     const q = QUESTS[id];
     if (q.giver === n.kind && qAvailable(id)) {
+      if (skip-- > 0) continue;
       const words = () => q.kind === "cards" ? " " + S.quests[id].words.map(w => WORD[w].kr).join(", ") : "";
-      showLine(n, q.offer, [{ plr: "p_ok", act: () => { acceptQuest(id); if (q.kind === "cards") toast(`찾을 카드 · ${words()}`); normal ? normal() : closeDialog(); } }, { plr: "p_later", act: () => normal ? normal() : closeDialog() }]);
+      showLine(n, q.offer, [{ plr: "p_ok", act: () => { acceptQuest(id); if (q.kind === "quiz") { sideQuiz(id, n); return; } if (q.kind === "cards") toast(`찾을 카드 · ${words()}`); normal ? normal() : closeDialog(); } }, { plr: "p_later", act: () => { if (!questTalk(n, normal, (arguments[2] || 0) + 1)) normal ? normal() : closeDialog(); } }]);
       return true;
     }
   }
   for (const id in QUESTS) {
     const q = QUESTS[id], st = S.quests[id];
     if (st && st.st === "active" && qTurnInNpc(q) === n.kind && q.kind !== "deliver" && q.kind !== "custom") {
-      showLine(n, q.wait, [{ plr: "p_yes", act: () => normal ? normal() : closeDialog() }]);
+      showLine(n, q.wait, q.kind === "quiz" ? [{ plr: "p_ok", act: () => sideQuiz(id, n) }, { plr: "p_later", act: closeDialog }] : [{ plr: "p_yes", act: () => normal ? normal() : closeDialog() }]);
       return true;
     }
   }
@@ -2308,7 +2433,8 @@ function answerQuiz(i) {
   const ok = i >= 0 && quiz.opts[i] === quiz.answer, btns = $("qzOpts").children;
   if (i >= 0) btns[i].classList.add(ok ? "ok" : "no");
   btns[quiz.opts.indexOf(quiz.answer)].classList.add("ok");
-  if (ok) { const id = quiz.answer.id; stat(id).c++; if (WORD[id] && mastery(id).k === "mastered" && !S.mastered.includes(id)) { S.mastered.push(id); toast(`마스터! ${WORD[id].kr} · +${MASTER_XP} XP`); gainXp(MASTER_XP); } say([wordClip(id)], { interrupt: true }); SFX.select(); } else { stat(quiz.answer.id).w++; SFX.resist(); }
+  if (quiz.answer.noStat) { if (ok) SFX.select(); else SFX.resist(); }
+  else if (ok) { const id = quiz.answer.id; stat(id).c++; if (WORD[id] && mastery(id).k === "mastered" && !S.mastered.includes(id)) { S.mastered.push(id); toast(`마스터! ${WORD[id].kr} · +${MASTER_XP} XP`); gainXp(MASTER_XP); } say([wordClip(id)], { interrupt: true }); SFX.select(); } else { stat(quiz.answer.id).w++; SFX.resist(); }
   const q = quiz; setTimeout(() => { $("quiz").hidden = true; quiz = null; q.onDone(ok); }, ok ? 700 : 1600);
 }
 function quizTick(dt) {
@@ -2529,6 +2655,7 @@ function fishTick(dt) {
       if (!S.cards.some(c => c.id === w.id)) { S.cards.push(newCard(w.id, 0)); toast(`🃏 새 카드! ${w.kr} · ${w.en} — you caught a word you didn't own`); }
       let r = Math.random(), f = FISH[0]; for (const x of FISH) { if ((r -= x.p) < 0) { f = x; break; } }
       S.fish = S.fish || {}; S.fish[f.ko] = (S.fish[f.ko] || 0) + 1; S.fishTotal = (S.fishTotal || 0) + 1;
+      { const fq = S.quests.fishing; if (fq?.st === "active" && fq.c < QUESTS.fishing.n) { fq.c++; setTimeout(() => toast(`🎣 낚시 대회 ${fq.c} / ${QUESTS.fishing.n}` + (fq.c >= QUESTS.fishing.n ? " · 완료! 낚시꾼에게 · go back to the fisher" : "")), 700); } }
       toast(`🐟 ${f.ko} · ${f.en}! (편의점에서 ${won(f.won)})`); floater(player.pos, "🐟 " + f.ko, "#9ec8ff", false, 3); SFX.pickup(); save(); setTimeout(again, 350);
     } });
 }
@@ -4020,7 +4147,7 @@ function step(dt) {
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * rate * dt);
   }
   player.attackAnim = Math.max(0, player.attackAnim - dt * 3);
-  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); companionTick(dt); rubbleTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt); caveTick(dt);
+  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); sqTick(dt); companionTick(dt); rubbleTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt); caveTick(dt);
   if (target && target.dead) setTarget(null);
   saveT += dt; if (saveT > 10) { saveT = 0; S.hp = player.hp; save(); }
 }
@@ -4108,7 +4235,7 @@ async function boot() {
   try { await Promise.race([Promise.all([document.fonts.load('64px "Black Han Sans"'), document.fonts.load('700 20px "Noto Sans KR"', '가나다')]), new Promise(r => setTimeout(r, 2500))]); } catch (e) {}
   world = buildWorld(scene);
   await Promise.all([loadKayKit(), loadWomen()]);
-  placeNPCs(); placeMapItem(); placeRacks(); buildCampParts(); applyQuality(); refreshKeyLabels(); setMusicVolume(SET.music); makeSpawnPoints();
+  placeNPCs(); buildSideSpots(); placeMapItem(); placeRacks(); buildCampParts(); applyQuality(); refreshKeyLabels(); setMusicVolume(SET.music); makeSpawnPoints();
   buildClassPick();
   const has = load();
   setVolume(S.vol);
