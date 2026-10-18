@@ -4185,10 +4185,10 @@ addEventListener("keydown", e => {
 // players get 10 new cards from their own deck (never a card from an earlier round) and one rule ("명사 최대 3 · 동사 최대 2", up to 5
 // cards); only the Korean word shows, knowing its type is the practice. Points by rarity: 일반 1, 희귀 2, 영웅 3, 전설 4. Over a limit,
 // the highest cards of that type score 0; a type the rule doesn't name scores 0. Ties: more scoring cards, then who ended the turn first,
-// then the challenger loses. 10 s to choose, 7 s in round 2, 5 s in round 3. Every card is a monster on the field (word type = species,
+// then the challenger loses. 12 s to choose, 9 s in round 2, 7 s in round 3 (Danny 2026-10-18: was 10/7/5, too hectic). Every card is a monster on the field (word type = species,
 // rarity = size and glow); the round winner's monsters destroy the loser's. Against students (their chapter's words, better cards and
 // fewer slips at higher ranks, more slips when they lead, and some days they're just unlucky) or a friend in co-op (no prize, for fun).
-const CG_PTS = [1, 2, 3, 4], CG_DECK = 40, CG_HAND = 10, CG_TIME = [10, 7, 5];
+const CG_PTS = [1, 2, 3, 4], CG_DECK = 40, CG_HAND = 10, CG_TIME = [12, 9, 7];
 const CG_TYPE = { noun: { ko: "명사", en: "noun", mon: "dokkaebi", col: ["#ff7a5a", "#ffd23d"] }, verb: { ko: "동사", en: "verb", mon: "spark", col: ["#fff36a", "#7af0ff"] }, adjective: { ko: "형용사", en: "adjective", mon: "wisp", col: ["#3ad8c8", "#9ff8e8"] }, adverb: { ko: "부사", en: "adverb", mon: "magpie", col: ["#5a6aff", "#ffffff"] }, other: { ko: "기타", en: "expression", mon: "book", col: ["#c8402f", "#f6f0e0"] } };
 const CG_GLOW = [null, "#5aa8ff", "#b47aff", "#ffb03a"], CG_SIZE = [.55, .66, .8, .96];
 const CARENA = { x: 13000, z: 0 }, CG_CAM = { y: 20, z: 12.5, look: 1.9 };   /* Danny 2026-10-18: zoomed out so the opponent's field shows too */
@@ -4300,7 +4300,7 @@ function cgPips() { $("cgMyWins").textContent = "●".repeat(cg.wins[0]) + "○"
 function cgClearField() { for (const m of cg.mons) if (!m.gone) { FX.deathPoof(m.m.root.position, false); scene.remove(m.m.root); } cg.mons = []; }
 function cgNextRound() {
   if (!cg || cg.phase === "end") return;
-  cgClearField(); cg.round++; const r = cg.round;
+  cgClearField(); cg.round++; const r = cg.round; $("cgVs").hidden = true; $("cg").classList.remove("vsOn");
   cg.hand = cg.myOrder.slice(r * CG_HAND, (r + 1) * CG_HAND); cg.oppHand = cg.oppOrder.slice(r * CG_HAND, (r + 1) * CG_HAND);
   cg.rule = cg.rules[r]; cg.sel = []; cg.myPts = null; cg.time = CG_TIME[Math.min(r, 2)];
   cgPips(); $("cgScore").hidden = true; $("cgOppState").textContent = "고르는 중… · choosing";
@@ -4309,6 +4309,11 @@ function cgNextRound() {
   cg.phase = "intro"; cgDrawHand(false);
   if (cg.npc) { const sel = cgAiPick(cg.oppHand, cg.rule, cg.rank, cg.wins[1] > cg.wins[0], cg.luck); cg.picks[r] = { sel, t: +(cg.time * rand(.35, .9) * (1.1 - cg.rank * .06)).toFixed(2) }; }
   setTimeout(() => { if (!cg || cg.round !== r || cg.phase === "end") return; cg.phase = "pick"; cg.t0 = performance.now(); cg.endAt = cg.t0 + cg.time * 1000; $("cgEnd").disabled = false; }, 1400);
+}
+function cgVs(ma, mb, win, why) {
+  const v = $("cgVs"); v.className = "cgVs " + (win ? "win" : "lose");
+  v.innerHTML = `<div class="vsRow"><span class="vsMe"><small>${esc(myName())}</small>${ma}</span><b>:</b><span class="vsOp"><small>${esc(cg.oppName)}</small>${mb}</span></div><em>${win ? "라운드 승리! 🏆 · you win the round" : "라운드 패배… · you lose the round"}</em>${why ? `<small class="vsWhy">${why}</small>` : ""}`;
+  v.hidden = false; $("cg").classList.add("vsOn"); void v.offsetWidth; v.classList.add("show"); snd(win ? "bell" : "punchM", .55, win ? 1.3 : .8);
 }
 function cgBanner(big, small, cls = "") { const b = $("cgBanner"); b.innerHTML = `<b>${big}</b>${small ? `<span>${small}</span>` : ""}`; b.className = "cgBanner " + cls; b.hidden = false; void b.offsetWidth; b.classList.add("show"); clearTimeout(cgBanner.t); cgBanner.t = setTimeout(() => { b.hidden = true; }, 1600); }
 function cgDrawHand(reveal) {
@@ -4342,9 +4347,10 @@ function cgResolve() {
   cg.mons = [...cgSpawn(1, my, a.pts, now), ...cgSpawn(-1, them, b.pts, now)];
   $("cgMyPts").textContent = "0"; $("cgOppPts").textContent = "0"; $("cgScore").hidden = false;
   cgCount(a.total, b.total, now + 900);
-  setTimeout(() => cgAttack(win), 2600);
-  setTimeout(() => { if (!cg || cg.phase === "end") return; cgPips(); cgBanner(win ? "라운드 승리! 🏆" : "라운드 패배…", why || (win ? `${a.total} : ${b.total}` : `${a.total} : ${b.total}`), win ? "win" : "lose"); }, 4300);
-  setTimeout(() => { if (!cg || cg.phase === "end") return; if (cg.wins[0] >= 2 || cg.wins[1] >= 2) cgFinish(); else cgNextRound(); }, 6400);
+  const tScore = 900 + cg.mons.length * 110 + 350;   /* the points have counted up: show the score, then attack */
+  setTimeout(() => { if (!cg || cg.phase === "end") return; cgPips(); cgVs(a.total, b.total, win, why); }, tScore);
+  setTimeout(() => cgAttack(win), tScore + 1300);
+  setTimeout(() => { if (!cg || cg.phase === "end") return; if (cg.wins[0] >= 2 || cg.wins[1] >= 2) cgFinish(); else cgNextRound(); }, tScore + 1300 + Math.max(2200, cg.mons.length * 260));
 }
 function cgSpawn(side, cards, pts, now) {
   const n = cards.length;
@@ -4377,7 +4383,7 @@ function cgKill(v) {
   snd("boom", .55, 1.2 - v.rar * .1); snd("glass", .3, 1.4); scene.remove(v.m.root);
 }
 function cgFinish() {
-  const d = cg, won = d.wins[0] >= 2; d.phase = "end"; $("cg").hidden = true;
+  const d = cg, won = d.wins[0] >= 2; d.phase = "end"; $("cg").hidden = true; $("cgVs").hidden = true;
   const rows = [{ big: true, icon: won ? "🏆" : "🃏", ko: `${d.wins[0]} : ${d.wins[1]}`, en: won ? `you beat ${d.oppName}` : `${d.oppName} won (first to 2 rounds)` }];
   if (d.gaveUp) rows.push({ icon: "🏳", ko: "포기했어요 · you gave up", en: "" }); else if (d.oppQuit) rows.push({ icon: "🏳", ko: `${d.oppName} 님이 포기했어요`, en: "your opponent gave up" });
   if (d.npc) {
