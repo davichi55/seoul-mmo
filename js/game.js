@@ -6,18 +6,18 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mve26byj";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mve26byj";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mve26byj";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mve26byj";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mve2dc0u";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mve2dc0u";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mve2dc0u";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mve2dc0u";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mve26byj";
-import * as FX from "./fx.js?v=mve26byj";
-import { LINES } from "./lines.js?v=mve26byj";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mve26byj";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mve26byj";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mve2dc0u";
+import * as FX from "./fx.js?v=mve2dc0u";
+import { LINES } from "./lines.js?v=mve2dc0u";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mve2dc0u";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mve2dc0u";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -169,7 +169,7 @@ function load() {
     S.mode = S.mode || "practice";   // saves from before modes keep their chosen chapters
     fixGoneWords();
     if (!S.deck20) { S.deck20 = true; deck20Topup(); }
-    if (S.skillDecks.basic.length > BASIC_DECK) { const d = deckCards("basic"); S.skillDecks.basic = d.slice().sort((a, b) => b.rar - a.rar || !!a.gift - !!b.gift || d.indexOf(a) - d.indexOf(b)).slice(0, BASIC_DECK).map(c => c.uid); }
+    if (S.skillDecks.basic.length > basicSize()) { const d = deckCards("basic"); S.skillDecks.basic = d.slice().sort((a, b) => b.rar - a.rar || !!a.gift - !!b.gift || d.indexOf(a) - d.indexOf(b)).slice(0, basicSize()).map(c => c.uid); }
     dropGifts();
     return true;
   } catch (e) { return false; }
@@ -338,8 +338,11 @@ function classDef() { return CLASSES[S.cls]; }
 // origin bonus: set once from the word types of your very first 10 cards (decision 36, Danny 2026-10-11 Q1 A)
 function bonus() { return S.origin || { hp: 0, dmg: 0, ls: 0, cd: 0, txt: "보너스 없음 · no bonus" }; }
 const cardBy = uid => S.cards.find(c => c.uid === uid);
-const SKILL_DECK = 20, BASIC_DECK = 10;   // cards a skill deck needs (Danny 2026-10-18: 20, but the basic attack stays at 10)
-const deckSize = k => k === "basic" || k === "sleep" || k === "silence" ? BASIC_DECK : SKILL_DECK;
+const SKILL_DECK = 20;   // cards a skill deck needs (Danny 2026-10-18: 20)
+// the basic attack (and the spells on its deck) grows with the level, so new words keep coming in (Danny 2026-10-19: Lv 1-4: 10,
+// 5-9: 15, 10-14: 20, 15+: 25); when it grows, the stranger fills the new slots with words of your newest chapter (growBasic)
+const basicSize = () => { const L = (S && S.level) || 1; return L < 5 ? 10 : L < 10 ? 15 : L < 15 ? 20 : 25; };
+const deckSize = k => k === "basic" || k === "sleep" || k === "silence" ? basicSize() : SKILL_DECK;
 const dropGifts = () => { const keep = new Set([...(S.skillDecks.basic || []), ...(S.bank?.cards || [])]); S.cards = S.cards.filter(c => !c.gift || keep.has(c.uid)); };   // gifts outside the basic deck go back to the stranger
 const deckCards = k => (S.skillDecks[k === "sleep" || k === "silence" ? "basic" : k] || []).map(cardBy).filter(Boolean);   // spells use the basic deck
 const deckIds = k => deckCards(k).map(c => c.id);
@@ -405,7 +408,7 @@ function gainXp(n, at) {
 }
 function levelUp() {
   {
-    S.xp -= xpNeed(S.level); S.level++; recalcMax(); player.hp = player.maxHp; FX.pillarFx(player.pos, "#ffd23d"); learnSkills(true); syncStory(true); setTimeout(aptHint, 2500);
+    S.xp -= xpNeed(S.level); S.level++; recalcMax(); player.hp = player.maxHp; FX.pillarFx(player.pos, "#ffd23d"); learnSkills(true); syncStory(true); setTimeout(aptHint, 2500); setTimeout(() => growBasic(true), 3500);
     toast(`레벨 업! Lv ${S.level} · health +5%, damage +4%`); SFX.pickup(); floater(player.pos, "LEVEL UP!", "#ffd23d", false, 3.4);
   }
   save();
@@ -578,6 +581,9 @@ function cycleTarget() {
 // ---- the ritual (decisions 1, 8, 9, 17, 35) -------------------------------------------------------------
 // every skill draws its cards from its own deck; the basic attack asks 1 word, stronger skills more
 const cds = { basic: 0, s2: 0, s3: 0, sleep: 0, silence: 0 }, comeBacks = { basic: [], s2: [], s3: [], sleep: [], silence: [] };
+// which deck card an attack asks (Danny 2026-10-19): new and weak words often, mastered ones rarely (but still sometimes)
+const ritualWeight = id => { const m = mastery(id).k, st = S.stats[id]; return (m === "mastered" ? .35 : m === "learned" ? 1 : 2.5) * (st && st.w > st.c ? 1.5 : 1); };
+function weightedOrder(ids, wf) { const pool = ids.slice(), out = []; while (pool.length) { const tot = pool.reduce((a, id) => a + wf(id), 0); let r = Math.random() * tot, i = 0; for (; i < pool.length - 1; i++) if ((r -= wf(pool[i])) < 0) break; out.push(pool.splice(i, 1)[0]); } return out; }
 function startRitual(k = "basic") {
   if (player.dead || dialog || ritual) return;
   if (player.riding) setRiding(false);
@@ -590,7 +596,7 @@ function startRitual(k = "basic") {
   if (!sk.self && dist2(target.pos, player.pos) > range + .5) { toast(`너무 멀어요 · too far (${range} m)`); return; }
   const ids = deckIds(k);
   const back = [...new Set(comeBacks[k] || [])].filter(id => ids.includes(id)); comeBacks[k] = [];
-  const words = back.concat(shuffle(ids.filter(id => !back.includes(id)))).slice(0, sk.cards);
+  const words = back.concat(weightedOrder(ids.filter(id => !back.includes(id)), ritualWeight)).slice(0, sk.cards);
   ritual = { k, sk, words, idx: 0, results: [], target: sk.self ? selfTarget() : target, lock: false };
   if (!sk.self) aggro(target);
   $("ritual").hidden = false;
@@ -656,11 +662,12 @@ function castRitual() {
   if (sk.silence) { if (!t.def.alien) toast("외계인에게만 통해요 · it only works on aliens"); else applySilence(t, sk.silence * correct.length / sk.cards); return; }
   if (sk.sleep) { if (t.def.boss) toast("대장은 잠들지 않아요 · bosses don't sleep"); else applySleep(t, sk.sleep * correct.length / sk.cards); return; }
   // damage of this cast against any monster (area skills hit several, each with its own weaknesses)
+  const nc = newestChapter();
   const calc = (tt, mult = sk.mult) => {
     let total = 0, weak = false, imm = false;
     const per = BASE_ATTACK * mult / sk.cards * classDef().dmg * weaponMult() * lvlDmg() * companionDamageMul(tt);
     for (const c of cards) {
-      let part = per;
+      let part = per * (WORD[c.id].ch === nc ? NEW_CH_BONUS : 1);
       if (c.mod.t === "el" && c.mod.el === tt.def.weak) { part *= EL_MULT[c.rar]; weak = true; }
       if (!sk.pierce && c.mod.t === "el" && c.mod.el === tt.def.immune) { part = 0; imm = true; }
       if (sk.fire && tt.def.weak === "fire") { part *= 1.5; weak = true; }
@@ -1079,7 +1086,7 @@ function toStation() {
 function toStreet() { populateStreet(); player.zone = "street"; player.pos.set(ENTRANCE.x + .5, 0, ENTRANCE.z + 12); player.yaw = -Math.PI / 2; cam.yaw = -Math.PI / 2; closeDialog(); }
 
 // ---- UI: class pick, deck picker, deck view, menu --------------------------------------------------------------
-function showScreen(id) { for (const s of ["title", "classPick", "deckPick", "deckView", "charView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "menu", "bookView", "friendsView", "rewardView"]) $(s).hidden = s !== id; }
+function showScreen(id) { for (const s of ["title", "classPick", "deckPick", "deckView", "charView", "statsView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "menu", "bookView", "friendsView", "rewardView"]) $(s).hidden = s !== id; }
 let newBook = "5a", newMode = "story", newPrio = false;
 const CHAPTER_LVL = i => 1 + 2 * i;   // story mode: 1과 at Lv 1, then one every 2 levels (8과 at Lv 15)
 // Danny 2026-10-18: a chapter opens when you own 70% of the one before it (chapters never close again; old saves keep theirs)
@@ -1136,20 +1143,20 @@ function drawDeckPicker() {
     const b = document.createElement("button"); b.className = "wcard"; b.setAttribute("aria-pressed", pickSel.includes(w.id)); b.dataset.tip = tipWord(w);
     const m = mastery(w.id);
     b.innerHTML = `<i>${POSKO[w.pos]}</i><b>${w.kr}</b><span>${w.en}</span>${m.k !== "new" ? `<span class="m">● ${m.ko}</span>` : ""}`;
-    b.onclick = () => { if (pickSel.includes(w.id)) pickSel = pickSel.filter(x => x !== w.id); else if (pickSel.length < BASIC_DECK) { pickSel.push(w.id); say([wordClip(w.id)], { interrupt: true }); } else toast(`이미 ${BASIC_DECK}개예요 · already ${BASIC_DECK}`); drawDeckPicker(); };
+    b.onclick = () => { if (pickSel.includes(w.id)) pickSel = pickSel.filter(x => x !== w.id); else if (pickSel.length < basicSize()) { pickSel.push(w.id); say([wordClip(w.id)], { interrupt: true }); } else toast(`이미 ${basicSize()}개예요 · already ${basicSize()}`); drawDeckPicker(); };
     g.appendChild(b);
   });
   drawTray();
 }
 function drawTray() {
   const t = $("traySlots"); t.innerHTML = "";
-  for (let i = 0; i < BASIC_DECK; i++) { const id = pickSel[i], d = document.createElement("div"); d.className = "tslot" + (id ? " full" : ""); d.textContent = id ? WORD[id].kr : ""; if (id) { d.title = "빼기 · remove"; d.onclick = () => { pickSel = pickSel.filter(x => x !== id); drawDeckPicker(); }; } t.appendChild(d); }
+  for (let i = 0; i < basicSize(); i++) { const id = pickSel[i], d = document.createElement("div"); d.className = "tslot" + (id ? " full" : ""); d.textContent = id ? WORD[id].kr : ""; if (id) { d.title = "빼기 · remove"; d.onclick = () => { pickSel = pickSel.filter(x => x !== id); drawDeckPicker(); }; } t.appendChild(d); }
   const b = deckBonus(pickSel);
-  $("trayCount").textContent = `${pickSel.length} / ${BASIC_DECK} · 명사 ${b.c.noun} · 동사 ${b.c.verb} · 형용사 ${b.c.adjective} · 부사·기타 ${b.c.other}`;
-  $("trayBonus").textContent = S.origin ? `출신 보너스 (already set) · ${S.origin.txt}` : pickSel.length === BASIC_DECK ? `출신 보너스 · origin bonus: ${b.txt}` : "";
-  $("deckDone").disabled = pickSel.length !== BASIC_DECK;
+  $("trayCount").textContent = `${pickSel.length} / ${basicSize()} · 명사 ${b.c.noun} · 동사 ${b.c.verb} · 형용사 ${b.c.adjective} · 부사·기타 ${b.c.other}`;
+  $("trayBonus").textContent = S.origin ? `출신 보너스 (already set) · ${S.origin.txt}` : pickSel.length === basicSize() ? `출신 보너스 · origin bonus: ${b.txt}` : "";
+  $("deckDone").disabled = pickSel.length !== basicSize();
 }
-$("deckRandom").onclick = () => { if (!pickSecs) drawDeckPicker(); const pool = playWords().filter(w => w.ch === pickCh && pickSecs.includes(w.sec) && !pickSel.includes(w.id)); pickSel = pickSel.concat(shuffle(pool).slice(0, BASIC_DECK - pickSel.length).map(w => w.id)); drawDeckPicker(); };
+$("deckRandom").onclick = () => { if (!pickSecs) drawDeckPicker(); const pool = playWords().filter(w => w.ch === pickCh && pickSecs.includes(w.sec) && !pickSel.includes(w.id)); pickSel = pickSel.concat(shuffle(pool).slice(0, basicSize() - pickSel.length).map(w => w.id)); drawDeckPicker(); };
 $("deckClear").onclick = () => { pickSel = []; drawDeckPicker(); };
 // the stranger's cards are gifts: they only live in the basic attack deck, and go back to him when you swap them out
 $("deckDone").onclick = () => {
@@ -1177,7 +1184,7 @@ function openDeckView() {
 }
 function cardHTML(c, extra = "") {
   const w = WORD[c.id], R = RARITY[c.rar], st = S.stats[c.id] || { c: 0, w: 0 };
-  return `<div class="dvCard ${extra}" data-uid="${c.uid}" data-tip="${esc(tipCard(c))}" style="border-color:${R.c}"><span class="rar" style="color:${R.c}">${R.ko} · ${R.en}${c.gift ? " · 선물 gift" : ""}</span><b>${w.kr}</b><span class="en">${w.en}</span><span class="mod">${modText(c)}</span><span class="mst">${mastery(c.id).ko} · ${Math.min(st.c, 8)}/8</span></div>`;
+  return `<div class="dvCard ${extra}" data-uid="${c.uid}" data-tip="${esc(tipCard(c))}" style="border-color:${R.c}"><span class="rar" style="color:${R.c}">${R.ko} · ${R.en}${c.gift ? " · 선물 gift" : ""}${w.ch === newestChapter() ? " · ✨ 새 과 +10%" : ""}</span><b>${w.kr}</b><span class="en">${w.en}</span><span class="mod">${modText(c)}</span><span class="mst">${mastery(c.id).ko} · ${Math.min(st.c, 8)}/8</span></div>`;
 }
 function drawChapterPick() {
   if (S.mode === "story") {
@@ -1418,6 +1425,25 @@ function drawInventory() {
 $("ivClose").onclick = () => { showScreen(null); paused = false; };
 $("actInv").onclick = () => openInventory();
 // character screen (C): level, stats, gear, food, words
+// practice stats (Danny 2026-10-19: "is there a statistic which words have been practised the most?"): from S.stats, which counts for
+// every word how often you saw it (s), got it right (c) and wrong (w) in attacks, exams, mini-games and battles
+function openStats() {
+  paused = true; showScreen("statsView");
+  const mine = bookWords(), st = id => S.stats[id] || { s: 0, c: 0, w: 0 }, tries = id => st(id).c + st(id).w, acc = id => tries(id) ? st(id).c / tries(id) : 0;
+  const owned = new Set(S.cards.map(c => c.id)), kinds = { new: 0, seen: 0, learned: 0, mastered: 0 }; for (const w of mine) kinds[mastery(w.id).k]++;
+  const row = w => { const x = st(w.id), m = mastery(w.id); return `<tr><td><b>${esc(w.kr)}</b></td><td class="en">${esc(w.en)}</td><td>✔ ${x.c}</td><td>✖ ${x.w}</td><td>${tries(w.id) ? Math.round(acc(w.id) * 100) + "%" : "–"}</td><td class="m-${m.k}">${m.ko}</td></tr>`; };
+  const table = (title, sub, list) => `<div class="stBox"><h3>${title}</h3><p class="fine">${sub}</p>` + (list.length ? `<table class="stTable"><tbody>${list.map(row).join("")}</tbody></table>` : `<p class="fine">아직 없어요 · nothing yet</p>`) + `</div>`;
+  const most = mine.filter(w => tries(w.id)).sort((a, b) => tries(b.id) - tries(a.id)).slice(0, 15);
+  const weak = mine.filter(w => st(w.id).w > 0).sort((a, b) => acc(a.id) - acc(b.id) || st(b.id).w - st(a.id).w).slice(0, 15);
+  const least = mine.filter(w => owned.has(w.id)).sort((a, b) => tries(a.id) - tries(b.id)).slice(0, 15);
+  const chs = bookChapters().map(c => { const ws = mine.filter(w => w.ch === c.id), n = ws.length || 1, own = ws.filter(w => owned.has(w.id)).length, mas = ws.filter(w => mastery(w.id).k === "mastered").length;
+    return `<div class="stCh"><span class="t">${c.title}${c.theme ? " · " + esc(c.theme) : ""}${S.chapters.includes(c.id) ? "" : " 🔒"}</span><div class="stBar"><i class="own" style="width:${own / n * 100}%"></i><i class="mas" style="width:${mas / n * 100}%"></i></div><span class="n">${own} / ${ws.length} · 마스터 ${mas}</span></div>`; }).join("");
+  $("stTitle").textContent = `${(BOOKS.find(b => b.id === S.book) || {}).title || ""} · ${S.prio ? "★ 시험 단어 · exam words" : "전체 · all words"}`;
+  $("stBody").innerHTML = `<div class="stSum"><span><b>${mine.length}</b> 단어 · words</span><span><b>${mine.length - kinds.new}</b> 본 단어 · seen</span><span><b>${kinds.learned}</b> 배움 · learned</span><span><b>${kinds.mastered}</b> 마스터 · mastered</span><span><b>${mine.reduce((a, w) => a + tries(w.id), 0)}</b> 답 · answers</span></div>`
+    + `<h3>과별 · per chapter</h3><p class="fine">파란 막대 = 가진 카드, 금색 = 마스터 · blue bar = cards you own, gold = mastered</p><div class="stChs">${chs}</div>`
+    + `<div class="stCols">${table("가장 많이 연습한 단어 · most practised", "답한 횟수 순 · by number of answers", most)}${table("어려운 단어 · weakest", "정답률이 낮은 순 · lowest share right first", weak)}${table("덜 연습한 내 단어 · least practised of yours", "가진 카드 중 · among the cards you own", least)}</div>`;
+}
+$("stClose").onclick = () => { showScreen(null); paused = false; };
 function openCharView() {
   if (!S.cls) return;
   paused = true; showScreen("charView");
@@ -1428,7 +1454,8 @@ function openCharView() {
   $("cvLook").innerHTML = peopleReady() && looks.length ? `<span>외모 · look</span>` + looks.map((l, i) => `<button class="chip" data-i="${i}" aria-pressed="${(S.look || 0) === i}">${i + 1} · ${l.ko} <small>${l.en}</small></button>`).join("") : "";
   $("cvLook").querySelectorAll("button").forEach(b => b.onclick = () => { S.look = +b.dataset.i; save(); setPlayerModel(); SFX.select(); openCharView(); });
   $("cvPrio").innerHTML = `<span>단어 · words</span>` + [[false, "전체 · all"], [true, "★ 시험 단어만 · exam words only"]].map(([p, t]) => `<button class="chip" data-p="${p ? 1 : 0}" aria-pressed="${!!S.prio === p}">${t}</button>`).join("");
-  $("cvPrio").querySelectorAll("button").forEach(b => b.onclick = () => { S.prio = b.dataset.p === "1"; syncStory(true); save(); SFX.select(); toast(S.prio ? "★ 이제 시험 단어만 나와요 · from now on only the exam words drop and get asked" : "이제 모든 단어가 나와요 · every word is back in play"); openCharView(); });
+  $("cvPrio").insertAdjacentHTML("beforeend", `<button class="chip stBtn" id="cvStatsBtn">📊 연습 통계 · practice stats</button>`); $("cvStatsBtn").onclick = openStats;
+  $("cvPrio").querySelectorAll("button[data-p]").forEach(b => b.onclick = () => { S.prio = b.dataset.p === "1"; syncStory(true); save(); SFX.select(); toast(S.prio ? "★ 이제 시험 단어만 나와요 · from now on only the exam words drop and get asked" : "이제 모든 단어가 나와요 · every word is back in play"); openCharView(); });
   $("cvXp").innerHTML = S.level >= MAX_LEVEL ? "최고 레벨 · max level" : `<div class="bar xp xpbig"><i style="width:${S.xp / xpNeed(S.level) * 100}%"></i><span>XP ${S.xp} / ${xpNeed(S.level)} · 다음 레벨까지 ${xpNeed(S.level) - S.xp}</span></div>`;
   const minsLeft = k => Math.max(0, Math.round((S.buffs[k] - S.time) / GAME_MIN_PER_SEC / 60));
   const food = Object.keys(BUFFS).filter(buffOn).map(k => `${BUFFS[k].ko} (${minsLeft(k)} min)`).join("<br>") || "없음 · none";
@@ -1472,8 +1499,8 @@ function onEscape() {
   if (!$("rewardView").hidden) { closeReward(); return; }
   if (order) { orderClose(); return; }
   if (!$("nameBox").hidden) { $("nbOk").click(); return; }
-  if (["deckView", "charView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "bookView", "friendsView"].some(id => !$(id).hidden)) { showScreen(null); paused = false; return; }
-  if (!$("deckPick").hidden) { if (deckCards("basic").length === BASIC_DECK) { showScreen(null); paused = false; } return; }
+  if (["deckView", "charView", "statsView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "bookView", "friendsView"].some(id => !$(id).hidden)) { showScreen(null); paused = false; return; }
+  if (!$("deckPick").hidden) { if (deckCards("basic").length === basicSize()) { showScreen(null); paused = false; } return; }
   if (ritual) { cancelRitual(); return; }
   if (dialog) { closeDialog(); return; }
   if (!$("after").hidden) { $("after").hidden = true; return; }   // the missed-words panel
@@ -1507,11 +1534,25 @@ $("actFood").onclick = () => eatGimbap();
 $("actDeck").onclick = () => openDeckView();
 
 // ---- start --------------------------------------------------------------------------------------------
+// the newest chapter you have open (story: the last one unlocked; practice: the last one you chose)
+function newestChapter() { const chs = bookChapters(), open = chs.filter(c => S.chapters.includes(c.id)); return (open[open.length - 1] || chs[0]).id; }
+const NEW_CH_BONUS = 1.1;   // cards of the newest chapter hit 10% harder (Danny 2026-10-19: new words should pay)
+function growBasic(announce) {
+  const d = S.skillDecks.basic; if (!d || !d.length) return 0;   // no deck yet: the stranger's word picker comes first
+  const need = basicSize() - d.length; if (need <= 0) return 0;
+  const have = new Set(deckIds("basic")), nc = newestChapter(), order = [nc, ...[...S.chapters].reverse().filter(c => c !== nc)], pool = [];
+  for (const ch of order) pool.push(...shuffle(bookWords().filter(w => w.ch === ch && !have.has(w.id) && mastery(w.id).k !== "mastered")));
+  if (pool.length < need) pool.push(...shuffle(bookWords().filter(w => !have.has(w.id) && !pool.includes(w))));
+  const added = [];
+  for (const w of pool) { if (added.length >= need) break; if (have.has(w.id)) continue; have.add(w.id); const c = newCard(w.id, 0); c.gift = true; S.cards.push(c); d.push(c.uid); added.push(w.kr); }
+  if (added.length) { save(); if (announce) { toast(`🎁 기본 공격이 ${basicSize()}장이 됐어요! 낯선 사람이 새 단어 ${added.length}개를 줬어요 · your basic attack now holds ${basicSize()} cards: the stranger added ${added.length} words from your newest chapter`); logChat("system", `🎁 ${added.join(", ")}`); SFX.pickup(); } }
+  return added.length;
+}
 function setPlayerModel() { if (player.model) scene.remove(player.model.root); player.model = classModel(S.cls, S.look); scene.add(player.model.root); }
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
   ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); syncDealer(); setTimeout(grantMissedSets, 3000); if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) { examPending = true; drawExamBtn(); } setTimeout(autoCreditBossQuests, 3500); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
-  setPlayerModel();
+  setPlayerModel(); setTimeout(() => growBasic(true), 2500);   /* saves from before the growing deck get their extra words too */
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
 }
@@ -4910,7 +4951,7 @@ boot();
 window.__seoul = {
   get S() { return S; }, get world() { return world; }, player, monsters, renderer, scene, camera, cam, get target() { return target; }, get ritual() { return ritual; },
   setHour(h) { S.time = Math.floor(S.time / 1440) * 1440 + h * 60; },
-  give(n) { S.money += n; },
+  give(n) { S.money += n; }, growBasic: a => growBasic(a), newestChapter: () => newestChapter(), ritualWeight: id => ritualWeight(id),
   step(sec) { for (let t = 0; t < sec; t += 1 / 30) step(1 / 30); render(1 / 30); },
   answer(right = true) { if (!ritual) return; const id = ritual.words[ritual.idx]; const i = ritual.opts.indexOf(id); pickCard(right ? i : (i + 1) % CHOICES); },
   attack: (k = "basic") => startRitual(k),

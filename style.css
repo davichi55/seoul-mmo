@@ -672,3 +672,13 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 #bigMap{cursor:grab;touch-action:none}
 .mapZoom{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:8px}.mapZoom button{min-width:44px;font-size:18px;font-weight:700}.mapZoom button:disabled{opacity:.45}
 #bigMap[hidden]+.mapZoom{display:none}
+
+/* practice stats (2026-10-19) */
+.statv{max-height:88vh;overflow:auto}.stSum{display:flex;flex-wrap:wrap;gap:10px;margin:6px 0 14px}.stSum span{background:#2a2430;border:1px solid #3a3142;border-radius:8px;padding:6px 12px;font-size:14px}.stSum b{font-size:20px;color:#ffd23d;margin-right:4px}
+.stChs{display:grid;gap:6px;margin-bottom:14px}.stCh{display:grid;grid-template-columns:160px 1fr 150px;gap:10px;align-items:center;font-size:14px}.stCh .n{color:#b8aec4;font-size:13px}
+.stBar{position:relative;height:12px;background:#2a2430;border-radius:6px;overflow:hidden}.stBar i{position:absolute;left:0;top:0;bottom:0}.stBar .own{background:#6a8fc8}.stBar .mas{background:#ffd23d}
+.stCols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.stBox h3{margin:4px 0 0;font-size:16px}
+.stTable{width:100%;border-collapse:collapse;font-size:14px}.stTable td{padding:4px 6px;border-bottom:1px solid #3a3142}.stTable td.en{color:#b8aec4;font-size:12.5px}.stTable .m-mastered{color:#ffd23d}.stTable .m-learned{color:#7ad07a}
+.stBtn{margin-left:auto}
+@media (max-width:640px){.stCh{grid-template-columns:1fr}}
+.stTable td{white-space:nowrap}.stTable td.en{white-space:normal}
