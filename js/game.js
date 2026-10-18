@@ -160,8 +160,21 @@ function load() {
     for (const k of ["basic", "s2", "s3"]) S.skillDecks[k] = S.skillDecks[k] || [];
     S.book = S.book || "5a";   // saves from before books
     S.mode = S.mode || "practice";   // saves from before modes keep their chosen chapters
+    fixGoneWords();
     return true;
   } catch (e) { return false; }
+}
+// 2026-10-18: seven headings of the 5B review notes had slipped into the word list as cards (b044 b045 b324–b328, e.g. "인용의 출처 밝히기");
+// a card of one becomes a real word of the same chapter (one you don't have yet if possible, same rarity) and every other trace goes
+const GONE_WORDS = { b044: "5b-1", b045: "5b-1", b324: "5b-4", b325: "5b-4", b326: "5b-4", b327: "5b-4", b328: "5b-4" };
+function fixGoneWords() {
+  const swap = id => { const own = new Set(S.cards.map(c => c.id)), pool = DATA.words.filter(w => w.ch === GONE_WORDS[id]); return (shuffle(pool.filter(w => !own.has(w.id)))[0] || pick(pool)).id; };
+  for (const c of S.cards || []) if (GONE_WORDS[c.id]) c.id = swap(c.id);
+  for (const m of S.mail || []) for (const c of m.attach?.cards || []) if (GONE_WORDS[c.id]) c.id = swap(c.id);
+  for (const st of Object.values(S.quests || {})) if (st?.words) st.words = st.words.map(id => GONE_WORDS[id] ? swap(id) : id);
+  for (const id in GONE_WORDS) if (S.stats) delete S.stats[id];
+  for (const k of ["owned", "mastered", "battleDeck"]) if (Array.isArray(S[k])) S[k] = S[k].filter(id => !GONE_WORDS[id]);
+  if (S.dailyShop?.words) S.dailyShop.words = S.dailyShop.words.filter(id => !GONE_WORDS[id]);
 }
 function save() { if (S.cards) { const o = new Set(S.owned || []); let add = false; for (const c of S.cards) if (!o.has(c.id)) { o.add(c.id); add = true; } if (add) S.owned = [...o]; } try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 function wipe() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
