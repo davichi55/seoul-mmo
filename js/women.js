@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { toon, outline } from "./world.js?v=mve0epao";
+import { toon, outline } from "./world.js?v=mve0ix4f";
 
 const BLACK = "#16141a", INK = "#232028", WINE = "#6a1a2a", GOLD = "#c9a43a", SILVER = "#c8ccd6";
 // hair: what the original hair material is (recoloured) or hides (hats, hoods, the mohawk: then `cap` builds a new crown);
@@ -45,7 +45,7 @@ let ready = false;
 // called "CharacterArmature|Idle", so the prefix is cut off to match the women
 const loader = new GLTFLoader();
 export async function loadBase(b, base = "assets/quaternius/") {
-  if (!lib[b]) { const g = await loader.loadAsync(`${base}${b}.glb`); for (const a of g.animations) a.name = a.name.replace(/^.*|/, ""); lib[b] = g; }
+  if (!lib[b]) { const g = await loader.loadAsync(`${base}${b}.glb`); for (const a of g.animations) a.name = a.name.replace(/^.*\|/, "");   /* "CharacterArmature|Run" -> "Run"; the \| matters: without it every name was wiped and nobody walked */ lib[b] = g; }
   return lib[b];
 }
 export async function loadWomen(base = "assets/quaternius/") {
