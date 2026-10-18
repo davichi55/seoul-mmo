@@ -1333,6 +1333,13 @@ export function buildWorld(scene) {
       for (let i = 0; i < 16; i++) { const tx = rand(314, 466), tz = rand(146, 196); if (keepDI.some(s => Math.hypot(s.x - tx, s.z - tz) < 6) || Math.abs(tz - 160) < 3.5 || Math.abs(tz - 176) < 3) continue; tree(tx, tz); }
       for (let i = 0; i < 1000; i++) tuft(rand(311, 469), rand(141, 197), rand(.7, 1.4));
       SPAWNS.push(...DANGIN_SPAWNS);
+      // the full map (Danny 2026-10-18: the 당인리 map revealed nothing, the area had no map drawing)
+      const DR = (x0, x1, z0, z1, c) => ydMap.rects.push({ x0, x1, z0, z1, c, area: "dangin" });
+      DR(310, 470, 110, 198, "rgba(94,154,62,.95)"); DR(310, 470, 110, 140, "rgba(138,139,146,.95)"); DR(310, 470, 198, 250, "rgba(79,143,184,.95)");
+      DR(310, 470, 158, 162, "rgba(200,90,60,.95)"); DR(310, 470, 174.5, 177.5, "rgba(215,201,166,.95)");
+      DR(325, 375, 114, 140, "rgba(110,110,106,.95)"); for (const tx of [333, 345, 357, 369]) for (const tz of [121, 132]) DR(tx - 2.5, tx + 2.5, tz - 1.7, tz + 1.7, "rgba(125,131,138,.95)");
+      DR(395, 445, 114, 136, "rgba(154,74,52,.95)"); DR(449.4, 454.6, 118.4, 123.6, "rgba(200,64,47,.95)"); DR(459.8, 464.2, 131.8, 136.2, "rgba(200,64,47,.95)");
+      for (const L of [["당인리 발전소", 420, 125], ["변전소", 350, 127], ["자전거길", 390, 166], ["한강", 390, 222]]) ydMap.labels.push({ t: L[0], x: L[1], z: L[2], area: "dangin" });
     }
 
     // ---------- the 여의도 zone: shared helpers ----------
