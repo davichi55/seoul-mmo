@@ -6,14 +6,14 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdte194";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdte194";
-import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdte194";
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdte194";
-import * as FX from "./fx.js?v=mvdte194";
-import { LINES } from "./lines.js?v=mvdte194";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdte194";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdte194";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdtun4n";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdtun4n";
+import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdtun4n";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdtun4n";
+import * as FX from "./fx.js?v=mvdtun4n";
+import { LINES } from "./lines.js?v=mvdtun4n";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdtun4n";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdtun4n";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -161,6 +161,7 @@ function load() {
     S.book = S.book || "5a";   // saves from before books
     S.mode = S.mode || "practice";   // saves from before modes keep their chosen chapters
     fixGoneWords();
+    if (!S.deck20) { S.deck20 = true; deck20Topup(); }
     return true;
   } catch (e) { return false; }
 }
@@ -204,11 +205,11 @@ function mastery(id) { const s = S.stats[id]; if (!s || !s.s) return { k: "new",
 function deckBonus(ids) {
   const c = { noun: 0, verb: 0, adjective: 0, other: 0 };
   ids.forEach(id => { const p = WORD[id].pos; c[p === "adverb" || p === "other" ? "other" : p]++; });
-  const types = Object.values(c).filter(n => n > 0).length;
-  if (c.noun >= 5) return { c, hp: .01, dmg: 0, ls: 0, cd: 0, txt: "+1% 최대 체력 (명사 덱)" };
-  if (c.verb >= 5) return { c, hp: 0, dmg: .01, ls: 0, cd: 0, txt: "+1% 공격력 (동사 덱)" };
-  if (c.adjective >= 5) return { c, hp: 0, dmg: 0, ls: .01, cd: 0, txt: "+1% 흡혈 (형용사 덱)" };
-  if (c.other >= 5) return { c, hp: 0, dmg: 0, ls: 0, cd: .01, txt: "−1% 재사용 (부사 덱)" };
+  const types = Object.values(c).filter(n => n > 0).length, h = Math.max(5, ids.length / 2);
+  if (c.noun >= h) return { c, hp: .01, dmg: 0, ls: 0, cd: 0, txt: "+1% 최대 체력 (명사 덱)" };
+  if (c.verb >= h) return { c, hp: 0, dmg: .01, ls: 0, cd: 0, txt: "+1% 공격력 (동사 덱)" };
+  if (c.adjective >= h) return { c, hp: 0, dmg: 0, ls: .01, cd: 0, txt: "+1% 흡혈 (형용사 덱)" };
+  if (c.other >= h) return { c, hp: 0, dmg: 0, ls: 0, cd: .01, txt: "−1% 재사용 (부사 덱)" };
   if (types >= 3) return { c, hp: .005, dmg: .005, ls: 0, cd: 0, txt: "균형: 공격 +0.5%, 체력 +0.5%" };
   return { c, hp: 0, dmg: 0, ls: 0, cd: 0, txt: "보너스 없음 · no bonus" };
 }
@@ -328,6 +329,7 @@ function classDef() { return CLASSES[S.cls]; }
 // origin bonus: set once from the word types of your very first 10 cards (decision 36, Danny 2026-10-11 Q1 A)
 function bonus() { return S.origin || { hp: 0, dmg: 0, ls: 0, cd: 0, txt: "보너스 없음 · no bonus" }; }
 const cardBy = uid => S.cards.find(c => c.uid === uid);
+const SKILL_DECK = 20;   // cards a skill deck needs (Danny 2026-10-18, was 10)
 const deckCards = k => (S.skillDecks[k === "sleep" || k === "silence" ? "basic" : k] || []).map(cardBy).filter(Boolean);   // spells use the basic deck
 const deckIds = k => deckCards(k).map(c => c.id);
 const bagCards = () => { const used = new Set([...Object.values(S.skillDecks).flat(), ...S.bank.cards]); return S.cards.filter(c => !used.has(c.uid)); };
@@ -364,7 +366,7 @@ function skillBlock(k) {          // why a skill can't be used right now (null =
   if (k === "sleep" && !S.spells?.sleep) return "부적 선생님에게 배워요 · learn it from the talisman teacher (서교 아파트 정자)";
   if (S.level < sk.lvl) return `Lv ${sk.lvl}에 배워요 · learned at level ${sk.lvl}`;
   const n = deckCards(k).length;
-  if (n < 10) return `카드 ${n}/10 · this skill needs 10 cards (K)`;
+  if (n < SKILL_DECK) return `카드 ${n}/${SKILL_DECK} · this skill needs ${SKILL_DECK} cards (K)`;
   return null;
 }
 // ---- level + XP (Danny 2026-10-11): XP from kills and from mastering a word; a level = +5% health, +4% damage ----
@@ -1115,20 +1117,20 @@ function drawDeckPicker() {
     const b = document.createElement("button"); b.className = "wcard"; b.setAttribute("aria-pressed", pickSel.includes(w.id)); b.dataset.tip = tipWord(w);
     const m = mastery(w.id);
     b.innerHTML = `<i>${POSKO[w.pos]}</i><b>${w.kr}</b><span>${w.en}</span>${m.k !== "new" ? `<span class="m">● ${m.ko}</span>` : ""}`;
-    b.onclick = () => { if (pickSel.includes(w.id)) pickSel = pickSel.filter(x => x !== w.id); else if (pickSel.length < 10) { pickSel.push(w.id); say([wordClip(w.id)], { interrupt: true }); } else toast("이미 10개예요 · already 10"); drawDeckPicker(); };
+    b.onclick = () => { if (pickSel.includes(w.id)) pickSel = pickSel.filter(x => x !== w.id); else if (pickSel.length < SKILL_DECK) { pickSel.push(w.id); say([wordClip(w.id)], { interrupt: true }); } else toast(`이미 ${SKILL_DECK}개예요 · already ${SKILL_DECK}`); drawDeckPicker(); };
     g.appendChild(b);
   });
   drawTray();
 }
 function drawTray() {
   const t = $("traySlots"); t.innerHTML = "";
-  for (let i = 0; i < 10; i++) { const id = pickSel[i], d = document.createElement("div"); d.className = "tslot" + (id ? " full" : ""); d.textContent = id ? WORD[id].kr : ""; if (id) { d.title = "빼기 · remove"; d.onclick = () => { pickSel = pickSel.filter(x => x !== id); drawDeckPicker(); }; } t.appendChild(d); }
+  for (let i = 0; i < SKILL_DECK; i++) { const id = pickSel[i], d = document.createElement("div"); d.className = "tslot" + (id ? " full" : ""); d.textContent = id ? WORD[id].kr : ""; if (id) { d.title = "빼기 · remove"; d.onclick = () => { pickSel = pickSel.filter(x => x !== id); drawDeckPicker(); }; } t.appendChild(d); }
   const b = deckBonus(pickSel);
-  $("trayCount").textContent = `${pickSel.length} / 10 · 명사 ${b.c.noun} · 동사 ${b.c.verb} · 형용사 ${b.c.adjective} · 부사·기타 ${b.c.other}`;
-  $("trayBonus").textContent = S.origin ? `출신 보너스 (already set) · ${S.origin.txt}` : pickSel.length === 10 ? `출신 보너스 · origin bonus: ${b.txt}` : "";
-  $("deckDone").disabled = pickSel.length !== 10;
+  $("trayCount").textContent = `${pickSel.length} / ${SKILL_DECK} · 명사 ${b.c.noun} · 동사 ${b.c.verb} · 형용사 ${b.c.adjective} · 부사·기타 ${b.c.other}`;
+  $("trayBonus").textContent = S.origin ? `출신 보너스 (already set) · ${S.origin.txt}` : pickSel.length === SKILL_DECK ? `출신 보너스 · origin bonus: ${b.txt}` : "";
+  $("deckDone").disabled = pickSel.length !== SKILL_DECK;
 }
-$("deckRandom").onclick = () => { if (!pickSecs) drawDeckPicker(); const pool = DATA.words.filter(w => w.ch === pickCh && pickSecs.includes(w.sec) && !pickSel.includes(w.id)); pickSel = pickSel.concat(shuffle(pool).slice(0, 10 - pickSel.length).map(w => w.id)); drawDeckPicker(); };
+$("deckRandom").onclick = () => { if (!pickSecs) drawDeckPicker(); const pool = DATA.words.filter(w => w.ch === pickCh && pickSecs.includes(w.sec) && !pickSel.includes(w.id)); pickSel = pickSel.concat(shuffle(pool).slice(0, SKILL_DECK - pickSel.length).map(w => w.id)); drawDeckPicker(); };
 $("deckClear").onclick = () => { pickSel = []; drawDeckPicker(); };
 // the stranger's cards are gifts: they only live in the basic attack deck, and go back to him when you swap them out
 $("deckDone").onclick = () => {
@@ -1196,10 +1198,10 @@ function drawDeckView() {
   $("dvTabs").innerHTML = "";
   { const b = document.createElement("button"); b.className = "chip coll"; b.setAttribute("aria-pressed", dvTab === "coll"); b.textContent = "📚 도감 · collection"; b.onclick = () => { dvTab = "coll"; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b); }
   { const b = document.createElement("button"); b.className = "chip coll"; b.id = "dvBattleTab"; b.setAttribute("aria-pressed", dvTab === "battle"); b.textContent = `⚔ 배틀 덱 · battle deck (${battleDeck().length}/${CG_DECK})`; b.onclick = () => { dvTab = "battle"; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b); }
-  const coll = dvTab === "coll" || dvTab === "battle"; $("dvColl").hidden = !coll; $("dvInfo").hidden = coll; document.querySelector(".dvCols").hidden = coll; document.querySelector(".dvFoot").hidden = coll;
+  const coll = dvTab === "coll" || dvTab === "battle"; $("dvColl").hidden = !coll; $("dvInfo").hidden = coll; $("dvAuto").hidden = coll; document.querySelector(".dvCols").hidden = coll; document.querySelector(".dvFoot").hidden = coll;
   for (const k of skillKeys()) {
     const sk = skillDef(k), b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", k === dvTab);
-    b.textContent = `${sk.key} · ${sk.ko}` + (S.level < sk.lvl ? ` 🔒 Lv ${sk.lvl}` : ` (${deckCards(k).length}/10)`);
+    b.textContent = `${sk.key} · ${sk.ko}` + (S.level < sk.lvl ? ` 🔒 Lv ${sk.lvl}` : ` (${deckCards(k).length}/${SKILL_DECK})`);
     b.onclick = () => { dvTab = k; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b);
   }
   if (dvTab === "coll") { drawCollection(); return; }
@@ -1208,13 +1210,14 @@ function drawDeckView() {
   $("dvInfo").innerHTML = `<b>${sk.ko}</b> · ${sk.en} — ${dvTab === "basic" ? "1 card · 1× damage" : sk.info}, cooldown ${sk.cd} s` + (block ? ` · <span class="warn">${block}</span>` : " · <span class=\"okc\">준비됨 · ready</span>");
   const deck = deckCards(dvTab);
   let html = deck.map(c => cardHTML(c, c.uid === dvSel ? "sel" : "")).join("");
-  for (let i = deck.length; i < 10; i++) html += `<div class="dvCard empty">빈 칸 · empty</div>`;
+  for (let i = deck.length; i < SKILL_DECK; i++) html += `<div class="dvCard empty">빈 칸 · empty</div>`;
   $("dvGrid").innerHTML = html;
   const bag = bagCards().sort((a, b) => b.rar - a.rar || WORD[a.id].kr.localeCompare(WORD[b.id].kr));
   const inDeck = new Set(deck.map(c => c.id)), selWord = dvSel && cardBy(dvSel)?.id;
   $("dvBag").innerHTML = bag.length ? bag.map(c => cardHTML(c, inDeck.has(c.id) && c.id !== selWord ? "dim" : "")).join("") : `<p class="fine">가방이 비었어요. 괴물을 잡거나 (about half of them drop a card, aliens always) 역의 카드 상인에게 사세요. · Empty: monsters drop cards, and the card trader in the station sells them.</p>`;
   $("dvBonus").textContent = `출신 보너스 · origin bonus: ${bonus().txt} · 카드를 누르고 가방 카드를 누르면 바뀌어요 (click a deck card, then a bag card, to swap; click a selected card again to put it back in the bag). 선물 카드 (gift, from the stranger) only fit the basic attack.`;
   $("dvPick").hidden = dvTab !== "basic";
+  { const better = autoFillPlan(dvTab); $("dvAuto").disabled = !better.changes; $("dvAuto").textContent = better.changes ? `⚡ 자동 채우기 · auto-fill with your best cards (${better.changes} ${better.changes === 1 ? "change" : "changes"})` : "⚡ 자동 채우기 · auto-fill: no better cards in your bag"; }
   $("dvGrid").querySelectorAll(".dvCard[data-uid]").forEach(el => el.onclick = () => deckClick(el.dataset.uid));
   $("dvBag").querySelectorAll(".dvCard[data-uid]").forEach(el => el.onclick = () => bagClick(el.dataset.uid));
 }
@@ -1229,12 +1232,33 @@ function bagClick(uid) {
   if (c.gift && dvTab !== "basic") { toast("선물 카드는 기본 공격에만 들어가요 · gift cards only fit the basic attack"); return; }
   if (deckIds(dvTab).includes(c.id) && c.id !== selWord) { toast("이미 이 덱에 있는 단어예요 · this word is already in this deck"); return; }
   if (dvSel) { const i = deck.indexOf(dvSel); takeOut(dvSel); S.skillDecks[dvTab].splice(i, 0, uid); dvSel = null; }
-  else if (deck.length < 10) deck.push(uid);
+  else if (deck.length < SKILL_DECK) deck.push(uid);
   else { toast("바꿀 카드를 먼저 고르세요 · pick a deck card to swap first"); return; }
   say([wordClip(c.id)], { interrupt: true }); save(); drawDeckView();
 }
 $("dvClose").onclick = () => { showScreen(null); paused = false; };
 $("dvPick").onclick = () => openDeckPicker(false);
+// auto-fill (Danny 2026-10-18): the deck's cards + the bag's, best copy of each word, highest rarity first; on a tie the card already
+// in the deck stays. Cards that drop out go back to the bag. Gift cards only fit the basic attack, as with a hand swap.
+function deck20Topup() {
+  for (const k of Object.keys(S.skillDecks).sort((a, b) => (a === "basic") - (b === "basic"))) {   /* basic last: it can fall back on gift cards */
+    const d = S.skillDecks[k]; if (!d.length || d.length >= SKILL_DECK) continue;
+    const have = new Set(deckIds(k)), add = bagCards().filter(c => (k === "basic" || !c.gift) && !have.has(c.id)).sort((a, b) => b.rar - a.rar);
+    for (const c of add) { if (d.length >= SKILL_DECK) break; if (have.has(c.id)) continue; have.add(c.id); d.push(c.uid); }
+    if (k !== "basic") continue;
+    const ch = new Set([...have].map(id => WORD[id].ch)), pool = shuffle(bookWords().filter(w => ch.has(w.ch) && !have.has(w.id)));
+    while (d.length < SKILL_DECK && pool.length) { const c = newCard(pool.pop().id, 0); c.gift = true; S.cards.push(c); d.push(c.uid); }
+  }
+}
+function autoFillPlan(k) {
+  const deck = deckCards(k), inD = new Set(deck.map(c => c.uid)), best = {};
+  for (const c of [...deck, ...bagCards().filter(c => k === "basic" || !c.gift)]) { const b = best[c.id]; if (!b || c.rar > b.rar || c.rar === b.rar && inD.has(c.uid) && !inD.has(b.uid)) best[c.id] = c; }
+  const pick = Object.values(best).sort((a, b) => b.rar - a.rar || inD.has(b.uid) - inD.has(a.uid) || !!a.gift - !!b.gift).slice(0, SKILL_DECK), keep = new Set(pick.map(c => c.uid));
+  const stay = deck.filter(c => keep.has(c.uid)).map(c => c.uid), add = pick.filter(c => !inD.has(c.uid)).map(c => c.uid);
+  return { uids: [...stay, ...add], changes: add.length };
+}
+function autoFill(k) { const p = autoFillPlan(k); if (!p.changes) return 0; S.skillDecks[k === "sleep" || k === "silence" ? "basic" : k] = p.uids; return p.changes; }
+$("dvAuto").onclick = () => { if (dvTab === "coll" || dvTab === "battle") return; const n = autoFill(dvTab); dvSel = null; recalcMax(); save(); SFX.open(); toast(`⚡ ${n}장 바꿨어요 · ${n} ${n === 1 ? "card" : "cards"} in, the weakest went back to the bag`); drawDeckView(); };
 
 // ---- card drops (1 in 3 kills): half a copy of a word you own, half from this monster's own word list ----
 function monsterPool(kind) {
@@ -1425,7 +1449,7 @@ function onEscape() {
   if (order) { orderClose(); return; }
   if (!$("nameBox").hidden) { $("nbOk").click(); return; }
   if (["deckView", "charView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "bookView", "friendsView"].some(id => !$(id).hidden)) { showScreen(null); paused = false; return; }
-  if (!$("deckPick").hidden) { if (deckCards("basic").length === 10) { showScreen(null); paused = false; } return; }
+  if (!$("deckPick").hidden) { if (deckCards("basic").length === SKILL_DECK) { showScreen(null); paused = false; } return; }
   if (ritual) { cancelRitual(); return; }
   if (dialog) { closeDialog(); return; }
   if (!$("after").hidden) { $("after").hidden = true; return; }   // the missed-words panel
@@ -1955,7 +1979,7 @@ function tipGear(g) {
 }
 function tipSkill(k) {
   const sk = skillDef(k), blk = skillBlock(k), n = deckCards(k).length;
-  return `<b class="tk">${sk.ko}</b> <span class="tr">${sk.en} · key ${SET.keys[k] ? keyName(SET.keys[k]) : barKeyLabel(k)}</span><div class="tm">${k === "basic" ? "1 card · 1× damage" : sk.info}</div><div class="ts">재사용 ${sk.cd} s · 덱 ${n}/10 · Lv ${sk.lvl}${blk ? " · " + blk : " · 준비됨 ready"}</div>`;
+  return `<b class="tk">${sk.ko}</b> <span class="tr">${sk.en} · key ${SET.keys[k] ? keyName(SET.keys[k]) : barKeyLabel(k)}</span><div class="tm">${k === "basic" ? "1 card · 1× damage" : sk.info}</div><div class="ts">재사용 ${sk.cd} s · 덱 ${n}/${SKILL_DECK} · Lv ${sk.lvl}${blk ? " · " + blk : " · 준비됨 ready"}</div>`;
 }
 const tipEl = document.createElement("div"); tipEl.id = "tip"; tipEl.hidden = true; document.body.appendChild(tipEl);
 let tipFor = null;
@@ -3274,7 +3298,7 @@ function learnSkills(announce) {
   for (const s of EXTRA[S.cls]) if (S.level >= s.lvl && !S.bar.includes(s.id) && !(S.barSeen || []).includes(s.id)) {
     const i = S.bar.indexOf(null); if (i >= 0) S.bar[i] = s.id;
     S.barSeen = [...(S.barSeen || []), s.id]; S.skillDecks[s.id] = S.skillDecks[s.id] || [];
-    if (announce) { toast(`새 스킬! ${s.icon} ${s.ko} · ${s.en} — 카드 10장을 넣으세요 (K) · fill its deck`); logChat("system", `📖 새 스킬 · ${s.ko}`); }
+    if (announce) { toast(`새 스킬! ${s.icon} ${s.ko} · ${s.en} — 카드 ${SKILL_DECK}장을 넣으세요 (K) · fill its deck with ${SKILL_DECK} cards`); logChat("system", `📖 새 스킬 · ${s.ko}`); }
   }
 }
 function useBar(i) { const id = (S.bar || [])[i]; if (!id) { toast(`빈 칸 · empty slot (${keyName(SET.keys.book)} = 스킬 북)`); return; } startRitual(id); }
@@ -3369,7 +3393,7 @@ function drawBook() {
     const locked = S.level < s.lvl, blk = skillBlock(k), n = deckCards(k).length;
     return `<div class="bkRow${locked ? " locked" : ""}${bookSel === k ? " sel" : ""}" data-k="${k}"${fixed ? ' data-fixed="1"' : ""}><span class="ic">${s.icon || (k === "basic" ? "⚔" : k === "s2" ? "✦" : "✧")}</span>`
       + `<div class="tx"><b>${s.ko}</b> <span class="en">${s.en}</span><p>${k === "basic" ? "1 card · 1× damage" : s.info}</p></div>`
-      + `<div class="st"><span>Lv ${s.lvl}</span><span>${locked ? "🔒" : blk ? `카드 ${n}/10` : "준비됨 · ready"}</span><span>⌨ ${fixed ? keyName(SET.keys[k]) : barKeyLabel(k)}</span>${locked ? "" : `<button data-deck="${k}">덱 · deck</button>`}</div></div>`;
+      + `<div class="st"><span>Lv ${s.lvl}</span><span>${locked ? "🔒" : blk ? `카드 ${n}/${SKILL_DECK}` : "준비됨 · ready"}</span><span>⌨ ${fixed ? keyName(SET.keys[k]) : barKeyLabel(k)}</span>${locked ? "" : `<button data-deck="${k}">덱 · deck</button>`}</div></div>`;
   }).join("");
   $("bkBar").querySelectorAll(".bkSlot").forEach(b => b.onclick = () => {
     const i = +b.dataset.i;

@@ -662,3 +662,5 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 /* memory game hint after 16 mistakes (2026-10-18): face-down Korean stones red, English stones blue */
 #mmGrid.hint .stone.ko:not(.up):not(.done){background:radial-gradient(circle at 35% 30%,#d8786a,#8a2a22);border-color:#c8402f}
 #mmGrid.hint .stone.en:not(.up):not(.done){background:radial-gradient(circle at 35% 30%,#7aa8e8,#24407a);border-color:#2f6db3}
+#dvAuto{justify-self:start;margin:2px 0 8px;font-weight:700;background:#3a2f10;border:1px solid #e0b040;color:#ffe08a}
+#dvAuto:disabled{opacity:.55;border-color:#666;color:#bbb;background:#2a2620}

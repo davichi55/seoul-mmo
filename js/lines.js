@@ -175,7 +175,7 @@ export const LINES = {
   // 낯선 사람 (the alien who helps humans; nobody knows yet)
   x_hello: { ko: "안녕하세요. 드디어 왔군요.", en: "Hello. You finally came." },
   x_who: { ko: "그건 아직 말할 수 없어요.", en: "I can't tell you that yet." },
-  x_deck: { ko: "단어 열 개를 고르세요. 그게 당신의 힘이에요.", en: "Choose ten words. They are your power." },
+  x_deck: { ko: "단어 스무 개를 고르세요. 그게 당신의 힘이에요.", en: "Choose twenty words. They are your power." },
   x_good: { ko: "좋아요. 단어를 잊지 마세요.", en: "Good. Don't forget your words." },
   x_again: { ko: "단어를 바꾸고 싶어요?", en: "Do you want to change your words?" },
   x_bye: { ko: "또 만날 거예요.", en: "We will meet again." },
