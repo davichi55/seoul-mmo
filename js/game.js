@@ -316,11 +316,20 @@ const bagCards = () => { const used = new Set([...Object.values(S.skillDecks).fl
 const itemBy = uid => S.items.find(i => i.uid === uid);
 function gearName(g) { const d = GEAR[g]; return d.slot === "weapon" ? (d.names ? d.names[S.cls] || Object.values(d.names)[0] : classDef().weapons[d.tier]) : d.ko; }
 function gearInfo(g) { const st = GEAR[g].set && SETS[GEAR[g].set]; return gearInfo0(g) + (st ? ` · ${st.ko} (둘 다: ${bonusTxt(st.bonus)})` : ""); }
-function gearInfo0(g) { const d = GEAR[g]; if (d.slot === "weapon") return `공격력 ×${WEAPON_MULT[d.tier]}`; return [d.hp && `체력 +${Math.round(d.hp * 100)}%`, d.dmg && `공격력 +${Math.round(d.dmg * 100)}%`, d.ls && `흡혈 ${Math.round(d.ls * 100)}%`].filter(Boolean).join(", ") || "보너스 없음"; }
+// Danny 2026-10-18: every stat also says in English what it does
+const pc = v => Math.round(v * 100);
+const STAT_TXT = {
+  mul: v => `공격력 ×${v} · damage ×${v} on all your attacks`,
+  dmg: v => `공격력 +${pc(v)}% · +${pc(v)}% damage on every attack`,
+  hp: v => `체력 +${pc(v)}% · +${pc(v)}% max health`,
+  ls: v => `흡혈 ${pc(v)}% · lifesteal: ${pc(v)}% of the damage you deal heals you`,
+};
+const statList = (o, k = 1) => [o.hp && STAT_TXT.hp(o.hp * k), o.dmg && STAT_TXT.dmg(o.dmg * k), o.ls && STAT_TXT.ls(o.ls * k)].filter(Boolean).join(" / ") || "보너스 없음 · no bonus";
+function gearInfo0(g) { const d = GEAR[g]; if (d.slot === "weapon") return STAT_TXT.mul(WEAPON_MULT[d.tier]); return statList(d); }
 const gearPrice = g => GEAR[g].slot === "weapon" && !GEAR[g].set ? WEAPON_PRICE[GEAR[g].tier] : GEAR[g].price;
 const itemName = it => gearName(it.g) + (it.up ? ` +${it.up}` : "");
 function weaponMult() { const it = itemBy(S.equip.weapon); return WEAPON_MULT[it ? GEAR[it.g].tier : 0] * (1 + .05 * (it?.up || 0)); }
-function itemInfo(it) { const up = it.up || 0, d = GEAR[it.g]; if (!up) return gearInfo(it.g); if (d.slot === "weapon") return `공격력 ×${(WEAPON_MULT[d.tier] * (1 + .05 * up)).toFixed(2)}`; if (d.slot === "armor") return `체력 +${Math.round((d.hp + .03 * up) * 100)}%`; return gearInfo(it.g) + ` ×${(1 + .2 * up).toFixed(1)}`; }
+function itemInfo(it) { const up = it.up || 0, d = GEAR[it.g]; if (!up) return gearInfo(it.g); if (d.slot === "weapon") return STAT_TXT.mul((WEAPON_MULT[d.tier] * (1 + .05 * up)).toFixed(2)); if (d.slot === "armor") return STAT_TXT.hp(d.hp + .03 * up); return statList(d, 1 + .2 * up); }
 function weaponTier() { const it = itemBy(S.equip.weapon); return it ? GEAR[it.g].tier : 0; }
 function gearStat(k) { let v = 0; for (const slot in S.equip) { const it = itemBy(S.equip[slot]); if (!it) continue; const d = GEAR[it.g], up = it.up || 0; if (d[k]) v += d[k] * (d.slot === "trinket" ? 1 + .2 * up : 1); if (k === "hp" && d.slot === "armor") v += .03 * up; } return v + setBonus(k); }
 function addItem(g, equip = false) { const it = { uid: newUid(), g }; S.items.push(it); if (equip) S.equip[GEAR[g].slot] = it.uid; return it; }
@@ -1243,7 +1252,7 @@ function openInventory() { if (!S.cls) return; sellAllArm = false; paused = true
 function drawInventory() {
   const inStation = player.zone === "station";
   $("ivSlots").innerHTML = Object.keys(SLOTS).map(sl => { const it = itemBy(S.equip[sl]); return `<div class="ivSlot${it ? "" : " empty"}" data-slot="${sl}"${it ? ` data-tip="${esc(tipGear(it.g))}"` : ""}>${it ? gearIcon(it.g) : ""}<span class="sl">${SLOTS[sl]}</span>${it ? `<b>${itemName(it)}</b><span>${itemInfo(it)}</span>` : "<span>비었음 · empty</span>"}</div>`; }).join("");
-  $("ivSum").innerHTML = `체력 ${Math.ceil(player.hp)} / ${player.maxHp} · 공격력 ×${(weaponMult() * (1 + gearStat("dmg"))).toFixed(2)} · 흡혈 ${Math.round(gearStat("ls") * 100)}% · ${won(S.money)}`;
+  $("ivSum").innerHTML = `체력 (health) ${Math.ceil(player.hp)} / ${player.maxHp} · 공격력 (damage) ×${(weaponMult() * (1 + gearStat("dmg"))).toFixed(2)} · 흡혈 (lifesteal: heals you by this share of your damage) ${Math.round(gearStat("ls") * 100)}% · ${won(S.money)}`;
   $("ivTabs").innerHTML = "";
   for (const [k, label] of [["gear", "장비 · gear"], ["items", "소모품 · items"], ["cards", `카드 · cards (${S.cards.length})`]]) { const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", k === invTab); b.textContent = label; b.onclick = () => { invTab = k; sellAllArm = false; drawInventory(); }; $("ivTabs").appendChild(b); }
   const box = $("ivBag");
@@ -3439,7 +3448,7 @@ function gearIcon(g, cls = "gi") {
   }[k];
   return `<svg class="${cls}" viewBox="0 0 48 48" aria-hidden="true"><rect x="1" y="1" width="46" height="46" rx="9" fill="${bg}" stroke="${fg}" stroke-width="2"/>${shape}</svg>`;
 }
-const bonusTxt = b => [b.dmg && `공격력 +${Math.round(b.dmg * 100)}%`, b.hp && `체력 +${Math.round(b.hp * 100)}%`, b.ls && `흡혈 ${Math.round(b.ls * 100)}%`].filter(Boolean).join(", ");
+const bonusTxt = b => [b.dmg && `공격력 +${Math.round(b.dmg * 100)}% (damage)`, b.hp && `체력 +${Math.round(b.hp * 100)}% (max health)`, b.ls && `흡혈 ${Math.round(b.ls * 100)}% (lifesteal)`].filter(Boolean).join(", ");
 function setBonus(k) {
   const w = itemBy(S.equip?.weapon), a = itemBy(S.equip?.armor), sw = w && GEAR[w.g].set;
   return sw && a && GEAR[a.g].set === sw ? SETS[sw].bonus[k] || 0 : 0;
