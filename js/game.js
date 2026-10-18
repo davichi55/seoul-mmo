@@ -6,7 +6,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, toon } from "./world.js";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js";
 import { makeHero, makeNPC, makeMonster } from "./models.js";
 import { loadKayKit, kayReady, makeKay } from "./kaykit.js";
 import { loadWomen, womenReady, makeWoman } from "./women.js";
@@ -76,6 +76,12 @@ const MONS = {
   jangseung:  { ko: "장승", en: "village guardian post", hp: 320, speed: 2.6, range: 3.0, dmg: 14, rate: 3.6, weak: "metal", lvl: 9, xp: 120, aggro: 9, money: [9000, 13000], slam: { every: 10, tele: 1.6, radius: 4.5, dmg: 30 } },
   geuseundae: { ko: "그슨대", en: "looming shadow", hp: 260, speed: 4.6, range: 2.6, dmg: 11, rate: 2.5, weak: "fire", lvl: 10, xp: 130, aggro: 11, money: [10000, 14000], grow: { every: 5, add: .1, max: .6 } },
   commander:  { ko: "외계인 사령관", en: "alien commander", hp: 2200, speed: 3.2, range: 14, dmg: 14, rate: 3.2, weak: "water", lvl: 12, xp: 700, aggro: 18, money: [50000, 70000], boss: true, alien: true, caster: true, orb: 22, volley: 3, shield: { every: 28, dur: 14 }, model: "alien_caster", scale: 1.6 },
+  kkachi:     { ko: "까치 요괴", en: "magpie spirit", hp: 70, speed: 5.2, range: 2.4, dmg: 5, rate: 2.4, weak: "metal", lvl: 2, xp: 24, aggro: 11, money: [2800, 4200], model: "magpie" },
+  chaekgwi:   { ko: "책 귀신", en: "haunted textbook", hp: 140, speed: 2.8, range: 12, dmg: 7, rate: 3, weak: "fire", lvl: 4, xp: 45, aggro: 11, money: [5000, 7000], ranged: true, model: "book" },
+  jeongi:     { ko: "전기 도깨비", en: "spark goblin", hp: 200, speed: 4.4, range: 11, dmg: 9, rate: 2.8, weak: "earth", lvl: 6, xp: 80, aggro: 11, money: [7000, 10000], ranged: true, shock: true, model: "spark" },
+  mulgwi:     { ko: "물귀신", en: "water ghost", hp: 300, speed: 3, range: 2.8, dmg: 13, rate: 3.2, weak: "earth", immune: "water", lvl: 9, xp: 120, aggro: 9, money: [9000, 13000], root: { chance: .3, dur: 1.5, ko: "물귀신이 발목을 잡았어요! · it grabbed your ankle" }, slam: { every: 10, tele: 1.6, radius: 4.2, dmg: 26 }, model: "watergh" },
+  dokkaebibul: { ko: "도깨비불", en: "will-o'-wisp", hp: 260, speed: 4.6, range: 2.4, dmg: 14, rate: 2.6, weak: "water", immune: "fire", lvl: 12, xp: 150, aggro: 12, money: [11000, 15000], burst: { radius: 4, tele: 1, dmg: 28, col: ["#3ad8c8", "#9ff8e8", "#ffffff"] }, model: "wisp" },
+  neon:       { ko: "네온 도깨비", en: "neon goblin", hp: 420, speed: 3.4, range: 15, dmg: 16, rate: 3, weak: "wood", lvl: 15, xp: 190, aggro: 12, money: [14000, 18000], caster: true, orb: 32, model: "neongob" },
   vine:     { ko: "덩굴 귀신", en: "vine spirit", hp: 80, speed: 2.6, range: 13, dmg: 5, rate: 3.2, weak: "metal", lvl: 2, xp: 25, aggro: 10, money: [3000, 4500], ranged: true, root: { chance: .35, dur: 2 } },
 };
 const FOODS = {
@@ -510,7 +516,7 @@ function hurt(amount, src, raw = false) {
   snd("punchH", .7, .75); FX.shake(Math.min(1, .3 + amount / player.maxHp * 2.5)); FX.burst(player.pos, { n: 14, color: ["#ff5a4a", "#ffffff", "#ff9a8a"], speed: 6, size: .12, life: .45, shape: "spark", grav: 4 });
   $("vignette").classList.add("hit"); setTimeout(() => $("vignette").classList.remove("hit"), 120);
   SFX.hurt();
-  if (src && src.def && src.def.root && !raw && Math.random() < src.def.root.chance) { player.rootedUntil = clock + src.def.root.dur; floater(player.pos, "덩굴에 묶임! · rooted", "#9be66a", true, 3); }
+  if (src && src.def && src.def.root && !raw && Math.random() < src.def.root.chance) { player.rootedUntil = clock + src.def.root.dur; floater(player.pos, src.def.root.ko || "덩굴에 묶임! · rooted", "#9be66a", true, 3); }
   if (player.hp <= 0 && player.cheatUntil > clock) { player.cheatUntil = 0; player.hp = player.maxHp * .3; floater(player.pos, "🕯 혼이 돌아왔어요! · the soul returns", "#ffd23d", false, 3.4); }
   if (player.hp <= 0) die();
 }
@@ -1552,6 +1558,10 @@ const SQ_NPC = {
   gongsi: { name: "태민 · 공시생", at: { x: YD.x + 92, z: YD.z + 515, zone: "yeouido" }, role: "sqGongsi", hi: "sq_go_hi" },
   florist: { name: "꽃집 사장님", at: { x: 40, z: -157.5, zone: "street" }, role: "sqFlorist", hi: "sq_fl_hi" },
   student: { name: "하은 · 대학생", at: { x: 245, z: -172, zone: "street" }, role: "sqStudent", hi: "sq_st_hi" },
+  engineer: { name: "기술자 아저씨 · 발전소", at: { x: 350, z: 152, zone: "street" }, role: "sqEngineer", hi: "sq_en_hi" },
+  researcher: { name: "수질 연구원", at: { x: YD.x - 318, z: YD.z + 212, zone: "yeouido" }, role: "sqResearcher", hi: "sq_re_hi" },
+  caretaker: { name: "관리인 할아버지", at: { x: YD.x - 205, z: YD.z + 468, zone: "yeouido" }, role: "sqCaretaker", hi: "sq_ct_hi" },
+  shopowner: { name: "이태원 가게 사장님", at: { x: YD.x + 536, z: YD.z + 51.5, zone: "yeouido" }, role: "sqShop", hi: "sq_sh_hi" },
   docent: { name: "도슨트 · 박물관 해설사", at: { x: YD.x + 312, z: YD.z + 20, zone: "yeouido" }, role: "sqDocent", hi: "sq_do_hi" },
 };
 const SQ = (giver, ko, en, kind, more, lines, desc, reward) => ({ giver, ko, en, kind, ...more, offer: lines + "_q", wait: lines + "_wait", done: lines + "_done", turn: "p_done", reward, desc });
@@ -1568,6 +1578,10 @@ const SIDE_QUESTS = {
   gongsi: SQ("gongsi", "공시생의 단어장", "The exam student's word list", "quiz", { quiz: "words" }, "sq_go", "태민과 같이 단어 다섯 개를 맞히세요 · get 5 of 태민's words right together with him", { won: 26000, xp: 300 }),
   flowers: SQ("florist", "꽃밭에 물 주기", "Water the flower beds", "collect", { n: 3, icon: "🌼", verb: "꽃에 물 주기 · water the flowers", spots: [{ x: -25, z: -171, zone: "street" }, { x: 35, z: -178, zone: "street" }, { x: 88, z: -171, zone: "street" }] }, "sq_fl", "연트럴파크의 꽃밭 세 곳에 물을 주고 꽃집 사장님에게 · water the 3 flower beds in 연트럴파크, then see the florist", { won: 8000, xp: 70 }),
   books: SQ("student", "잃어버린 교과서", "The lost textbooks", "collect", { n: 3, icon: "📚", verb: "교과서 줍기 · pick up the textbook", spots: [{ x: 300, z: -150, zone: "street" }, { x: 238, z: -200, zone: "street" }, { x: 290, z: -244, zone: "street" }] }, "sq_st", "신촌대학교 캠퍼스에서 하은의 교과서 세 권을 찾으세요 · find 하은's 3 textbooks on the campus", { won: 12000, xp: 110 }),
+  fuses: SQ("engineer", "발전소 퓨즈 갈기", "Fix the fuses", "collect", { n: 3, icon: "⚡", verb: "퓨즈 갈기 · replace the fuse", spots: [{ x: 345, z: 144, zone: "street" }, { x: 420, z: 139, zone: "street" }, { x: 462, z: 155, zone: "street" }] }, "sq_en", "당인리 발전소의 퓨즈 상자 세 개를 고치고 기술자 아저씨에게 · fix the 3 fuse boxes around the power plant", { won: 15000, xp: 140 }),
+  samples: SQ("researcher", "수질 검사", "Water samples", "collect", { n: 3, icon: "🧪", verb: "물 샘플 뜨기 · take a water sample", spots: [{ x: YD.x - 350, z: YD.z + 202, zone: "yeouido" }, { x: YD.x - 300, z: YD.z + 202, zone: "yeouido" }, { x: YD.x - 350, z: YD.z + 248, zone: "yeouido" }] }, "sq_re", "선유도의 옛 정수지 세 곳에서 물 샘플을 떠서 연구원에게 · take water samples at the 3 old basins of 선유도", { won: 22000, xp: 240 }),
+  incense: SQ("caretaker", "향 피우기", "Incense for the six", "collect", { n: 3, icon: "🕯", verb: "향 피우기 · light the incense", spots: [{ x: YD.x - 314, z: YD.z + 520, zone: "yeouido" }, { x: YD.x - 262, z: YD.z + 520, zone: "yeouido" }, { x: YD.x - 210, z: YD.z + 520, zone: "yeouido" }] }, "sq_ct", "사육신 묘 앞의 향로 세 개에 향을 피우고 관리인 할아버지에게 · light the incense at the 3 burners in front of the tombs", { won: 28000, xp: 320 }),
+  neonsign: SQ("shopowner", "네온사인 다시 켜기", "Lights back on", "collect", { n: 3, icon: "💡", verb: "네온사인 켜기 · switch the neon sign on", spots: [{ x: YD.x + 512, z: YD.z + 31.6, zone: "yeouido" }, { x: YD.x + 590, z: YD.z + 48.4, zone: "yeouido" }, { x: YD.x + 642, z: YD.z + 31.6, zone: "yeouido" }] }, "sq_sh", "이태원로의 꺼진 네온사인 세 개를 다시 켜고 사장님에게 · switch the 3 dark neon signs on 이태원로 back on", { won: 32000, xp: 380 }),
   docent: SQ("docent", "박물관 도슨트", "Museum docent", "quiz", { quiz: "museum" }, "sq_do", "설명을 듣고 맞는 유물을 고르세요 · hear each description and pick the right relic", { won: 30000, xp: 360 }),
 };
 Object.assign(QUESTS, SIDE_QUESTS);
@@ -1616,6 +1630,9 @@ function buildSideSpots() {
     else if (q.icon === "📄") obj = new THREE.Mesh(new THREE.BoxGeometry(.5, .02, .7), toon("#f8f6ee"));
     else if (q.icon === "📦") obj = new THREE.Mesh(new THREE.BoxGeometry(.7, .5, .7), toon("#b8864a"));
     else if (q.icon === "🐈") { obj = new THREE.Group(); const w = toon("#f6f4ee"); const b = new THREE.Mesh(new THREE.SphereGeometry(.35, 10, 8), w); b.scale.set(1.3, .8, .9); b.position.y = .3; obj.add(b); const h = new THREE.Mesh(new THREE.SphereGeometry(.22, 10, 8), w); h.position.set(.42, .5, 0); obj.add(h); for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.ConeGeometry(.07, .16, 4), w); e.position.set(.45, .72, s * .1); obj.add(e); } }
+    else if (q.icon === "⚡" || q.icon === "💡") { obj = new THREE.Mesh(new THREE.OctahedronGeometry(.3, 0), new THREE.MeshBasicMaterial({ color: q.icon === "⚡" ? "#fff36a" : "#ffd89a", toneMapped: false })); obj.scale.y = 1.5; }
+    else if (q.icon === "🧪") { obj = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, .55, 10), new THREE.MeshBasicMaterial({ color: "#7af0ff", toneMapped: false })); }
+    else if (q.icon === "🕯") { obj = new THREE.Group(); obj.add(new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .6, 5), toon("#8a5a32"))); const f = new THREE.Mesh(new THREE.SphereGeometry(.09, 8, 6), new THREE.MeshBasicMaterial({ color: "#ffb03a", toneMapped: false })); f.position.y = .35; obj.add(f); }
     else if (q.icon === "🌼") { obj = new THREE.Mesh(new THREE.SphereGeometry(.22, 10, 8), new THREE.MeshBasicMaterial({ color: "#5ab8ff", toneMapped: false })); obj.scale.y = 1.4; }
     else if (q.icon === "📚") { obj = new THREE.Group(); ["#c8402f", "#2f6db3", "#e0a21c"].forEach((c, k) => { const b = new THREE.Mesh(new THREE.BoxGeometry(.6 - k * .06, .12, .45), toon(c)); b.position.y = k * .13; b.rotation.y = k * .3; obj.add(b); }); }
     else obj = new THREE.Mesh(new THREE.OctahedronGeometry(.35, 0), new THREE.MeshBasicMaterial({ color: "#ffe8f0", toneMapped: false }));
@@ -1763,7 +1780,7 @@ function findTalk(n, id) {
 
 // ---- maps: the minimap shows the 60 m around you; the full map (M) shows each area you've found a map for ----
 // 홍대 지도 at the 관광안내소 (park), 서교 아파트 지도 on the 경비실 counter at the apartment gate
-const MAP_ITEMS = { yeonnam: { spot: MAPSPOT_YN, flag: "hasMapYn", line: "x_map7", ko: "연남동 지도", en: "Yeonnam-dong map" }, sinchon: { spot: MAPSPOT_SC, flag: "hasMapSc", line: "x_map8", ko: "신촌 지도", en: "Sinchon map" }, hongdae: { spot: MAPSPOT, flag: "hasMap", line: "x_map", ko: "홍대 지도", en: "Hongdae map" }, apt: { spot: MAPSPOT_APT, flag: "hasMapApt", line: "x_map2", ko: "서교 아파트 지도", en: "apartment map" }, river: { spot: MAPSPOT_RIVER, flag: "hasMapRiver", line: "x_map3", ko: "한강공원 지도", en: "Han River park map" }, yeouido: { spot: MAPSPOT_YD, flag: "hasMapYd", line: "x_map4", ko: "여의도 지도", en: "Yeouido map", zone: "yeouido" }, noryangjin: { spot: MAPSPOT_NR, flag: "hasMapNr", line: "x_map5", ko: "노량진 지도", en: "Noryangjin map", zone: "yeouido" }, yongsan: { spot: MAPSPOT_YS, flag: "hasMapYs", line: "x_map6", ko: "용산 지도", en: "Yongsan map", zone: "yeouido" } };
+const MAP_ITEMS = { dangin: { spot: MAPSPOT_DI, flag: "hasMapDi", line: "x_map9", ko: "당인리 지도", en: "Danginri map" }, seonyudo: { spot: MAPSPOT_SY, flag: "hasMapSy", line: "x_map10", ko: "선유도 지도", en: "Seonyudo map", zone: "yeouido" }, sayuksin: { spot: MAPSPOT_SA, flag: "hasMapSa", line: "x_map11", ko: "사육신 공원 지도", en: "Sayuksin park map", zone: "yeouido" }, itaewon: { spot: MAPSPOT_IT, flag: "hasMapIt", line: "x_map12", ko: "이태원 지도", en: "Itaewon map", zone: "yeouido" }, yeonnam: { spot: MAPSPOT_YN, flag: "hasMapYn", line: "x_map7", ko: "연남동 지도", en: "Yeonnam-dong map" }, sinchon: { spot: MAPSPOT_SC, flag: "hasMapSc", line: "x_map8", ko: "신촌 지도", en: "Sinchon map" }, hongdae: { spot: MAPSPOT, flag: "hasMap", line: "x_map", ko: "홍대 지도", en: "Hongdae map" }, apt: { spot: MAPSPOT_APT, flag: "hasMapApt", line: "x_map2", ko: "서교 아파트 지도", en: "apartment map" }, river: { spot: MAPSPOT_RIVER, flag: "hasMapRiver", line: "x_map3", ko: "한강공원 지도", en: "Han River park map" }, yeouido: { spot: MAPSPOT_YD, flag: "hasMapYd", line: "x_map4", ko: "여의도 지도", en: "Yeouido map", zone: "yeouido" }, noryangjin: { spot: MAPSPOT_NR, flag: "hasMapNr", line: "x_map5", ko: "노량진 지도", en: "Noryangjin map", zone: "yeouido" }, yongsan: { spot: MAPSPOT_YS, flag: "hasMapYs", line: "x_map6", ko: "용산 지도", en: "Yongsan map", zone: "yeouido" } };
 const ownedAreas = () => Object.keys(MAP_ITEMS).filter(a => S[MAP_ITEMS[a].flag]);
 const inAreas = (p, areas) => areas.some(a => { const b = world.map.areas[a]; return p.x >= b.minX && p.x <= b.maxX && p.z >= b.minZ && p.z <= b.maxZ; });
 function drawMap(ctx, W, H, cx, cz, span, full, areas = Object.keys(MAP_ITEMS)) {
@@ -1935,6 +1952,10 @@ const ACH = [
   { id: "market1", ko: "문어 왕을 잡다", en: "Octopus king", desc: "Defeat the octopus king in the fish market", prog: () => [S.marketClears ? 1 : 0, 1], reward: { won: 40000, xp: 250 } },
   { id: "map6", ko: "강 건너 용산", en: "Over to Yongsan", desc: "Find the 용산 map", prog: () => [S.hasMapYs ? 1 : 0, 1], reward: { xp: 80 } },
   { id: "map7", ko: "연트럴파크", en: "Yeontral Park", desc: "Find the 연남동 map", prog: () => [S.hasMapYn ? 1 : 0, 1], reward: { xp: 20 } },
+  { id: "map9", ko: "발전소", en: "The power plant", desc: "Find the 당인리 map", prog: () => [S.hasMapDi ? 1 : 0, 1], reward: { xp: 60 } },
+  { id: "map10", ko: "선유교 건너", en: "Over the 선유교", desc: "Find the 선유도 map", prog: () => [S.hasMapSy ? 1 : 0, 1], reward: { xp: 80 } },
+  { id: "map11", ko: "여섯 신하", en: "The six ministers", desc: "Find the 사육신 공원 map", prog: () => [S.hasMapSa ? 1 : 0, 1], reward: { xp: 100 } },
+  { id: "map12", ko: "네온 거리", en: "Neon streets", desc: "Find the 이태원 map", prog: () => [S.hasMapIt ? 1 : 0, 1], reward: { xp: 120 } },
   { id: "map8", ko: "대학가", en: "The university street", desc: "Find the 신촌 map", prog: () => [S.hasMapSc ? 1 : 0, 1], reward: { xp: 40 } },
   { id: "museum1", ko: "장군을 잠재우다", en: "The general sleeps again", desc: "Defeat the awakened general in the museum", prog: () => [S.museumClears ? 1 : 0, 1], reward: { won: 60000, xp: 400 } },
   { id: "truth", ko: "진실", en: "The truth", desc: "Hear the stranger's story", prog: () => [S.metMirror ? 1 : 0, 1], reward: { xp: 200 } },
@@ -2571,8 +2592,8 @@ function spawnOrb(from, vel, dmg, src) {
 const rangeOf = m => m.def.caster && m.silencedUntil > clock ? 2.6 : m.def.range;
 
 // ---- materials (decision 13): monsters drop them, the smith uses them to upgrade gear ----
-const MATS = { horn: { ko: "도깨비 뿔", en: "goblin horn" }, vine: { ko: "덩굴 줄기", en: "vine stem" }, stone: { ko: "석상 조각", en: "statue shard" }, metal: { ko: "외계 금속", en: "alien metal" }, wood: { ko: "장승 나무", en: "guardian wood" }, shell: { ko: "게 껍데기", en: "crab shell" }, shadow: { ko: "그림자 조각", en: "shadow shard" }, jade: { ko: "청자 조각", en: "celadon shard" }, iron: { ko: "녹슨 쇳조각", en: "rusty iron" } };
-const MAT_OF = { dokkaebi: "horn", vine: "vine", haetae: "stone", chief: "horn", alien_scout: "metal", alien_caster: "metal", jangseung: "wood", geuseundae: "shadow", commander: "metal", gwisin: "shadow", kkotge: "shell", jangeo: "shell", munoh: "shell", muinseok: "stone", cheongja: "jade", gapot: "iron", dogul: "metal", janggun: "iron" };
+const MATS = { feather: { ko: "까치 깃털", en: "magpie feather" }, paper: { ko: "찢어진 책장", en: "torn page" }, copper: { ko: "구리선", en: "copper wire" }, weed: { ko: "물풀", en: "water weed" }, ember: { ko: "도깨비불 불씨", en: "wisp ember" }, neonglass: { ko: "네온 유리", en: "neon glass" }, horn: { ko: "도깨비 뿔", en: "goblin horn" }, vine: { ko: "덩굴 줄기", en: "vine stem" }, stone: { ko: "석상 조각", en: "statue shard" }, metal: { ko: "외계 금속", en: "alien metal" }, wood: { ko: "장승 나무", en: "guardian wood" }, shell: { ko: "게 껍데기", en: "crab shell" }, shadow: { ko: "그림자 조각", en: "shadow shard" }, jade: { ko: "청자 조각", en: "celadon shard" }, iron: { ko: "녹슨 쇳조각", en: "rusty iron" } };
+const MAT_OF = { kkachi: "feather", chaekgwi: "paper", jeongi: "copper", mulgwi: "weed", dokkaebibul: "ember", neon: "neonglass", dokkaebi: "horn", vine: "vine", haetae: "stone", chief: "horn", alien_scout: "metal", alien_caster: "metal", jangseung: "wood", geuseundae: "shadow", commander: "metal", gwisin: "shadow", kkotge: "shell", jangeo: "shell", munoh: "shell", muinseok: "stone", cheongja: "jade", gapot: "iron", dogul: "metal", janggun: "iron" };
 const matCount = () => Object.values(S.mats || {}).reduce((a, b) => a + b, 0);
 function dropMat(m) {
   if (Math.random() >= (m.def.alien || m.def.boss ? 1 : .5)) return;
@@ -3685,12 +3706,12 @@ function closeReward() { showScreen(null); paused = false; const f = rewardDone;
 // 청자 도깨비: bursts into shards when it breaks (the host makes the ring; guests get it as a slam)
 function burstAt(m) {
   const b = m.def.burst; if (!b) return;
-  const at = new THREE.Vector3(m.pos.x, 0, m.pos.z), dmg = b.dmg * m.mul, zone = m.zone, lv = m.lvl;
-  makeRing(at, b.radius, b.tele, "#5fd0b0");
+  const at = new THREE.Vector3(m.pos.x, 0, m.pos.z), dmg = b.dmg * m.mul, zone = m.zone, lv = m.lvl, bc = b.col || ["#8fc4b0", "#5f9a86", "#e8fff4"];
+  makeRing(at, b.radius, b.tele, bc[0]);
   netSend({ t: "sl", x: at.x, z: at.z, r: b.radius, tele: b.tele, dmg, lv });
   if (player.zone === zone && dist2(player.pos, at) < b.radius + 3) floater(at, "깨져요! 피하세요 · it's bursting — step away!", "#9fe0c8", false, 2.4);
-  FX.burst(at, { n: 12, color: ["#8fc4b0", "#5f9a86"], speed: 3, size: .16, life: .6, additive: false });
-  setTimeout(() => { SFX.slam(); snd("glass", .9, .8); snd("glass", .6, 1.2); FX.burst(at, { n: 50, color: ["#8fc4b0", "#5f9a86", "#e8fff4"], speed: 12, up: .6, size: .22, life: .9, grav: 12, additive: false, flat: true, y: .8 }); FX.ring(at, { color: "#9fe0c8", r: b.radius * 1.2 }); FX.shake(.3); if (!player.dead && player.zone === zone && dist2(player.pos, at) < b.radius) hurt(dmg, { lvl: lv }); }, b.tele * 1000);
+  FX.burst(at, { n: 12, color: [bc[0], bc[1]], speed: 3, size: .16, life: .6, additive: false });
+  setTimeout(() => { SFX.slam(); snd("glass", .9, .8); snd("glass", .6, 1.2); FX.burst(at, { n: 50, color: bc, speed: 12, up: .6, size: .22, life: .9, grav: 12, additive: false, flat: true, y: .8 }); FX.ring(at, { color: "#9fe0c8", r: b.radius * 1.2 }); FX.shake(.3); if (!player.dead && player.zone === zone && dist2(player.pos, at) < b.radius) hurt(dmg, { lvl: lv }); }, b.tele * 1000);
 }
 // 선사관: the painted hunters throw spears across the room
 let caveT = 3, caveTold = false;
@@ -4091,13 +4112,13 @@ addEventListener("keydown", e => {
 // ---- main loop ------------------------------------------------------------------------------------------
 let last = performance.now(), saveT = 0;
 // ---- area guidance (Danny 2026-10-17) -------------------------------------------------------------------
-const AREA_LV = { hongdae: 1, yeonnam: 1, sinchon: 4, apt: 4, river: 6, yeouido: 9, tower: 10, noryangjin: 12, market: 15, yongsan: 15, museum: 16 };
-const AREA_KO = { hongdae: "홍대 거리", yeonnam: "연남동", sinchon: "신촌", apt: "서교 아파트", river: "한강공원", yeouido: "여의도", tower: "63빌딩", noryangjin: "노량진", market: "수산시장", yongsan: "용산", museum: "국립중앙박물관" };
+const AREA_LV = { hongdae: 1, yeonnam: 1, sinchon: 4, apt: 4, dangin: 6, seonyudo: 9, sayuksin: 12, itaewon: 15, river: 6, yeouido: 9, tower: 10, noryangjin: 12, market: 15, yongsan: 15, museum: 16 };
+const AREA_KO = { hongdae: "홍대 거리", yeonnam: "연남동", sinchon: "신촌", dangin: "당인리 발전소", seonyudo: "선유도공원", sayuksin: "사육신 공원", itaewon: "이태원", apt: "서교 아파트", river: "한강공원", yeouido: "여의도", tower: "63빌딩", noryangjin: "노량진", market: "수산시장", yongsan: "용산", museum: "국립중앙박물관" };
 const AREA_GO = ["hongdae", "apt", "river", "yeouido", "noryangjin", "yongsan"];   // where 민수 sends you instead (overworld only)
 function areaOf() {
   const p = player.pos, z = player.zone;
-  if (z === "street") return p.z >= 108 ? "river" : p.z < -110 ? (p.x > 108 ? "sinchon" : "yeonnam") : p.x > 108 ? "apt" : "hongdae";
-  if (z === "yeouido") return p.x > YD.x + 152 ? "yongsan" : p.z > YD.z + 330 ? "noryangjin" : "yeouido";
+  if (z === "street") return p.z >= 108 ? (p.x > 310 ? "dangin" : "river") : p.z < -110 ? (p.x > 108 ? "sinchon" : "yeonnam") : p.x > 108 ? "apt" : "hongdae";
+  if (z === "yeouido") return p.x > YD.x + 462 ? "itaewon" : p.x < YD.x - 152 ? (p.z > YD.z + 400 ? "sayuksin" : "seonyudo") : p.x > YD.x + 152 ? "yongsan" : p.z > YD.z + 330 ? "noryangjin" : "yeouido";
   return z === "tower" || z === "market" || z === "museum" ? z : null;
 }
 let areaT = 0, areaNow = null;

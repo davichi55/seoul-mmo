@@ -329,6 +329,125 @@ export function makeMonster(kind) {
       rig.position.y = .2 + Math.sin(t) * .12;
       arms.forEach((p, i) => { p.rotation.x = s.attack > 0 ? -2 * Math.sin(s.attack * Math.PI) : -.2 + Math.sin(t + i) * .15; p.rotation.z = (i ? -1 : 1) * .25; });
     };
+  } else if (kind === "magpie") {                 // 까치 요괴 (연남동): a big magpie that swoops and pecks; black and white with a blue sheen
+    const black = toon("#1d1a24"), white = toon("#f4f2ec"), blue = toon("#2f4fa0"), beakM = toon("#2a2522");
+    const body = part(ball(.55), black, 0, 0, 0, rig, .03); body.scale.set(.9, .85, 1.3);
+    const fly = new THREE.Group(); fly.position.y = 1.7; rig.add(fly); fly.add(body); body.position.set(0, 0, 0);
+    part(ball(.42), white, 0, -.15, .05, fly, 0).scale.set(.85, .7, 1.1);
+    const head = part(ball(.34), black, 0, .45, -.6, fly, .025);
+    part(new THREE.ConeGeometry(.09, .4, 6), beakM, 0, .42, -1, fly, .01).rotation.x = -Math.PI / 2;
+    const eyeM = new THREE.MeshBasicMaterial({ color: "#ff3a3a", toneMapped: false });
+    for (const ex of [-.17, .17]) part(new THREE.SphereGeometry(.06, 8, 6), eyeM, ex, .52, -.85, fly, 0);
+    const tail = part(new THREE.BoxGeometry(.28, .06, 1.2), blue, 0, .05, 1.1, fly, .015); tail.rotation.x = -.25;
+    const wings = [];
+    for (const side of [-1, 1]) { const p = new THREE.Group(); p.position.set(side * .45, .2, 0); fly.add(p); wings.push(p);
+      part(new THREE.BoxGeometry(1.2, .06, .7), black, side * .6, 0, 0, p, .015); part(new THREE.BoxGeometry(.6, .065, .5), white, side * .5, .005, .05, p, 0); part(new THREE.BoxGeometry(.5, .07, .55), blue, side * 1.05, .005, .1, p, 0); }
+    for (const side of [-1, 1]) part(cyl(.03, .03, .5, 5), beakM, side * .15, -.6, .1, fly, 0);
+    height = 2.6;
+    anim = (dt, s) => {
+      t += dt * (s.moving ? 14 : 8);
+      wings.forEach((p, i) => p.rotation.z = (i ? -1 : 1) * Math.sin(t) * .7);
+      fly.position.y = 1.7 + Math.sin(t * .3) * .2 - (s.attack > 0 ? Math.sin(s.attack * Math.PI) * .8 : 0);
+      fly.rotation.x = s.attack > 0 ? .6 * Math.sin(s.attack * Math.PI) : .1; head.rotation.x = s.attack > 0 ? .5 * Math.sin(s.attack * Math.PI) : 0;
+    };
+  } else if (kind === "book") {                   // 책 귀신 (신촌): a haunted textbook that flaps open and shoots its pages
+    const cover = toon("#7a2a2a"), page = toon("#f6f0e0"), gold = toon("#e0b43a");
+    const fly = new THREE.Group(); fly.position.y = 1.8; rig.add(fly);
+    const halves = [];
+    for (const side of [-1, 1]) { const p = new THREE.Group(); fly.add(p); halves.push(p);
+      part(new THREE.BoxGeometry(.9, .08, 1.3), cover, side * .45, 0, 0, p, .02); part(new THREE.BoxGeometry(.82, .12, 1.2), page, side * .43, .08, 0, p, 0);
+      part(new THREE.BoxGeometry(.5, .085, .08), gold, side * .45, .005, -.45, p, 0); }
+    const loose = [];
+    for (let i = 0; i < 6; i++) { const pg = part(new THREE.PlaneGeometry(.35, .45), toon("#f6f0e0", { side: THREE.DoubleSide }), 0, 0, 0, fly, 0); loose.push(pg); }
+    const eyeM = new THREE.MeshBasicMaterial({ color: "#ffd23d", toneMapped: false });
+    for (const ex of [-.25, .25]) part(new THREE.SphereGeometry(.08, 8, 6), eyeM, ex, .2, -.62, fly, 0);
+    height = 2.8;
+    anim = (dt, s) => {
+      t += dt * 3;
+      const open = .5 + Math.sin(t * 1.4) * .3 + (s.attack > 0 ? Math.sin(s.attack * Math.PI) * .6 : 0);
+      halves[0].rotation.z = open; halves[1].rotation.z = -open;
+      fly.position.y = 1.8 + Math.sin(t) * .25; fly.rotation.y = Math.sin(t * .5) * .3;
+      loose.forEach((pg, i) => { const a = t * 1.5 + i * 1.05; pg.position.set(Math.cos(a) * 1.1, .3 + Math.sin(a * 1.7) * .4, Math.sin(a) * 1.1); pg.rotation.set(a, a * .7, 0); });
+    };
+  } else if (kind === "spark") {                  // 전기 도깨비 (당인리 발전소): a yellow goblin full of electricity, a coil on its head, sparks all around
+    const yel = toon("#f2c43a"), dark = toon("#3a3f4a"), copper = toon("#c87a3a");
+    const legL = limb(rig, -.28, .65, 0, .65, .14, dark), legR = limb(rig, .28, .65, 0, .65, .14, dark);
+    const body = part(ball(.7), yel, 0, 1.3, 0, rig, .04);
+    for (let k = 0; k < 4; k++) part(cyl(.42 - k * .06, .42 - k * .06, .06, 12), copper, 0, 2.05 + k * .14, 0, rig, 0);
+    const tip = part(new THREE.SphereGeometry(.14, 10, 8), new THREE.MeshBasicMaterial({ color: "#bfe8ff", toneMapped: false }), 0, 2.7, 0, rig, 0);
+    const eyeM = new THREE.MeshBasicMaterial({ color: "#7af0ff", toneMapped: false });
+    for (const ex of [-.24, .24]) part(new THREE.SphereGeometry(.11, 8, 6), eyeM, ex, 1.5, -.62, rig, 0);
+    part(new THREE.BoxGeometry(.42, .08, .05), dark, 0, 1.18, -.68, rig, 0);
+    const armL = limb(rig, -.68, 1.5, 0, .6, .1, yel), armR = limb(rig, .68, 1.5, 0, .6, .1, yel);
+    const sparks = [], sM = new THREE.MeshBasicMaterial({ color: "#fff36a", toneMapped: false });
+    for (let i = 0; i < 7; i++) { const sp = part(new THREE.BoxGeometry(.04, .38, .04), sM, 0, 0, 0, rig, 0); sparks.push(sp); }
+    height = 2.9;
+    anim = (dt, s) => {
+      t += dt * (s.moving ? 10 : 3);
+      legL.rotation.x = s.moving ? Math.sin(t) * .8 : 0; legR.rotation.x = s.moving ? -Math.sin(t) * .8 : 0;
+      armR.rotation.x = s.attack > 0 ? -2.2 * Math.sin(s.attack * Math.PI) : Math.sin(t) * .3; armL.rotation.x = -Math.sin(t) * .3;
+      body.scale.setScalar(1 + Math.sin(t * 2.3) * .03); tip.scale.setScalar(1 + Math.random() * .5);
+      sparks.forEach((sp, i) => { const a = t * 2 + i * .9; sp.position.set(Math.cos(a) * .9, 1.3 + Math.sin(a * 1.9) * .7, Math.sin(a) * .9); sp.rotation.set(a * 3, 0, a * 2); sp.visible = Math.random() < .7; });
+    };
+  } else if (kind === "watergh") {                // 물귀신 (선유도공원): a dripping water ghost with long wet hair that grabs your ankles
+    const water = toon("#6ab0d8", { transparent: true, opacity: .75 }), hair = toon("#0f1418"), deep = toon("#3a7aa8", { transparent: true, opacity: .8 });
+    part(new THREE.ConeGeometry(.75, 2.4, 12, 1, true), toon("#5aa0c8", { side: THREE.DoubleSide, transparent: true, opacity: .7 }), 0, 1.25, 0, rig, .03);
+    const head = part(ball(.4), water, 0, 2.7, 0, rig, .03);
+    for (let i = 0; i < 9; i++) { const a = (i / 9 - .5) * 2.6 + Math.PI, len = 1.2 + (i % 3) * .3; const h = part(new THREE.BoxGeometry(.09, len, .05), hair, Math.sin(a) * .36, 2.85 - len / 2, Math.cos(a) * .36, rig, 0); h.rotation.x = Math.cos(a) * .12; }
+    for (let i = 0; i < 4; i++) { const a = (i / 4 - .375) * 1.4; const h = part(new THREE.BoxGeometry(.09, .9, .05), hair, Math.sin(a) * .3, 2.55, -.36, rig, 0); }
+    const eyeM = new THREE.MeshBasicMaterial({ color: "#e8fbff", toneMapped: false });
+    for (const ex of [-.13, .13]) part(new THREE.SphereGeometry(.05, 8, 6), eyeM, ex, 2.72, -.39, rig, 0);
+    const armL = limb(rig, -.5, 2.1, 0, 1, .07, deep), armR = limb(rig, .5, 2.1, 0, 1, .07, deep);
+    const drops = [], dM = toon("#9fd8ff");
+    for (let i = 0; i < 6; i++) { const d = part(new THREE.SphereGeometry(.06, 6, 5), dM, 0, 0, 0, rig, 0); drops.push({ d, y: Math.random() * 2.5, x: (Math.random() - .5) * 1.2, z: (Math.random() - .5) * 1.2 }); }
+    height = 3.3;
+    anim = (dt, s) => {
+      t += dt * 2;
+      rig.position.y = .1 + Math.sin(t) * .1; head.rotation.z = Math.sin(t * .7) * .12;
+      const reach = s.attack > 0 ? Math.sin(s.attack * Math.PI) : 0;
+      armL.rotation.x = -1.3 - reach * .6 + Math.sin(t) * .1; armR.rotation.x = -1.3 - reach * .6 - Math.sin(t) * .1;
+      for (const p of drops) { p.y -= dt * 2.5; if (p.y < 0) { p.y = 2.4; p.x = (Math.random() - .5) * 1.2; p.z = (Math.random() - .5) * 1.2; } p.d.position.set(p.x, p.y, p.z); }
+      if (s.slam > 0) rig.scale.set(1 + s.slam * .25, 1 - s.slam * .2, 1 + s.slam * .25); else rig.scale.setScalar(1);
+    };
+  } else if (kind === "wisp") {                   // 도깨비불 (사육신 공원): a floating blue-green flame with a face; bursts when it goes out
+    const fM = [new THREE.MeshBasicMaterial({ color: "#3ad8c8", transparent: true, opacity: .55, toneMapped: false, depthWrite: false }), new THREE.MeshBasicMaterial({ color: "#9ff8e8", transparent: true, opacity: .8, toneMapped: false, depthWrite: false }), new THREE.MeshBasicMaterial({ color: "#ffffff", toneMapped: false })];
+    const fly = new THREE.Group(); fly.position.y = 1.6; rig.add(fly);
+    const outer = part(new THREE.SphereGeometry(.75, 14, 10), fM[0], 0, 0, 0, fly, 0), mid = part(new THREE.SphereGeometry(.5, 12, 8), fM[1], 0, 0, 0, fly, 0), core = part(new THREE.SphereGeometry(.25, 10, 8), fM[2], 0, 0, 0, fly, 0);
+    const tongue = part(new THREE.ConeGeometry(.55, 1.6, 12), fM[0], 0, .95, 0, fly, 0);
+    const eyeM = new THREE.MeshBasicMaterial({ color: "#0a2a2a" });
+    for (const ex of [-.2, .2]) part(new THREE.SphereGeometry(.09, 8, 6), eyeM, ex, .1, -.62, fly, 0).scale.set(1, 1.5, .5);
+    part(new THREE.TorusGeometry(.13, .03, 6, 12, Math.PI), eyeM, 0, -.15, -.66, fly, 0).rotation.z = Math.PI;
+    const embers = [];
+    for (let i = 0; i < 5; i++) { const e = part(new THREE.SphereGeometry(.08, 6, 5), fM[1], 0, 0, 0, fly, 0); embers.push(e); }
+    height = 2.8;
+    anim = (dt, s) => {
+      t += dt * 4;
+      fly.position.y = 1.6 + Math.sin(t * .6) * .3;
+      const f = 1 + Math.sin(t * 2.7) * .08 + (s.attack > 0 ? Math.sin(s.attack * Math.PI) * .35 : 0);
+      outer.scale.setScalar(f); mid.scale.setScalar(1 + Math.sin(t * 3.3) * .1); tongue.scale.set(f, 1 + Math.sin(t * 2) * .25, f); tongue.rotation.z = Math.sin(t * 1.3) * .2;
+      embers.forEach((e, i) => { const a = t * .8 + i * 1.25, y = ((t * .4 + i * .3) % 1.5); e.position.set(Math.cos(a) * .6, .4 + y, Math.sin(a) * .6); e.scale.setScalar(1 - y / 1.5); });
+    };
+  } else if (kind === "neongob") {                // 네온 도깨비 (이태원): a goblin drawn in neon tubes, pink and cyan, that throws glowing orbs
+    const pink = new THREE.MeshBasicMaterial({ color: "#ff3d8b", toneMapped: false, transparent: true }), cyan = new THREE.MeshBasicMaterial({ color: "#35e3ff", toneMapped: false }), dim = toon("#1a1424", { transparent: true, opacity: .55 });
+    const tube = (pts, m, r = .07, closed = false) => part(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => new THREE.Vector3(...p)), closed), 24, r, 6, closed), m, 0, 0, 0, rig, 0);
+    part(ball(.8), dim, 0, 1.6, 0, rig, 0).scale.set(1, 1.15, .7);
+    const ring = []; for (let k = 0; k <= 16; k++) { const a = k / 16 * Math.PI * 2; ring.push([Math.cos(a) * .82, 1.6 + Math.sin(a) * .95, -.3]); } tube(ring, pink, .08, true);
+    for (const sx of [-1, 1]) tube([[sx * .35, 2.4, -.3], [sx * .55, 2.85, -.3], [sx * .5, 3.15, -.3]], cyan, .06);
+    for (const ex of [-.28, .28]) { const e = []; for (let k = 0; k <= 10; k++) { const a = k / 10 * Math.PI * 2; e.push([ex + Math.cos(a) * .13, 1.85 + Math.sin(a) * .13, -.62]); } tube(e, cyan, .04, true); }
+    tube([[-.35, 1.25, -.62], [-.12, 1.1, -.66], [.12, 1.1, -.66], [.35, 1.25, -.62]], pink, .05);
+    const legL = new THREE.Group(), legR = new THREE.Group(); legL.position.set(-.3, .75, 0); legR.position.set(.3, .75, 0); rig.add(legL, legR);
+    for (const L of [legL, legR]) part(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, -.75, 0)]), 4, .07, 6), cyan, 0, 0, 0, L, 0);
+    const armR = new THREE.Group(); armR.position.set(.8, 1.7, -.2); rig.add(armR);
+    part(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new THREE.Vector3(0, 0, 0), new THREE.Vector3(.2, -.5, -.2), new THREE.Vector3(.2, -.9, -.5)]), 8, .06, 6), pink, 0, 0, 0, armR, 0);
+    const orb = part(new THREE.SphereGeometry(.18, 10, 8), cyan, .2, -.95, -.55, armR, 0);
+    height = 3.4;
+    anim = (dt, s) => {
+      t += dt * (s.moving ? 9 : 2.5);
+      legL.rotation.x = s.moving ? Math.sin(t) * .7 : 0; legR.rotation.x = s.moving ? -Math.sin(t) * .7 : 0;
+      armR.rotation.x = s.attack > 0 ? -2.2 * Math.sin(s.attack * Math.PI) : Math.sin(t * .5) * .2;
+      const flick = Math.random() < .04 ? .3 : 1; pink.opacity = flick; orb.scale.setScalar(1 + Math.sin(t * 3) * .2);
+      rig.position.y = Math.sin(t * .5) * .05;
+    };
   } else {                                          // 덩굴 귀신: a twist of vines with a glowing face
     const vine = toon("#3f6e2a"), leaf = toon("#6fbb48"), bark = toon("#5a4030");
     const strands = [];
