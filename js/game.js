@@ -6,14 +6,14 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdt7esv";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdt7esv";
-import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdt7esv";
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdt7esv";
-import * as FX from "./fx.js?v=mvdt7esv";
-import { LINES } from "./lines.js?v=mvdt7esv";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdt7esv";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdt7esv";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdte194";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdte194";
+import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdte194";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdte194";
+import * as FX from "./fx.js?v=mvdte194";
+import { LINES } from "./lines.js?v=mvdte194";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdte194";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdte194";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -2699,8 +2699,8 @@ function startMemory(item, n, spent) {
   const words = shuffle(nounPool()).slice(0, 10);
   const stones = shuffle(words.flatMap(w => [{ w, side: "ko" }, { w, side: "en" }]));
   memo = { item, n, spent, stones, open: [], found: 0, miss: 0, lock: true, run: false, t: 150 };
-  paused = true; cancelRitual(); $("memory").hidden = false; $("mmMiss").textContent = "0"; $("mmTime").textContent = "150"; $("mmInfo").textContent = "기억하세요! · memorise the stones (2 s)";
-  $("mmGrid").innerHTML = stones.map((s, i) => `<button class="stone up${s.side === "en" ? " en" : ""}" data-i="${i}"><span>${esc(s.side === "ko" ? s.w.kr : s.w.en)}</span></button>`).join("");
+  paused = true; cancelRitual(); $("memory").hidden = false; $("mmGrid").classList.remove("hint"); $("mmMiss").textContent = "0"; $("mmTime").textContent = "150"; $("mmInfo").textContent = "기억하세요! · memorise the stones (2 s)";
+  $("mmGrid").innerHTML = stones.map((s, i) => `<button class="stone up ${s.side}" data-i="${i}"><span>${esc(s.side === "ko" ? s.w.kr : s.w.en)}</span></button>`).join("");
   $("mmGrid").querySelectorAll(".stone").forEach(b => b.onclick = () => flipStone(+b.dataset.i));
   setTimeout(() => { if (!memo) return; $("mmGrid").querySelectorAll(".stone").forEach(b => b.classList.remove("up")); memo.lock = false; memo.run = true; $("mmInfo").textContent = "짝을 찾으세요 · find the pairs: a Korean word + its meaning"; }, 2000);
 }
@@ -2715,6 +2715,7 @@ function flipStone(i) {
     if (memo.found === 10) { memo.lock = true; setTimeout(() => endMemory(false), 500); }
   } else {
     memo.miss++; $("mmMiss").textContent = memo.miss; memo.lock = true;
+    if (memo.miss === 17) { $("mmGrid").classList.add("hint"); $("mmInfo").textContent = "💡 힌트: 빨강 = 한국어, 파랑 = 영어 · hint: red tiles are Korean, blue tiles are English"; SFX.open(); }   /* Danny 2026-10-18: help after 16 mistakes */
     setTimeout(() => { if (!memo) return; $("mmGrid").children[a].classList.remove("up"); $("mmGrid").children[c].classList.remove("up"); memo.lock = false; }, 700);
   }
 }

@@ -659,3 +659,6 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .mlAll button:hover:not([disabled]){border-color:#ffd23d}
 .mlAll button[disabled]{opacity:.4;cursor:default}
 #mlDelAll[data-sure]{background:#7a1f2b;border-color:#ff5a6a;color:#fff}
+/* memory game hint after 16 mistakes (2026-10-18): face-down Korean stones red, English stones blue */
+#mmGrid.hint .stone.ko:not(.up):not(.done){background:radial-gradient(circle at 35% 30%,#d8786a,#8a2a22);border-color:#c8402f}
+#mmGrid.hint .stone.en:not(.up):not(.done){background:radial-gradient(circle at 35% 30%,#7aa8e8,#24407a);border-color:#2f6db3}
