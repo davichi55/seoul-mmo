@@ -6,14 +6,14 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdstnfd";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdstnfd";
-import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdstnfd";
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdstnfd";
-import * as FX from "./fx.js?v=mvdstnfd";
-import { LINES } from "./lines.js?v=mvdstnfd";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdstnfd";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdstnfd";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdt7esv";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdt7esv";
+import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdt7esv";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdt7esv";
+import * as FX from "./fx.js?v=mvdt7esv";
+import { LINES } from "./lines.js?v=mvdt7esv";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdt7esv";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdt7esv";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -2720,7 +2720,7 @@ function flipStone(i) {
 }
 function endMemory(giveUp) {
   const m = memo; if (!m) return; memo = null; $("memory").hidden = true; paused = false;
-  const gain = giveUp ? 0 : m.miss <= 12 ? 2 : m.miss <= 20 ? 1 : 0;
+  const gain = giveUp ? 0 : m.miss <= 16 ? 2 : m.miss <= 24 ? 1 : 0;   /* Danny 2026-10-18: was 12 / 20, too hard */
   m.item.up = Math.min(upMax(m.item), (m.item.up || 0) + gain); S.upgrades = (S.upgrades || 0) + gain;
   if (!gain) { for (const k in m.spent) S.mats[k] += m.spent[k]; toast("재료는 돌려받았어요 · your materials were returned"); }
   recalcMax(); save();
