@@ -947,6 +947,7 @@ function nearestInteract0() {
     if (dist2(player.pos, MUSEUM.up) < 3) return { t: "museumOut", label: `${E} · 용산으로 나가기 · back out to 용산` };
     if (dist2(player.pos, MUSEUM.end) < 4 && !monsters.some(m => m.def.boss && !m.dead && m.zone === "museum")) return { t: "museumOut", label: `${E} · 출구 · exit to 용산` };
     for (let i = 0; i < 3; i++) if (dist2(player.pos, MUSEUM.scrolls[i].spot) < 2.4) return { t: "scroll", i, label: `${E} · 두루마리 ${i + 1} · scroll ${i + 1}` };
+    if (bossDown.museum) return { t: "museumOut", label: `${E} · 🚪 던전 나가기 · leave the dungeon now (to 용산)` };
     return null;
   }
   if (player.zone === "market") {
@@ -954,6 +955,7 @@ function nearestInteract0() {
     if (dist2(player.pos, MARKET.end) < 4 && !monsters.some(m => m.def.boss && !m.dead && m.zone === "market")) return { t: "marketOut", label: `${E} · 출구 · exit to 노량진` };
     for (const n of npcs) if (n.zone === "market" && n.model.root.visible && dist2(n.pos, player.pos) < 3.4) return { t: "npc", n, label: `${E} · ${n.name}${wa(n.name)} 이야기하기` };
     for (let i = 0; i < 3; i++) if (dist2(player.pos, MARKET.boards[i].spot) < 2.4) return { t: "board", i, label: `${E} · 칠판 ${i + 1} · chalkboard ${i + 1}` };
+    if (bossDown.market) return { t: "marketOut", label: `${E} · 🚪 던전 나가기 · leave the dungeon now (to 노량진)` };
     return null;
   }
   if (player.zone === "tower") {
@@ -961,6 +963,7 @@ function nearestInteract0() {
     if (dist2(player.pos, TOWER.end) < 4 && !monsters.some(m => m.def.boss && !m.dead && m.zone === "tower")) return { t: "towerOut", label: `${E} · 출구 · exit to 여의도` };
     if (dist2(player.pos, TOWER.poster) < 2.6) return { t: "poster", label: `${E} · 찢어진 포스터 보기 · look at the torn poster` };
     if (!tw.open && dist2(player.pos, TOWER.panel) < 2.6) return { t: "panel", label: `${E} · 엘리베이터 패널 · elevator panel (${tw.solved}/3)` };
+    if (bossDown.tower) return { t: "towerOut", label: `${E} · 🚪 던전 나가기 · leave the dungeon now (to 여의도)` };
     return null;
   }
   if (player.zone === "yeouido") {
@@ -978,6 +981,7 @@ function nearestInteract0() {
     if (dist2(player.pos, DUNGEON.up) < 3) return { t: "up", label: `${E} · 역으로 돌아가기 · back up to the station` };
     if (dist2(player.pos, DUNGEON.end) < 4 && !monsters.some(m => m.def.boss && !m.dead)) return { t: "up", label: `${E} · 출구 · exit to the station` };
     for (let i = 0; i < 3; i++) if (dist2(player.pos, DUNGEON.murals[i].spot) < 2.4) return { t: "mural", i, label: `${E} · 벽화 ${i + 1} 읽기 · read mural ${i + 1}` };
+    if (bossDown.dungeon) return { t: "up", label: `${E} · 🚪 던전 나가기 · leave the dungeon now (to the station)` };
     return null;
   }
   if (player.zone === "street") {
@@ -2247,10 +2251,12 @@ function killMonster(m, by = myId()) {
   if (by === myId() || (player.zone === m.zone && dist2(player.pos, m.pos) < 40)) rewardKill(m);
   else if (target === m) setTarget(null);
 }
+const bossDown = {};   /* this run's boss is dead: E anywhere leaves the dungeon (Danny 2026-10-18) */
 function rewardKill(m) {
   const money = Math.round(rand(...m.def.money) * (1 + .2 * (m.lvl - m.def.lvl)) * (perk("trader") ? 1.15 : 1) / 100) * 100; S.money += money; S.kills++; if (comp && comp.zone === m.zone && dist2(comp.pos, m.pos) < 20) addHeart(1); S.killsBy[m.kind] = (S.killsBy[m.kind] || 0) + 1;
   floater(m.pos, "+" + won(money), "#e5b84a", false, 1.6);
   SFX.kill(); if (m.def.boss) bossSnap = lootSnap(); gainXp(monsterXp(m) * (perk("jieun") ? 1.1 : 1), m.pos); dropCard(m); dropGear(m); dropMat(m); dropStones(m); dropScroll(m); onKillForQuests(m); if (m.def.boss) autoCreditBossQuests();
+  if (m.def.boss) { bossDown[m.zone] = true; setTimeout(() => toast(`🚪 ${keyName(SET.keys.interact)} 키로 바로 나갈 수 있어요 · press ${keyName(SET.keys.interact)} anywhere to leave the dungeon`), 2500); }
   if (m.def.boss) (m.zone === "tower" ? towerCleared : m.zone === "market" ? marketCleared : m.zone === "museum" ? museumCleared : dungeonCleared)();
   if (target === m) setTarget(null);
   showMissed([...m.missed]);
@@ -2464,7 +2470,7 @@ function resetDungeon() {
 }
 const someoneInDungeon = exceptId => (player.zone === "dungeon" && myId() !== exceptId) || [...remotes.values()].some(r => r.zone === "dungeon" && r.id !== exceptId);
 function toDungeon() {
-  cancelRitual(); setTarget(null); closeDialog();
+  bossDown.dungeon = false; cancelRitual(); setTarget(null); closeDialog();
   if (NET.role === "guest") netSend({ t: "enterD" }); else if (!someoneInDungeon(myId())) resetDungeon();
   player.zone = "dungeon"; player.pos.set(DUNGEON.entry.x, 0, DUNGEON.entry.z); player.yaw = -Math.PI / 2; cam.yaw = -Math.PI / 2;
   toast("홍대 터널 · the tunnel under Hongdae — 여기서는 괴물이 무리 지어 와요 · monsters come in groups here");
@@ -2900,7 +2906,7 @@ function resetTower() {
   tw.open = false; tw.solved = 0; tw.fails = 0; setDoor();
 }
 function toTower() {
-  cancelRitual(); setTarget(null); closeDialog();
+  bossDown.tower = false; cancelRitual(); setTarget(null); closeDialog();
   if (NET.role === "guest") netSend({ t: "enterT" }); else if (!someoneIn("tower", myId())) resetTower();
   player.zone = "tower"; player.pos.set(TOWER.entry.x, 0, TOWER.entry.z); player.yaw = -Math.PI / 2; cam.yaw = -Math.PI / 2;
   toast("63빌딩 · 꼭대기까지 올라가세요. 외계인 사령관이 옥상에 있어요 · climb to the roof, the alien commander waits there");
@@ -3451,7 +3457,7 @@ function resetMarket() {
   mk.dealer = Math.random() < .5; mk.offers = null; syncDealer();
 }
 function toMarket() {
-  cancelRitual(); setTarget(null); closeDialog();
+  bossDown.market = false; cancelRitual(); setTarget(null); closeDialog();
   if (NET.role === "guest") netSend({ t: "enterM" }); else if (!someoneIn("market", myId())) resetMarket();
   player.zone = "market"; player.pos.set(MARKET.entry.x, 0, MARKET.entry.z); player.yaw = -Math.PI / 2; cam.yaw = -Math.PI / 2; player.vel = null;
   toast("노량진 수산시장 · 냉동 창고에서는 난로 곁에 · in the freezer, stay by the heaters");
@@ -3796,7 +3802,7 @@ function resetMuseum() {
   mu.scrolls = [0, 0, 0]; syncScrolls();
 }
 function toMuseum() {
-  cancelRitual(); setTarget(null); closeDialog(); caveTold = false;
+  bossDown.museum = false; cancelRitual(); setTarget(null); closeDialog(); caveTold = false;
   if (NET.role === "guest") netSend({ t: "enterU" }); else if (!someoneIn("museum", myId())) resetMuseum();
   player.zone = "museum"; player.pos.set(MUSEUM.entry.x, 0, MUSEUM.entry.z); player.yaw = -Math.PI / 2; cam.yaw = -Math.PI / 2; player.vel = null;
   toast("국립중앙박물관 · 밤이 되면 유물이 깨어나요 · at night the relics wake up");
@@ -4784,7 +4790,7 @@ window.__seoul = {
   tp(x, z) { player.pos.set(x, 0, z); },
   spawn(kind, lvl, x, z, zone = "street") { spawnMonster({ kind, lvl, x, z, mon: null, zone }); return monsters[monsters.length - 1]; },
   wordCounts: () => wordCounts(), drawFriends: () => drawFriends(),
-  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, startCardBattle: k => startCardBattle(k), get cb() { return cb; }, cgStart: o => cgStart(o), cgBegin: k => cgBegin(k), get cg() { return cg; }, CG_CAM, cgToggle: i => cgToggle(i), cgEndTurn: () => cgEndTurn(false), autoBattleDeck: () => autoBattleDeck(), battleDeck: () => battleDeck(), cgScore: (c, r) => cgScore(c, r), cgRule: () => cgRule(Math.random), cbPick: k => cbPick(k), CB, startDuel: k => startDuel(k), get duel() { return duel; }, duelPick: i => duelPick(i), relOf: k => relOf(k), setCompanion: k => setCompanion(k, { name: "test" }), dcMenu: k => dcMenu(npcs.find(n => n.kind === k), null), startExam: () => startExam(), get exam() { return exam; }, get examPending() { return examPending; }, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
+  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, startCardBattle: k => startCardBattle(k), get cb() { return cb; }, cgStart: o => cgStart(o), cgBegin: k => cgBegin(k), get cg() { return cg; }, get bossDown() { return bossDown; }, CG_CAM, cgToggle: i => cgToggle(i), cgEndTurn: () => cgEndTurn(false), autoBattleDeck: () => autoBattleDeck(), battleDeck: () => battleDeck(), cgScore: (c, r) => cgScore(c, r), cgRule: () => cgRule(Math.random), cbPick: k => cbPick(k), CB, startDuel: k => startDuel(k), get duel() { return duel; }, duelPick: i => duelPick(i), relOf: k => relOf(k), setCompanion: k => setCompanion(k, { name: "test" }), dcMenu: k => dcMenu(npcs.find(n => n.kind === k), null), startExam: () => startExam(), get exam() { return exam; }, get examPending() { return examPending; }, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
   get memo() { return memo; }, heart: n => addHeart(n), get comp() { return comp; }, get fishing() { return fishing; }, flip: i => flipStone(i), upgrade: () => upgradeMenu(npcs.find(n => n.kind === "smith")),
   talk: kind => talkTo(npcs.find(n => n.kind === kind)), get dialog() { return dialog; }, opt(i) { $("dOpts").children[i]?.click(); }, get quiz() { return quiz; }, quizAnswer(right = true) { if (quiz) answerQuiz(right ? quiz.opts.indexOf(quiz.answer) : (quiz.opts.indexOf(quiz.answer) + 1) % quiz.opts.length); },
 };
