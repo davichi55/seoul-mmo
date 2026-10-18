@@ -4284,7 +4284,7 @@ function cgStart(o) {
 function cgPips() { $("cgMyWins").textContent = "●".repeat(cg.wins[0]) + "○".repeat(2 - cg.wins[0]); $("cgOppWins").textContent = "●".repeat(cg.wins[1]) + "○".repeat(2 - cg.wins[1]); }
 function cgClearField() { for (const m of cg.mons) if (!m.gone) { FX.deathPoof(m.m.root.position, false); scene.remove(m.m.root); } cg.mons = []; }
 function cgNextRound() {
-  if (!cg) return;
+  if (!cg || cg.phase === "end") return;
   cgClearField(); cg.round++; const r = cg.round;
   cg.hand = cg.myOrder.slice(r * CG_HAND, (r + 1) * CG_HAND); cg.oppHand = cg.oppOrder.slice(r * CG_HAND, (r + 1) * CG_HAND);
   cg.rule = cg.rules[r]; cg.sel = []; cg.myPts = null; cg.time = CG_TIME[Math.min(r, 2)];
@@ -4293,7 +4293,7 @@ function cgNextRound() {
   cgBanner(`라운드 ${r + 1}`, ruleKo(cg.rule)); snd("bell", .5, 1 + r * .15);
   cg.phase = "intro"; cgDrawHand(false);
   if (cg.npc) { const sel = cgAiPick(cg.oppHand, cg.rule, cg.rank, cg.wins[1] > cg.wins[0], cg.luck); cg.picks[r] = { sel, t: +(cg.time * rand(.35, .9) * (1.1 - cg.rank * .06)).toFixed(2) }; }
-  setTimeout(() => { if (!cg || cg.round !== r) return; cg.phase = "pick"; cg.t0 = performance.now(); cg.endAt = cg.t0 + cg.time * 1000; $("cgEnd").disabled = false; }, 1400);
+  setTimeout(() => { if (!cg || cg.round !== r || cg.phase === "end") return; cg.phase = "pick"; cg.t0 = performance.now(); cg.endAt = cg.t0 + cg.time * 1000; $("cgEnd").disabled = false; }, 1400);
 }
 function cgBanner(big, small, cls = "") { const b = $("cgBanner"); b.innerHTML = `<b>${big}</b>${small ? `<span>${small}</span>` : ""}`; b.className = "cgBanner " + cls; b.hidden = false; void b.offsetWidth; b.classList.add("show"); clearTimeout(cgBanner.t); cgBanner.t = setTimeout(() => { b.hidden = true; }, 1600); }
 function cgDrawHand(reveal) {
@@ -4328,8 +4328,8 @@ function cgResolve() {
   $("cgMyPts").textContent = "0"; $("cgOppPts").textContent = "0"; $("cgScore").hidden = false;
   cgCount(a.total, b.total, now + 900);
   setTimeout(() => cgAttack(win), 2600);
-  setTimeout(() => { if (!cg) return; cgPips(); cgBanner(win ? "라운드 승리! 🏆" : "라운드 패배…", why || (win ? `${a.total} : ${b.total}` : `${a.total} : ${b.total}`), win ? "win" : "lose"); }, 4300);
-  setTimeout(() => { if (!cg) return; if (cg.wins[0] >= 2 || cg.wins[1] >= 2) cgFinish(); else cgNextRound(); }, 6400);
+  setTimeout(() => { if (!cg || cg.phase === "end") return; cgPips(); cgBanner(win ? "라운드 승리! 🏆" : "라운드 패배…", why || (win ? `${a.total} : ${b.total}` : `${a.total} : ${b.total}`), win ? "win" : "lose"); }, 4300);
+  setTimeout(() => { if (!cg || cg.phase === "end") return; if (cg.wins[0] >= 2 || cg.wins[1] >= 2) cgFinish(); else cgNextRound(); }, 6400);
 }
 function cgSpawn(side, cards, pts, now) {
   const n = cards.length;
@@ -4364,6 +4364,7 @@ function cgKill(v) {
 function cgFinish() {
   const d = cg, won = d.wins[0] >= 2; d.phase = "end"; $("cg").hidden = true;
   const rows = [{ big: true, icon: won ? "🏆" : "🃏", ko: `${d.wins[0]} : ${d.wins[1]}`, en: won ? `you beat ${d.oppName}` : `${d.oppName} won (first to 2 rounds)` }];
+  if (d.gaveUp) rows.push({ icon: "🏳", ko: "포기했어요 · you gave up", en: "" }); else if (d.oppQuit) rows.push({ icon: "🏳", ko: `${d.oppName} 님이 포기했어요`, en: "your opponent gave up" });
   if (d.npc) {
     const kind = d.npc, c = CB[kind], ch = cbChapter(kind);
     if (won) {
@@ -4419,6 +4420,7 @@ addEventListener("keydown", e => {
 }, true);
 // co-op: challenge a friend standing next to you; the challenger deals (a shared seed), both play the same rules, picks are swapped
 let cgAsk = null, cgAccepted = null;
+$("cgQuit").onclick = () => cgGiveUp();
 function cgChallenge(r) {
   if (battleDeck().length < CG_DECK) { cgNeedDeck(); return; }
   cgAsk = { id: r.id, at: Date.now() }; netSend({ t: "cgReq", to: r.id, nm: myName() }); toast(`🃏 ${r.nm}에게 카드 배틀을 신청했어요 · challenge sent`);
@@ -4441,7 +4443,15 @@ function cgOnNet(d, src) {
     cgStart({ pvp: { id: src, nm: d.nm, cls: d.cls, deck: d.deck, mine, seed: d.seed, challenger: false } });
   } else if (d.t === "cgPick") { if (cg?.pvp?.id === src) { cg.picks[d.r] = { sel: d.sel || [], t: d.tm }; if (d.r === cg.round) { $("cgOppState").textContent = "✓ 다 골랐어요 · done"; cgTryResolve(); } } }
   else if (d.t === "cgNo") { cgAsk = null; toast(d.why === "deck" ? "상대의 배틀 덱이 아직 40장이 안 돼요 · their battle deck isn't ready" : d.why === "busy" ? "지금 바빠요 · they're busy" : "거절했어요 · they declined"); }
-  else if (d.t === "cgQuit") { if (cg?.pvp?.id === src && cg.phase !== "end") { cg.wins = [2, cg.wins[1]]; toast("상대가 나갔어요 · your opponent left"); cgFinish(); } }
+  else if (d.t === "cgQuit") { if (cg?.pvp?.id === src && cg.phase !== "end") { cg.wins = [2, cg.wins[1]]; cg.oppQuit = true; toast(`🏳 ${cg.oppName} 님이 포기했어요 · your opponent gave up`); cgFinish(); } }
+}
+function cgGiveUp() {
+  if (!cg || cg.phase === "end") return;
+  const b = $("cgQuit");
+  if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "정말 포기할까요? · really give up?"; clearTimeout(cgGiveUp.t); cgGiveUp.t = setTimeout(() => { delete b.dataset.sure; b.textContent = "🏳 포기 · give up"; }, 3000); return; }
+  delete b.dataset.sure; b.textContent = "🏳 포기 · give up";
+  if (cg.pvp) netSend({ t: "cgQuit", to: cg.pvp.id });
+  cg.gaveUp = true; cg.wins = [cg.wins[0], 2]; snd("punchM", .4, .8); cgFinish();
 }
 
 // ---- main loop ------------------------------------------------------------------------------------------

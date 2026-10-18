@@ -592,3 +592,5 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .cgEnd{font:700 17px var(--display);padding:10px 22px;border-radius:12px;border:none;background:linear-gradient(180deg,#ffd23d,#e0a21c);color:#1d1612;cursor:pointer}
 .cgEnd[disabled]{opacity:.4;cursor:default}
 .clTile.bd{border-left:5px solid var(--rc)}
+.cgQuit{font:600 13px var(--display);padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(20,14,30,.75);color:#ddd;cursor:pointer}
+.cgQuit[data-sure]{background:#7a1f2b;color:#fff;border-color:#ff5a6a}
