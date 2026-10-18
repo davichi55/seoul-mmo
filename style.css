@@ -542,3 +542,18 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .sCard.locked{background:#2a2830;border:2px dashed #5a5664;color:#8a8694}
 .rwRow .sCard{width:84px;height:120px}.rwRow .sCard .sIc{font-size:28px}
 .rwRow{grid-template-columns:auto minmax(0,1fr) auto}.rwRow .ic{min-width:44px;display:grid;place-items:center}
+
+/* 단어 도감 (2026-10-18) */
+.chip.coll{border-color:#ffd23d}
+.dvColl{display:grid;gap:10px}
+.clChs,.clFilt{display:flex;flex-wrap:wrap;gap:6px}
+.clHead{display:grid;gap:6px;background:rgba(255,255,255,.04);border-radius:10px;padding:10px 12px}
+.clHead b{font:700 18px var(--display)}
+.clBar{height:10px}
+.clGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:46vh;overflow:auto;padding-right:4px}
+.clTile{display:grid;gap:2px;text-align:left;padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:rgba(255,255,255,.03);cursor:pointer;color:inherit}
+.clTile b{font:700 18px var(--display)}.clTile span{font-size:13px;opacity:.85}.clTile small{font-size:11px;opacity:.7}
+.clTile.own{border-color:#6aa85a;background:rgba(106,168,90,.14)}
+.clTile.miss{opacity:.62;border-style:dashed}
+.clTile.m-mastered b{color:#ffd23d}
+.clTile:hover{opacity:1;border-color:#ffd23d}

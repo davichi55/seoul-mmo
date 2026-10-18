@@ -1088,7 +1088,7 @@ function drawTray() {
   $("trayBonus").textContent = S.origin ? `출신 보너스 (already set) · ${S.origin.txt}` : pickSel.length === 10 ? `출신 보너스 · origin bonus: ${b.txt}` : "";
   $("deckDone").disabled = pickSel.length !== 10;
 }
-$("deckRandom").onclick = () => { const pool = DATA.words.filter(w => w.ch === pickCh && pickSecs.includes(w.sec) && !pickSel.includes(w.id)); pickSel = pickSel.concat(shuffle(pool).slice(0, 10 - pickSel.length).map(w => w.id)); drawDeckPicker(); };
+$("deckRandom").onclick = () => { if (!pickSecs) drawDeckPicker(); const pool = DATA.words.filter(w => w.ch === pickCh && pickSecs.includes(w.sec) && !pickSel.includes(w.id)); pickSel = pickSel.concat(shuffle(pool).slice(0, 10 - pickSel.length).map(w => w.id)); drawDeckPicker(); };
 $("deckClear").onclick = () => { pickSel = []; drawDeckPicker(); };
 // the stranger's cards are gifts: they only live in the basic attack deck, and go back to him when you swap them out
 $("deckDone").onclick = () => {
@@ -1130,16 +1130,38 @@ function drawChapterPick() {
     S.chapters = on ? S.chapters.filter(x => x !== id) : [...S.chapters, id]; S.shop = null; save(); drawChapterPick();
   });
 }
+// ---- 단어 도감: every word of a chapter, which ones you own, how complete it is; click a word to hear it ----
+let collCh = null, collFilter = "all";
+function drawCollection() {
+  const chs = bookChapters(), copies = {}; for (const c of S.cards) copies[c.id] = (copies[c.id] || 0) + 1;
+  const wordsOf = ch => bookWords().filter(w => w.ch === ch.id), ownedN = ws => ws.filter(w => copies[w.id]).length;
+  if (!collCh || !chs.some(c => c.id === collCh)) collCh = (chs.filter(c => S.chapters.includes(c.id)).slice(-1)[0] || chs[0]).id;
+  const all = bookWords(), cur = chs.find(c => c.id === collCh), ws = wordsOf(cur), o = ownedN(ws), p = Math.round(o / Math.max(1, ws.length) * 100);
+  const open = S.mode !== "story" || S.chapters.includes(cur.id), lvlAt = CHAPTER_LVL(chs.indexOf(cur));
+  const shown = ws.filter(w => collFilter === "all" || (collFilter === "own") === !!copies[w.id]);
+  $("dvColl").innerHTML = `<div class="clChs">${chs.map(c => { const cw = wordsOf(c), cp = Math.round(ownedN(cw) / Math.max(1, cw.length) * 100), op = S.mode !== "story" || S.chapters.includes(c.id); return `<button class="chip" data-cc="${c.id}" aria-pressed="${c.id === collCh}">${op ? "" : "🔒 "}${c.title} · ${cp}%</button>`; }).join("")}</div>
+    <div class="clHead"><div><b>${cur.title}${cur.theme ? " " + cur.theme : ""}</b> · ${o} / ${ws.length} 단어 · words owned (${p}%)${open ? "" : ` · <span class="warn">🔒 Lv ${lvlAt}에 열려요 · this chapter's cards start dropping at Lv ${lvlAt}</span>`}</div>
+      <div class="bar xp clBar"><i style="width:${p}%"></i></div>
+      <span class="fine">책 전체 · whole book: ${ownedN(all)} / ${all.length} (${Math.round(ownedN(all) / Math.max(1, all.length) * 100)}%) · 단어를 누르면 소리가 나요, 마우스를 올리면 예문이 보여요 · click a word to hear it, hover for an example</span></div>
+    <div class="clFilt">${[["all", "전체 · all"], ["own", "가진 것 · owned"], ["miss", "없는 것 · missing"]].map(([k, t]) => `<button class="chip" data-cf="${k}" aria-pressed="${collFilter === k}">${t}</button>`).join("")}</div>
+    <div class="clGrid">${shown.map(w => { const n = copies[w.id], m = mastery(w.id); return `<button class="clTile ${n ? "own" : "miss"} m-${m.k}" data-id="${w.id}" data-tip="${esc(w.ex ? w.ex[0] + " · " + w.ex[1] : w.en)}"><b>${esc(w.kb || w.kr)}</b><span>${esc(w.en)}</span><small>${POSKO[w.pos] || ""} · ${m.ko}${n ? ` · ✓ ${n}장` : " · 없음 · not owned"}</small></button>`; }).join("") || '<p class="fine">없어요 · nothing here</p>'}</div>`;
+  $("dvColl").querySelectorAll("[data-cc]").forEach(b => b.onclick = () => { collCh = b.dataset.cc; drawCollection(); });
+  $("dvColl").querySelectorAll("[data-cf]").forEach(b => b.onclick = () => { collFilter = b.dataset.cf; drawCollection(); });
+  $("dvColl").querySelectorAll(".clTile").forEach(b => b.onclick = () => say([wordClip(b.dataset.id)], { interrupt: true }));
+}
 function drawDeckView() {
   drawChapterPick();
-  S.skillDecks[dvTab] = S.skillDecks[dvTab] || [];
+  if (dvTab !== "coll") S.skillDecks[dvTab] = S.skillDecks[dvTab] || [];
   $("dvTitle").textContent = `${classDef().ko} · 덱 · Decks`;
   $("dvTabs").innerHTML = "";
+  { const b = document.createElement("button"); b.className = "chip coll"; b.setAttribute("aria-pressed", dvTab === "coll"); b.textContent = "📚 도감 · collection"; b.onclick = () => { dvTab = "coll"; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b); }
+  const coll = dvTab === "coll"; $("dvColl").hidden = !coll; $("dvInfo").hidden = coll; document.querySelector(".dvCols").hidden = coll; document.querySelector(".dvFoot").hidden = coll;
   for (const k of skillKeys()) {
     const sk = skillDef(k), b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", k === dvTab);
     b.textContent = `${sk.key} · ${sk.ko}` + (S.level < sk.lvl ? ` 🔒 Lv ${sk.lvl}` : ` (${deckCards(k).length}/10)`);
     b.onclick = () => { dvTab = k; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b);
   }
+  if (dvTab === "coll") { drawCollection(); return; }
   const sk = skillDef(dvTab), block = skillBlock(dvTab);
   $("dvInfo").innerHTML = `<b>${sk.ko}</b> · ${sk.en} — ${dvTab === "basic" ? "1 card · 1× damage" : sk.info}, cooldown ${sk.cd} s` + (block ? ` · <span class="warn">${block}</span>` : " · <span class=\"okc\">준비됨 · ready</span>");
   const deck = deckCards(dvTab);
