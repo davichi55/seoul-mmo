@@ -488,3 +488,8 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .fl.dmg.imm{color:#aaa;font-size:22px}
 @keyframes dmgPop{0%{transform:translate(-50%,0) scale(2.2);opacity:0}10%{transform:translate(-50%,-6px) scale(1.25);opacity:1}25%{transform:translate(-50%,-14px) scale(1)}100%{transform:translate(-50%,-90px) scale(.85);opacity:0}}
 @media (prefers-reduced-motion:reduce){.fl.dmg{animation-duration:.01s}}
+
+/* the level-up exam button (Danny 2026-10-18) */
+.examBtn{margin-top:6px;width:100%;padding:7px 10px;border:1px solid #ffd23d;border-radius:8px;background:linear-gradient(135deg,rgba(255,210,61,.25),rgba(255,140,60,.15));color:#ffe08a;font:700 14px var(--display);cursor:pointer;animation:examPulse 1.4s ease-in-out infinite;pointer-events:auto}
+@keyframes examPulse{50%{box-shadow:0 0 14px rgba(255,210,61,.7)}}
+@media (prefers-reduced-motion:reduce){.examBtn{animation:none}}

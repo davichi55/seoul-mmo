@@ -157,7 +157,7 @@ function load() {
     return true;
   } catch (e) { return false; }
 }
-function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+function save() { if (S.cards) { const o = new Set(S.owned || []); let add = false; for (const c of S.cards) if (!o.has(c.id)) { o.add(c.id); add = true; } if (add) S.owned = [...o]; } try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
 function wipe() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 
 // ---- settings (per laptop, not per character): key bindings, mouse sensitivity, graphics quality ----
@@ -358,12 +358,55 @@ function gainXp(n, at) {
   if (S.level >= MAX_LEVEL) return;
   n = Math.round(n); S.xp += n;
   floater(at || player.pos, `+${n} XP`, "#c3b2ff", true, at ? 2 : 3.2);
-  while (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) {
+  if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level) && !examPending) { examPending = true; examSnooze = 0; toast("📝 레벨 업 시험 준비! · level-up exam ready: 5 right answers about your words"); SFX.charge(); }
+  drawExamBtn(); save();
+}
+function levelUp() {
+  {
     S.xp -= xpNeed(S.level); S.level++; recalcMax(); player.hp = player.maxHp; FX.pillarFx(player.pos, "#ffd23d"); learnSkills(true); syncStory(true); setTimeout(aptHint, 2500);
     toast(`레벨 업! Lv ${S.level} · health +5%, damage +4%`); SFX.pickup(); floater(player.pos, "LEVEL UP!", "#ffd23d", false, 3.4);
   }
   save();
 }
+// ---- the level-up exam (Danny 2026-10-18): every word you have ever owned, the least practised ones most often ----
+const EXAM_N = 5;
+let examPending = false, examSnooze = 0, exam = null, calmT = 0;
+const ownedWords = () => [...new Set([...(S.owned || []), ...S.cards.map(c => c.id)])].filter(id => WORD[id]);
+function examWeight(id) { const k = mastery(id).k, basic = deckCards("basic").some(c => c.id === id); return (k === "mastered" ? .3 : k === "learned" ? 1 : 3) * (basic ? .35 : 1); }
+function pickWeighted(ids, n) {
+  const out = [], pool = ids.slice();
+  while (out.length < n && pool.length) { const tot = pool.reduce((a, id) => a + examWeight(id), 0); let r = Math.random() * tot, i = 0; for (; i < pool.length - 1; i++) if ((r -= examWeight(pool[i])) < 0) break; out.push(pool.splice(i, 1)[0]); }
+  return out;
+}
+function drawExamBtn() { const b = $("examBtn"); if (b) b.hidden = !examPending || !!exam; }
+function levelExamTick(dt) {
+  if (!examPending || exam || quiz || ritual || dialog || paused || player.dead || clock < examSnooze) { calmT = 0; return; }
+  if (monsters.some(m => !m.dead && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 25)) { calmT = 0; return; }
+  if ((calmT += dt) > 2) startExam();
+}
+function startExam() {
+  if (exam || !examPending) return;
+  const pool = ownedWords();
+  if (pool.length < 4) { examPending = false; levelUp(); drawExamBtn(); return; }   // nothing to test yet
+  const need = Math.min(EXAM_N, pool.length);
+  exam = { queue: pickWeighted(pool, need), right: 0, need, n: 0 }; cancelRitual(); closeDialog(); paused = true; drawExamBtn(); examNext();
+}
+function examNext() {
+  if (!exam) return;
+  if (exam.right >= exam.need) {
+    exam = null; paused = false; examPending = false; levelUp(); drawExamBtn();
+    if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) gainXp(0);   // enough XP for the next level too: another exam
+    return;
+  }
+  const id = exam.queue.shift(), w = WORD[id], pool = ownedWords().filter(x => x !== id);
+  const others = shuffle(pool.length >= 3 ? pool : bookWords().map(x => x.id).filter(x => x !== id)).slice(0, 3).map(x => WORD[x]);
+  const koToEn = exam.n++ % 2 === 0, ans = koToEn ? { id, kr: w.en } : w;
+  openQuiz({ title: `📝 레벨 업 시험 · level-up exam  ${exam.right} / ${exam.need}`,
+    prompt: koToEn ? `<span class="qzKo">${esc(w.kr)}</span><span class="qzEn">무슨 뜻이에요? · what does it mean?</span>` : `<span class="qzKo">${esc(w.en)}</span><span class="qzEn">이 뜻의 단어는? · which word means this?</span>`,
+    answer: ans, opts: shuffle([ans, ...others.map(o => koToEn ? { id: o.id, kr: o.en } : o)]),
+    onDone: ok => { if (!exam) return; if (ok) exam.right++; else exam.queue.push(id); examNext(); } });
+}
+function postponeExam() { $("quiz").hidden = true; quiz = null; exam = null; paused = false; examSnooze = clock + 60; drawExamBtn(); toast("시험은 나중에 · exam postponed — 📝 button when you're ready"); }
 function recalcMax() { const keep = player.hp / player.maxHp; player.maxHp = Math.round(classDef().hp * (1 + bonus().hp + gearStat("hp")) * lvlHp() * (buffOn("vigor") ? 1.2 : 1) * (player.lsUntil > clock ? 1.3 : 1) * (player.cryUntil > clock ? 1.1 : 1)); player.hp = Math.min(player.maxHp, isFinite(keep) ? keep * player.maxHp : player.maxHp); }
 
 // ---- collision -----------------------------------------------------------------------------------
@@ -1279,6 +1322,7 @@ function onEscape() {
   if (!started) return;
   if (!$("reroll").hidden) { closeReroll(); return; }
   if (memo) { endMemory(true); return; }
+  if (exam) { postponeExam(); return; }
   if (!$("rewardView").hidden) { closeReward(); return; }
   if (order) { orderClose(); return; }
   if (!$("nameBox").hidden) { $("nbOk").click(); return; }
@@ -1319,7 +1363,7 @@ $("actDeck").onclick = () => openDeckView();
 // ---- start --------------------------------------------------------------------------------------------
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
-  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); syncDealer(); setTimeout(grantMissedSets, 3000); setTimeout(autoCreditBossQuests, 3500); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
+  ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); syncDealer(); setTimeout(grantMissedSets, 3000); if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) { examPending = true; drawExamBtn(); } setTimeout(autoCreditBossQuests, 3500); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
   player.model = kayReady() ? makeKay(S.cls) : makeHero(S.cls); scene.add(player.model.root);
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
@@ -1345,7 +1389,7 @@ const mm = $("minimap").getContext("2d");
 function drawHUD() {
   const cd = classDef();
   $("pName").textContent = `Lv ${S.level} ${cd.ko}`;
-  $("xpFill").style.width = (S.level >= MAX_LEVEL ? 100 : S.xp / xpNeed(S.level) * 100) + "%"; $("xpTxt").textContent = S.level >= MAX_LEVEL ? "MAX" : `XP ${S.xp} / ${xpNeed(S.level)}`; $("pGear").textContent = cd.weapons[weaponTier()];
+  $("xpFill").style.width = (S.level >= MAX_LEVEL ? 100 : S.xp / xpNeed(S.level) * 100) + "%"; $("xpTxt").textContent = S.level >= MAX_LEVEL ? "MAX" : examPending ? "📝 시험 준비 · exam ready" : `XP ${S.xp} / ${xpNeed(S.level)}`; $("pGear").textContent = cd.weapons[weaponTier()];
   $("hpFill").style.width = Math.max(0, player.hp / player.maxHp * 100) + "%"; $("hpTxt").textContent = `${Math.ceil(Math.max(0, player.hp))} / ${player.maxHp}`;
   $("hgFill").style.width = S.hunger + "%"; $("hgTxt").textContent = S.hunger <= 0 ? "배고파요! 공격 75%" : `배부름 ${Math.ceil(S.hunger)}%`;
   document.querySelector(".bar.hunger").classList.toggle("empty", S.hunger <= 0);
@@ -3558,6 +3602,7 @@ function handongShop(n) {
   showLine(n, "h_hello", opts);
 }
 $("rwOk").onclick = closeReward;
+$("examBtn").onclick = () => { examSnooze = 0; startExam(); };
 
 // ---- main loop ------------------------------------------------------------------------------------------
 let last = performance.now(), saveT = 0;
@@ -3598,7 +3643,7 @@ function step(dt) {
   S.time += dt * GAME_MIN_PER_SEC;
   night = nightFactor();
   S.hunger = Math.max(0, S.hunger - dt * 100 / HUNGER_SECONDS);
-  checkAchievements(dt); netTick(dt); quizTick(dt); areaWatch(dt);
+  checkAchievements(dt); netTick(dt); quizTick(dt); areaWatch(dt); levelExamTick(dt);
   if (S.hunger <= 0 && !step.warned) { toast("배고파요! 식당에 가세요 · you're hungry: attacks do 75%"); step.warned = true; } if (S.hunger > 0) step.warned = false;
   // movement (camera-relative WASD, the character turns to where it walks)
   let mx = 0, mz = 0;
@@ -3740,7 +3785,7 @@ window.__seoul = {
   tp(x, z) { player.pos.set(x, 0, z); },
   spawn(kind, lvl, x, z, zone = "street") { spawnMonster({ kind, lvl, x, z, mon: null, zone }); return monsters[monsters.length - 1]; },
   wordCounts: () => wordCounts(), drawFriends: () => drawFriends(),
-  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
+  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, startExam: () => startExam(), get exam() { return exam; }, get examPending() { return examPending; }, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
   get memo() { return memo; }, heart: n => addHeart(n), get comp() { return comp; }, get fishing() { return fishing; }, flip: i => flipStone(i), upgrade: () => upgradeMenu(npcs.find(n => n.kind === "smith")),
   talk: kind => talkTo(npcs.find(n => n.kind === kind)), get dialog() { return dialog; }, opt(i) { $("dOpts").children[i]?.click(); }, get quiz() { return quiz; }, quizAnswer(right = true) { if (quiz) answerQuiz(right ? quiz.opts.indexOf(quiz.answer) : (quiz.opts.indexOf(quiz.answer) + 1) % quiz.opts.length); },
 };
