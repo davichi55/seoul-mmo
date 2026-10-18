@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { toon, outline } from "./world.js?v=mve02afd";
+import { toon, outline } from "./world.js?v=mve0bqll";
 
 const BLACK = "#16141a", INK = "#232028", WINE = "#6a1a2a", GOLD = "#c9a43a", SILVER = "#c8ccd6";
 // hair: what the original hair material is (recoloured) or hides (hats, hoods, the mohawk: then `cap` builds a new crown);
@@ -158,8 +158,10 @@ function mergeParts(skinned) {
   if (sk.length < 2) return skinned;
   const a = sk[0];   // a skinned part is placed by its bones, not by its parent, so parts merge when they share the bind pose
   if (!sk.every(o => o.bindMode === "attached" && o.bindMatrix.equals(a.bindMatrix))) return skinned;
-  const bones = [], idx = new Map(), inv = [];
-  for (const o of sk) o.skeleton.bones.forEach((b, i) => { if (!idx.has(b)) { idx.set(b, bones.length); bones.push(b); inv.push(o.skeleton.boneInverses[i].clone()); } });
+  // a bone counts as the same only with the same inverse: parts rigged in another pose (the explorer's backpack) keep their own
+  // (Danny 2026-10-19: merging them with the body's inverses stretched the backpack along the floor)
+  const bones = [], inv = [], local = new Map();
+  for (const o of sk) local.set(o, o.skeleton.bones.map((b, i) => { const iv = o.skeleton.boneInverses[i]; let k = bones.findIndex((x, j) => x === b && inv[j].equals(iv)); if (k < 0) { k = bones.length; bones.push(b); inv.push(iv.clone()); } return k; }));
   const indexed = sk.every(o => o.geometry.index);
   const geos = sk.map(o => {
     let g = o.geometry.clone(); if (!indexed && g.index) g = g.toNonIndexed();
@@ -168,7 +170,7 @@ function mergeParts(skinned) {
     for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
     g.setAttribute("color", new THREE.BufferAttribute(col, 3));
     const si = g.attributes.skinIndex, out = new Uint16Array(si.count * 4);
-    for (let i = 0; i < si.count; i++) for (let j = 0; j < 4; j++) out[i * 4 + j] = idx.get(o.skeleton.bones[si.getComponent(i, j)]) ?? 0;
+    const map = local.get(o); for (let i = 0; i < si.count; i++) for (let j = 0; j < 4; j++) out[i * 4 + j] = map[si.getComponent(i, j)] ?? 0;
     g.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(out, 4));
     g.morphAttributes = {}; return g;
   });
