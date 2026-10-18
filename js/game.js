@@ -401,7 +401,7 @@ function levelExamTick(dt) {
   calmT += dt;   /* Danny 2026-10-18: no automatic exam any more, the player starts it with the 📝 button */
 }
 function startExam() {
-  if (exam || !examPending || duel) return;
+  if (exam || !examPending || duel || cg) return;
   const pool = ownedWords();
   if (pool.length < 4) { examPending = false; levelUp(); drawExamBtn(); return; }   // nothing to test yet
   const need = Math.min(EXAM_N, pool.length);
@@ -928,6 +928,7 @@ function nearestInteract0() {
   if (player.dead) return null;
   const E = keyName(SET.keys.interact);
   for (const r of remotes.values()) if (r.dead && r.zone === player.zone && dist2(r.pos, player.pos) < 2.8) return { t: "revive", r, label: `${E} · ${r.nm} 살리기 · revive (word challenge)` };
+  for (const r of remotes.values()) if (!r.dead && r.zone === player.zone && player.zone !== "arena" && dist2(r.pos, player.pos) < 2) return { t: "cgChal", r, label: `${E} · ${r.nm}에게 카드 배틀 신청 · challenge to a card battle` };
   { const q = sqSpotNear(); if (q) return { t: "qspot", q, label: `${E} · ${QUESTS[q.id].verb}` }; }
   if (player.zone === "museum") {
     if (dist2(player.pos, MUSEUM.up) < 3) return { t: "museumOut", label: `${E} · 용산으로 나가기 · back out to 용산` };
@@ -994,6 +995,7 @@ function interact() {
   else if (it.t === "mural") muralQuiz(it.i);
   else if (it.t === "comp") compTalk();
   else if (it.t === "revive") startRevive(it.r);
+  else if (it.t === "cgChal") cgChallenge(it.r);
   else if (it.t === "bench") sleepBench();
   else if (it.t === "map") takeMap(it.area);
   else if (it.t === "bank") openBank();
@@ -1172,17 +1174,19 @@ function drawCollection() {
 }
 function drawDeckView() {
   drawChapterPick();
-  if (dvTab !== "coll") S.skillDecks[dvTab] = S.skillDecks[dvTab] || [];
+  if (dvTab !== "coll" && dvTab !== "battle") S.skillDecks[dvTab] = S.skillDecks[dvTab] || [];
   $("dvTitle").textContent = `${classDef().ko} · 덱 · Decks`;
   $("dvTabs").innerHTML = "";
   { const b = document.createElement("button"); b.className = "chip coll"; b.setAttribute("aria-pressed", dvTab === "coll"); b.textContent = "📚 도감 · collection"; b.onclick = () => { dvTab = "coll"; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b); }
-  const coll = dvTab === "coll"; $("dvColl").hidden = !coll; $("dvInfo").hidden = coll; document.querySelector(".dvCols").hidden = coll; document.querySelector(".dvFoot").hidden = coll;
+  { const b = document.createElement("button"); b.className = "chip coll"; b.id = "dvBattleTab"; b.setAttribute("aria-pressed", dvTab === "battle"); b.textContent = `⚔ 배틀 덱 · battle deck (${battleDeck().length}/${CG_DECK})`; b.onclick = () => { dvTab = "battle"; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b); }
+  const coll = dvTab === "coll" || dvTab === "battle"; $("dvColl").hidden = !coll; $("dvInfo").hidden = coll; document.querySelector(".dvCols").hidden = coll; document.querySelector(".dvFoot").hidden = coll;
   for (const k of skillKeys()) {
     const sk = skillDef(k), b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", k === dvTab);
     b.textContent = `${sk.key} · ${sk.ko}` + (S.level < sk.lvl ? ` 🔒 Lv ${sk.lvl}` : ` (${deckCards(k).length}/10)`);
     b.onclick = () => { dvTab = k; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b);
   }
   if (dvTab === "coll") { drawCollection(); return; }
+  if (dvTab === "battle") { drawBattleDeck(); return; }
   const sk = skillDef(dvTab), block = skillBlock(dvTab);
   $("dvInfo").innerHTML = `<b>${sk.ko}</b> · ${sk.en} — ${dvTab === "basic" ? "1 card · 1× damage" : sk.info}, cooldown ${sk.cd} s` + (block ? ` · <span class="warn">${block}</span>` : " · <span class=\"okc\">준비됨 · ready</span>");
   const deck = deckCards(dvTab);
@@ -1395,7 +1399,7 @@ function openCharView() {
 $("cvClose").onclick = () => { showScreen(null); paused = false; };
 $("actChar").onclick = () => openCharView();
 function onEscape() {
-  if (!started || duel) return;
+  if (!started || duel || cg) return;
   if (cb) { $("cardb").hidden = true; cb = null; paused = false; toast("배틀 포기 · you left the card battle"); return; }
   if (!$("reroll").hidden) { closeReroll(); return; }
   if (memo) { endMemory(true); return; }
@@ -2343,6 +2347,7 @@ function onNet(d, from) {
     case "sl": if (NET.role === "guest") { const at = new THREE.Vector3(d.x, 0, d.z); makeRing(at, d.r, d.tele); setTimeout(() => { SFX.slam(); slamFx(at, d.r, player.zone === "market"); if (!player.dead && player.zone !== "station" && dist2(player.pos, at) < d.r) hurt(d.dmg, { lvl: d.lv }); }, d.tele * 1000); } break;
     case "chat": if (NET.role === "host") netSend({ t: "chat", id: from, nm: d.nm, text: d.text }); showRemoteChat(d.id || from, d.nm, d.text); break;
     case "em": if (NET.role === "host") netSend({ t: "em", id: from, e: d.e }); { const r = remotes.get(d.id || from); if (r) { r.model.emote?.(d.e); remoteBubble(r, d.e === "wave" ? "👋" : "🙇"); } } break;
+    case "cgReq": case "cgAcc": case "cgGo": case "cgPick": case "cgNo": case "cgQuit": if (NET.role === "host" && d.to !== "host") { netSend({ ...d, from }); break; } if (d.to === myId()) cgOnNet(d, d.from || from); break;
     case "gift": if (NET.role === "host" && d.to !== "host") { netSend({ ...d, from }); break; } if (d.to === myId()) sendMail(d.nm, "선물을 보내요. 잘 쓰세요!", "I'm sending you a present. Use it well!", d.attach); break;
   }
 }
@@ -4063,7 +4068,7 @@ function rankTalk(n) {
   const my = cardRank();
   if (!rankOpen(n.kind)) { const gap = c.rank - my; showLine(n, gap >= 3 ? "rb_mock3" : pick(["rb_mock1", "rb_mock2"]), [{ ko: "(대화 끝내기)", en: `your 카드 랭크 is ${my} · beat ${CB["sg" + my].name} (랭크 ${my}) to climb`, act: closeDialog }]); SFX.resist(); return; }
   showLine(n, beaten ? "rb_again" : "rb_hi", [
-    { ko: "🃏 카드 배틀! · card battle", en: `your 카드 랭크 ${my} · their rank ${c.rank} · ${ch.title} words · win ${RANK_CARDS} ${ch.title} cards${beaten >= 2 ? " (longer words now)" : ""}`, act: () => { closeDialog(); startCardBattle(n.kind); } },
+    { ko: "🃏 카드 배틀! · card battle", en: `your 카드 랭크 ${my} · their rank ${c.rank} · ${ch.title} words · win ${RANK_CARDS} ${ch.title} cards${beaten >= 2 ? " (longer words now)" : ""}`, act: () => { closeDialog(); cgBegin(n.kind); } },
     { ko: "(대화 끝내기)", en: "leave", act: closeDialog }]);
 }
 const SEOUL_CARDS = {
@@ -4090,7 +4095,7 @@ function cbTalk(n) {
   if (CB[n.kind].rank) { rankTalk(n); return; }
   const won = S.seoulCards?.[CB[n.kind].area];
   showLine(n, won ? "cb_again" : "cb_hi", [
-    { ko: "🃏 카드 배틀! · card battle", en: won ? `rematch · ${cbChapter(n.kind).title} words${(S.cbWins?.[n.kind] || 0) >= 2 ? ", longer ones" : ""}` : `win the ${SEOUL_CARDS[CB[n.kind].area].ko} Seoul card`, act: () => { closeDialog(); startCardBattle(n.kind); } },
+    { ko: "🃏 카드 배틀! · card battle", en: won ? `rematch · ${cbChapter(n.kind).title} words${(S.cbWins?.[n.kind] || 0) >= 2 ? ", longer ones" : ""}` : `win the ${SEOUL_CARDS[CB[n.kind].area].ko} Seoul card`, act: () => { closeDialog(); cgBegin(n.kind); } },
     { ko: "(대화 끝내기)", en: "leave", act: closeDialog }]);
 }
 let cb = null;
@@ -4161,6 +4166,283 @@ addEventListener("keydown", e => {
   if (k >= 1 && k <= cb.cur.tiles.length) { e.preventDefault(); e.stopImmediatePropagation(); cbPick(k - 1); }
   else if (e.key === "Backspace") { e.preventDefault(); e.stopImmediatePropagation(); cbUndo(cb.cur.picked.length - 1); }
 }, true);
+
+// ---- 카드 배틀 2 (Danny 2026-10-18): the card game every student in Seoul plays, now in its own arena ----
+// A 40-word battle deck (words may also be in skill decks; each word plays as your best copy of it). Best of 3 rounds. Each round both
+// players get 10 new cards from their own deck (never a card from an earlier round) and one rule ("명사 최대 3 · 동사 최대 2", up to 5
+// cards); only the Korean word shows, knowing its type is the practice. Points by rarity: 일반 1, 희귀 2, 영웅 3, 전설 4. Over a limit,
+// the highest cards of that type score 0; a type the rule doesn't name scores 0. Ties: more scoring cards, then who ended the turn first,
+// then the challenger loses. 10 s to choose, 7 s in round 2, 5 s in round 3. Every card is a monster on the field (word type = species,
+// rarity = size and glow); the round winner's monsters destroy the loser's. Against students (their chapter's words, better cards and
+// fewer slips at higher ranks, more slips when they lead, and some days they're just unlucky) or a friend in co-op (no prize, for fun).
+const CG_PTS = [1, 2, 3, 4], CG_DECK = 40, CG_HAND = 10, CG_TIME = [10, 7, 5];
+const CG_TYPE = { noun: { ko: "명사", en: "noun", mon: "dokkaebi", col: ["#ff7a5a", "#ffd23d"] }, verb: { ko: "동사", en: "verb", mon: "spark", col: ["#fff36a", "#7af0ff"] }, adjective: { ko: "형용사", en: "adjective", mon: "wisp", col: ["#3ad8c8", "#9ff8e8"] }, adverb: { ko: "부사", en: "adverb", mon: "magpie", col: ["#5a6aff", "#ffffff"] }, other: { ko: "기타", en: "expression", mon: "book", col: ["#c8402f", "#f6f0e0"] } };
+const CG_GLOW = [null, "#5aa8ff", "#b47aff", "#ffb03a"], CG_SIZE = [.55, .66, .8, .96];
+const CARENA = { x: 13000, z: 0 };
+const cgPos = id => CG_TYPE[WORD[id]?.pos] ? WORD[id].pos : "other";
+const bestRar = id => S.cards.reduce((m, c) => c.id === id && c.rar > m ? c.rar : m, -1);
+const battleDeck = () => [...new Set(S.battleDeck || [])].filter(id => WORD[id] && bestRar(id) >= 0);
+const myName = () => S.name || classDef().ko;
+function autoBattleDeck() { S.battleDeck = shuffle([...new Set(S.cards.map(c => c.id))].filter(id => WORD[id])).sort((a, b) => bestRar(b) - bestRar(a)).slice(0, CG_DECK); save(); }
+let bdFilter = "all";
+function drawBattleDeck() {
+  const deck = new Set(battleDeck()), ids = [...new Set(S.cards.map(c => c.id))].filter(id => WORD[id]).sort((a, b) => bestRar(b) - bestRar(a) || (WORD[a].kb || WORD[a].kr).localeCompare(WORD[b].kb || WORD[b].kr));
+  const shown = ids.filter(id => bdFilter === "all" || deck.has(id)), pts = [...deck].reduce((a, id) => a + CG_PTS[bestRar(id)], 0);
+  $("dvColl").innerHTML = `<div class="clHead"><div><b>⚔ 배틀 덱 · battle deck</b> · ${deck.size} / ${CG_DECK} 단어 · words · 점수 · points ${pts} ${deck.size < CG_DECK ? `· <span class="warn">카드 배틀에는 ${CG_DECK}개가 필요해요 · card battles need ${CG_DECK}</span>` : `· <span class="okc">준비됨 · ready</span>`}</div>
+    <div class="bar xp clBar"><i style="width:${deck.size / CG_DECK * 100}%"></i></div>
+    <span class="fine">단어마다 가장 좋은 카드로 싸워요 · each word plays as your best copy of it: 일반 +1, 희귀 +2, 영웅 +3, 전설 +4 · 스킬 덱의 단어도 넣을 수 있어요 · words from your skill decks can be here too</span></div>
+    <div class="clFilt"><button class="chip" data-bf="all" aria-pressed="${bdFilter === "all"}">전체 · all (${ids.length})</button><button class="chip" data-bf="in" aria-pressed="${bdFilter === "in"}">덱 · in the deck</button><button class="chip" id="bdAuto">✨ 자동 · best ${CG_DECK}</button><button class="chip" id="bdClear">비우기 · clear</button></div>
+    <div class="clGrid">${shown.map(id => { const w = WORD[id], r = bestRar(id); return `<button class="clTile bd ${deck.has(id) ? "own" : "miss"}" data-id="${id}" style="--rc:${RARITY[r].c}"><b>${esc(w.kb || w.kr)}</b><span>${esc(w.en)}</span><small>${POSKO[w.pos] || "기타"} · ${RARITY[r].ko} +${CG_PTS[r]}${deck.has(id) ? " · ✓ 덱" : ""}</small></button>`; }).join("") || '<p class="fine">카드가 없어요 · no cards yet</p>'}</div>`;
+  if ($("dvBattleTab")) $("dvBattleTab").textContent = `⚔ 배틀 덱 · battle deck (${deck.size}/${CG_DECK})`;
+  $("dvColl").querySelectorAll("[data-bf]").forEach(b => b.onclick = () => { bdFilter = b.dataset.bf; drawBattleDeck(); });
+  $("bdAuto").onclick = () => { autoBattleDeck(); drawBattleDeck(); };
+  $("bdClear").onclick = () => { S.battleDeck = []; save(); drawBattleDeck(); };
+  $("dvColl").querySelectorAll(".clTile.bd").forEach(b => b.onclick = () => {
+    const id = b.dataset.id, d = battleDeck();
+    if (d.includes(id)) S.battleDeck = d.filter(x => x !== id); else if (d.length < CG_DECK) S.battleDeck = [...d, id]; else { toast(`덱은 ${CG_DECK}개까지 · the deck holds ${CG_DECK} words`); return; }
+    save(); drawBattleDeck();
+  });
+}
+function cgNeedDeck() {
+  const n = battleDeck().length, own = new Set(S.cards.map(c => c.id)).size;
+  toast(`⚔ 배틀 덱에 단어 ${CG_DECK}개가 필요해요 (지금 ${n}개) · your battle deck needs ${CG_DECK} words (now ${n})` + (own < CG_DECK ? ` — 카드를 더 모으세요 · collect more cards (${own})` : ""));
+  if (own >= CG_DECK) { dvTab = "battle"; openDeckView(); }
+}
+// the rule of a round: 1–3 word types, 3–5 cards in all
+const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+const sShuffle = (a, rnd) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+function cgRule(rnd) {
+  const order = ["noun", "verb", "adjective", "adverb"], wt = [5, 4, 2, 2], k = rnd() < .3 ? 1 : rnd() < .75 ? 2 : 3, types = [];
+  while (types.length < k) { let r = rnd() * 13, t = order[3]; for (let i = 0; i < 4; i++) if ((r -= wt[i]) < 0) { t = order[i]; break; } if (!types.includes(t)) types.push(t); }
+  const lim = Object.fromEntries(types.map(t => [t, 1])); let left = Math.max(types.length, 3 + Math.floor(rnd() * 3)) - types.length;
+  while (left-- > 0) lim[types[Math.floor(rnd() * types.length)]]++;
+  return { lim };
+}
+const ruleKo = r => Object.entries(r.lim).map(([t, n]) => `${CG_TYPE[t].ko} 최대 ${n}`).join(" · ");
+const ruleEn = r => "at most " + Object.entries(r.lim).map(([t, n]) => `${n} ${CG_TYPE[t].en}${n > 1 ? "s" : ""}`).join(" + ");
+function cgScore(cards, rule) {
+  const by = {}, pts = cards.map(() => 0); cards.forEach((c, i) => (by[cgPos(c.id)] = by[cgPos(c.id)] || []).push(i));
+  for (const [t, idx] of Object.entries(by)) { const over = Math.max(0, idx.length - (rule.lim[t] || 0)); idx.sort((a, b) => cards[b].rar - cards[a].rar).forEach((i, k) => { pts[i] = k < over ? 0 : CG_PTS[cards[i].rar]; }); }
+  return { total: pts.reduce((a, b) => a + b, 0), n: pts.filter(p => p > 0).length, pts };
+}
+// a student's deck and play: their chapter's words, better cards at higher ranks; they slip more at low ranks, when they lead, on bad days
+function cgNpcDeck(kind) {
+  const c = CB[kind], ch = cbChapter(kind), rank = c.rank || Math.min(8, c.ch + 1 + (S.cbWins?.[kind] || 0));
+  let pool = bookWords().filter(w => w.ch === ch.id); if (pool.length < CG_DECK) pool = pool.concat(shuffle(bookWords().filter(w => w.ch !== ch.id)).slice(0, CG_DECK - pool.length));
+  const odds = [Math.max(.25, .8 - rank * .07), .17 + rank * .03, .03 + rank * .025, rank * .008], sum = odds.reduce((a, b) => a + b, 0);
+  const roll = () => { let r = Math.random() * sum; for (let i = 0; i < 4; i++) if ((r -= odds[i]) < 0) return i; return 0; };
+  return { rank, cards: shuffle(pool).slice(0, CG_DECK).map(w => ({ id: w.id, rar: roll() })) };
+}
+function cgAiPick(hand, rule, rank, leading, luck) {
+  const slip = Math.min(.6, Math.max(.04, (.4 - rank * .04) * (leading ? 1.7 : 1) * luck));
+  let sel = []; for (const [t, n] of Object.entries(rule.lim)) sel.push(...hand.map((c, i) => i).filter(i => cgPos(hand[i].id) === t).sort((a, b) => hand[b].rar - hand[a].rar).slice(0, n));
+  const rest = () => hand.map((c, j) => j).filter(j => !sel.includes(j));
+  sel = sel.flatMap(i => { if (Math.random() >= slip) return [i]; const r = rest(); return Math.random() < .5 || !r.length ? [] : [pick(r)]; });   /* forgot one, or took another word for this type */
+  if (Math.random() < slip * .6) { const r = rest(); if (r.length) sel.push(pick(r)); }   /* one card too many */
+  return [...new Set(sel)];
+}
+// the arena
+let cgArena = null, cg = null;
+function buildCardArena() {
+  if (cgArena) return cgArena;
+  const g = new THREE.Group(); g.position.set(CARENA.x, 0, CARENA.z); scene.add(g);
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.receiveShadow = true; g.add(m); return m; };
+  const neon = c => new THREE.MeshBasicMaterial({ color: c, toneMapped: false });
+  add(new THREE.PlaneGeometry(260, 260), toon("#0e0c18"), 0, -.02, 0).rotation.x = -Math.PI / 2;
+  add(new THREE.BoxGeometry(23, .4, 17), toon("#2a2440"), 0, -.2, 0);
+  for (const [z, c] of [[3.8, "#ffd23d"], [-3.8, "#c08aff"]]) { const f = add(new THREE.PlaneGeometry(20, 4.6), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .13, toneMapped: false }), 0, .03, z); f.rotation.x = -Math.PI / 2; add(new THREE.BoxGeometry(20.4, .08, .12), neon(c), 0, .05, z + Math.sign(z) * 2.3); }
+  add(new THREE.BoxGeometry(20, .06, .1), neon("#ffffff"), 0, .05, 0);
+  for (let i = 0; i < 12; i++) { const a = -1.3 + i * .236, x = Math.sin(a) * 17, z = -Math.cos(a) * 12; add(new THREE.BoxGeometry(.5, 9, .5), toon("#3a3442"), x, 4.5, z); add(new THREE.BoxGeometry(.18, 8.6, .18), neon(i % 2 ? "#ff3d8b" : "#35e3ff"), x, 4.5, z + .3); }
+  const c = document.createElement("canvas"); c.width = 1024; c.height = 256; const x = c.getContext("2d");
+  const gr = x.createLinearGradient(0, 0, 1024, 0); gr.addColorStop(0, "#1a0a3a"); gr.addColorStop(1, "#3a0a2a"); x.fillStyle = gr; x.fillRect(0, 0, 1024, 256);
+  x.strokeStyle = "#35e3ff"; x.lineWidth = 10; x.strokeRect(8, 8, 1008, 240); x.fillStyle = "#fff"; x.font = '700 110px "Noto Sans KR", sans-serif'; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("🃏 카드 배틀", 512, 132);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+  add(new THREE.PlaneGeometry(16, 4), new THREE.MeshBasicMaterial({ map: tx, toneMapped: false }), 0, 8, -13);
+  return cgArena = { g };
+}
+// start: { npc: kind } or { pvp: { id, nm, cls, deck, mine, seed, challenger } }
+function cgBegin(kind) { if (battleDeck().length < CG_DECK) { cgNeedDeck(); return; } cgStart({ npc: kind }); }
+function cgStart(o) {
+  if (cg || duel || quiz || exam || cb) return;
+  const mine = o.pvp ? o.pvp.mine : battleDeck().slice(0, CG_DECK).map(id => ({ id, rar: bestRar(id) }));
+  if (mine.length < CG_DECK) { cgNeedDeck(); return; }
+  let rnd = Math.random, opp, rank = 0, oppName, oppModel;
+  if (o.npc) { const c = CB[o.npc], d = cgNpcDeck(o.npc); opp = d.cards; rank = d.rank; oppName = c.name; oppModel = (c.woman && womenReady() ? makeWoman(c.woman) : null) || (kayReady() ? makeKay(c.model || "stuA") : makeNPC("sitter")); }
+  else { rnd = mulberry(o.pvp.seed); opp = o.pvp.deck; oppName = o.pvp.nm; oppModel = kayReady() ? makeKay(o.pvp.cls || "geomgaek") : makeHero(o.pvp.cls || "geomgaek"); }
+  const challenger = o.npc ? true : o.pvp.challenger, A = challenger ? mine : opp, B = challenger ? opp : mine;
+  const oA = sShuffle(A, rnd), oB = sShuffle(B, rnd), rules = [0, 1, 2].map(() => cgRule(rnd));
+  buildCardArena(); cancelRitual(); setTarget(null); closeDialog(); if (comp) comp.model.root.visible = false;
+  const back = { zone: player.zone, x: player.pos.x, z: player.pos.z, yaw: player.yaw };
+  player.zone = "arena"; player.pos.set(CARENA.x, 0, CARENA.z + 8.2); player.yaw = 0;
+  oppModel.root.position.set(CARENA.x, 0, CARENA.z - 8.2); oppModel.root.rotation.y = 0; scene.add(oppModel.root);
+  cg = { npc: o.npc, pvp: o.pvp, challenger, rank, luck: rand(.7, 1.4), oppName, oppModel, back, myOrder: challenger ? oA : oB, oppOrder: challenger ? oB : oA, rules,
+    round: -1, wins: [0, 0], phase: "intro", sel: [], mons: [], fx: [], picks: {}, myEnd: 0, endAt: 0 };
+  paused = !NET.role; $("hud").hidden = true; $("cg").hidden = false;
+  $("cgMyName").textContent = myName(); $("cgOppName").textContent = oppName + (rank ? ` · 랭크 ${rank}` : "");
+  SFX.open(); snd("bell", .6, .8); setTimeout(cgNextRound, 900);
+}
+function cgPips() { $("cgMyWins").textContent = "●".repeat(cg.wins[0]) + "○".repeat(2 - cg.wins[0]); $("cgOppWins").textContent = "●".repeat(cg.wins[1]) + "○".repeat(2 - cg.wins[1]); }
+function cgClearField() { for (const m of cg.mons) if (!m.gone) { FX.deathPoof(m.m.root.position, false); scene.remove(m.m.root); } cg.mons = []; }
+function cgNextRound() {
+  if (!cg) return;
+  cgClearField(); cg.round++; const r = cg.round;
+  cg.hand = cg.myOrder.slice(r * CG_HAND, (r + 1) * CG_HAND); cg.oppHand = cg.oppOrder.slice(r * CG_HAND, (r + 1) * CG_HAND);
+  cg.rule = cg.rules[r]; cg.sel = []; cg.myPts = null; cg.time = CG_TIME[Math.min(r, 2)];
+  cgPips(); $("cgScore").hidden = true; $("cgOppState").textContent = "고르는 중… · choosing";
+  $("cgRound").textContent = `라운드 ${r + 1} · round ${r + 1}${r === 2 ? " · 마지막! · last one!" : ""}`; $("cgRule").textContent = ruleKo(cg.rule); $("cgRuleEn").textContent = ruleEn(cg.rule);
+  cgBanner(`라운드 ${r + 1}`, ruleKo(cg.rule)); snd("bell", .5, 1 + r * .15);
+  cg.phase = "intro"; cgDrawHand(false);
+  if (cg.npc) { const sel = cgAiPick(cg.oppHand, cg.rule, cg.rank, cg.wins[1] > cg.wins[0], cg.luck); cg.picks[r] = { sel, t: +(cg.time * rand(.35, .9) * (1.1 - cg.rank * .06)).toFixed(2) }; }
+  setTimeout(() => { if (!cg || cg.round !== r) return; cg.phase = "pick"; cg.t0 = performance.now(); cg.endAt = cg.t0 + cg.time * 1000; $("cgEnd").disabled = false; }, 1400);
+}
+function cgBanner(big, small, cls = "") { const b = $("cgBanner"); b.innerHTML = `<b>${big}</b>${small ? `<span>${small}</span>` : ""}`; b.className = "cgBanner " + cls; b.hidden = false; void b.offsetWidth; b.classList.add("show"); clearTimeout(cgBanner.t); cgBanner.t = setTimeout(() => { b.hidden = true; }, 1600); }
+function cgDrawHand(reveal) {
+  $("cgHand").innerHTML = cg.hand.map((c, i) => { const w = WORD[c.id], on = cg.sel.includes(i), p = reveal && on ? cg.myPts[cg.sel.indexOf(i)] : null;
+    return `<button class="cgCard r${c.rar}${on ? " on" : ""}${reveal ? " rev" : ""}${p === null ? "" : p > 0 ? " ok" : " no"}" data-i="${i}" ${reveal ? "disabled" : ""}><kbd>${(i + 1) % 10}</kbd><b style="font-size:${[...(w.kb || w.kr)].length > 6 ? 12 : [...(w.kb || w.kr)].length > 4 ? 14 : 18}px">${esc(w.kb || w.kr)}</b><span class="pt">+${CG_PTS[c.rar]}</span>${reveal ? `<small>${CG_TYPE[cgPos(c.id)].ko}${on ? (p > 0 ? ` ✓ +${p}` : " ✗ 0") : ""}</small>` : ""}</button>`; }).join("");
+  if (!reveal) $("cgHand").querySelectorAll(".cgCard").forEach(b => b.onclick = () => cgToggle(+b.dataset.i));
+  $("cgEnd").disabled = reveal || cg.phase !== "pick"; $("cgCount").textContent = reveal ? "" : `${cg.sel.length}장 · cards`;
+}
+function cgToggle(i) {
+  if (!cg || cg.phase !== "pick" || i < 0 || i >= cg.hand.length) return;
+  cg.sel = cg.sel.includes(i) ? cg.sel.filter(x => x !== i) : [...cg.sel, i]; snd("wood", .3, cg.sel.includes(i) ? 1.5 : 1.1); cgDrawHand(false);
+}
+function cgEndTurn(timeout) {
+  if (!cg || cg.phase !== "pick") return;
+  cg.phase = "wait"; cg.myEnd = timeout ? cg.time : +((performance.now() - cg.t0) / 1000).toFixed(2); cg.waitT = performance.now();
+  $("cgEnd").disabled = true; if (timeout) { snd("punchM", .4, 1.4); cgBanner("⏰ 시간 끝!", "time's up"); } else SFX.select();
+  if (cg.pvp) netSend({ t: "cgPick", to: cg.pvp.id, r: cg.round, sel: cg.sel, tm: cg.myEnd });
+  for (const id of cg.sel.map(i => cg.hand[i].id)) stat(id).s++;
+  cgTryResolve();
+}
+function cgTryResolve() { if (cg?.phase === "wait" && cg.picks[cg.round]) cgResolve(); }
+function cgResolve() {
+  const r = cg.round, op = cg.picks[r]; cg.phase = "reveal"; $("cgOppState").textContent = "✓";
+  const my = cg.sel.map(i => cg.hand[i]), them = op.sel.filter(i => i >= 0 && i < cg.oppHand.length).map(i => cg.oppHand[i]);
+  const a = cgScore(my, cg.rule), b = cgScore(them, cg.rule); cg.myPts = a.pts;
+  const win = a.total !== b.total ? a.total > b.total : a.n !== b.n ? a.n > b.n : cg.myEnd !== op.t ? cg.myEnd < op.t : !cg.challenger;
+  const why = a.total !== b.total ? "" : a.n !== b.n ? "같은 점수 → 카드가 더 많은 쪽 · tie: more cards wins" : cg.myEnd !== op.t ? "같은 점수, 같은 장수 → 더 빨리 끝낸 쪽 · tie: the faster turn wins" : "완전히 같아요 → 도전한 쪽이 져요 · dead even: the challenger loses";
+  my.forEach((c, k) => { if (a.pts[k] > 0) stat(c.id).c++; else stat(c.id).w++; });
+  cgDrawHand(true); cg.wins[win ? 0 : 1]++;
+  const now = performance.now();
+  cg.mons = [...cgSpawn(1, my, a.pts, now), ...cgSpawn(-1, them, b.pts, now)];
+  $("cgMyPts").textContent = "0"; $("cgOppPts").textContent = "0"; $("cgScore").hidden = false;
+  cgCount(a.total, b.total, now + 900);
+  setTimeout(() => cgAttack(win), 2600);
+  setTimeout(() => { if (!cg) return; cgPips(); cgBanner(win ? "라운드 승리! 🏆" : "라운드 패배…", why || (win ? `${a.total} : ${b.total}` : `${a.total} : ${b.total}`), win ? "win" : "lose"); }, 4300);
+  setTimeout(() => { if (!cg) return; if (cg.wins[0] >= 2 || cg.wins[1] >= 2) cgFinish(); else cgNextRound(); }, 6400);
+}
+function cgSpawn(side, cards, pts, now) {
+  const n = cards.length;
+  return cards.map((c, i) => {
+    const t = CG_TYPE[cgPos(c.id)], m = makeMonster(t.mon), x = CARENA.x + (i - (n - 1) / 2) * Math.min(1.9, 17 / Math.max(1, n)), z = CARENA.z + side * 3.6;
+    m.root.scale.setScalar(.01); m.root.position.set(x, 0, z); m.root.rotation.y = side > 0 ? Math.PI : 0; scene.add(m.root);
+    if (CG_GLOW[c.rar]) { const ring = new THREE.Mesh(new THREE.RingGeometry(.7, 1.25, 28), new THREE.MeshBasicMaterial({ color: CG_GLOW[c.rar], transparent: true, opacity: .75, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = .08; m.root.add(ring); m.ring = ring; }
+    if (c.rar === 3) { const crown = new THREE.Group(), gold = new THREE.MeshBasicMaterial({ color: "#ffd23d", toneMapped: false }); for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2, sp = new THREE.Mesh(new THREE.ConeGeometry(.09, .32, 5), gold); sp.position.set(Math.cos(a) * .28, .16, Math.sin(a) * .28); crown.add(sp); } const band = new THREE.Mesh(new THREE.TorusGeometry(.3, .05, 6, 18), gold); band.rotation.x = Math.PI / 2; crown.add(band); crown.position.y = m.height + .15; m.root.add(crown); }
+    return { m, s: CG_SIZE[c.rar], x, z, side, id: c.id, rar: c.rar, pts: pts[i], born: now + i * 140 + (side < 0 ? 70 : 0), shown: false, gone: false, t };
+  });
+}
+function cgCount(ma, mb, at) {   /* the totals tick up while each monster's points pop over it */
+  let a = 0, b = 0;
+  cg.mons.forEach((o, k) => setTimeout(() => { if (!cg || o.gone) return;
+    floater({ x: o.x, z: o.z }, `${WORD[o.id].kb || WORD[o.id].kr} ${o.pts > 0 ? "+" + o.pts : "✗"}`, o.pts > 0 ? (o.side > 0 ? "#ffd23d" : "#d8b8ff") : "#9a9a9a", false, o.m.height * o.s + .6);
+    if (o.pts > 0) { if (o.side > 0) a += o.pts; else b += o.pts; $("cgMyPts").textContent = a; $("cgOppPts").textContent = b; snd("coins", .25, 1 + o.pts * .1); }
+    else { o.fizzle = performance.now(); snd("punchM", .25, .7); }
+  }, at - performance.now() + k * 110));
+}
+function cgAttack(win) {
+  if (!cg) return;
+  const att = cg.mons.filter(o => o.side === (win ? 1 : -1) && !o.gone && o.pts > 0), vic = cg.mons.filter(o => o.side === (win ? -1 : 1) && !o.gone);
+  vic.forEach((v, k) => { const ai = att.length ? k % att.length : -1, a = att[ai], m = att.length ? Math.floor(k / att.length) : k; setTimeout(() => { if (!cg) return; if (a && !a.gone) a.charge = { to: v, t: 0, from: { x: a.x, z: a.z } }; else cgKill(v); }, (ai < 0 ? 0 : ai * 160) + m * 520); });
+  if (!vic.length) att.forEach(o => o.cheer = performance.now());
+}
+function cgKill(v) {
+  if (v.gone) return; v.gone = true; const at = v.m.root.position.clone(), cols = [...v.t.col, "#ffffff"];
+  FX.explosion(at, cols, .9 + v.rar * .25); FX.burst(at, { n: 26 + v.rar * 10, color: cols, speed: 9, up: 1.3, size: .2, life: 1, grav: 12, additive: false, y: 1 });
+  FX.ring(at, { color: CG_GLOW[v.rar] || "#ffffff", r: 2 + v.rar * .5 }); FX.shake(.2 + v.rar * .08); FX.stop(.05);
+  snd("boom", .55, 1.2 - v.rar * .1); snd("glass", .3, 1.4); scene.remove(v.m.root);
+}
+function cgFinish() {
+  const d = cg, won = d.wins[0] >= 2; d.phase = "end"; $("cg").hidden = true;
+  const rows = [{ big: true, icon: won ? "🏆" : "🃏", ko: `${d.wins[0]} : ${d.wins[1]}`, en: won ? `you beat ${d.oppName}` : `${d.oppName} won (first to 2 rounds)` }];
+  if (d.npc) {
+    const kind = d.npc, c = CB[kind], ch = cbChapter(kind);
+    if (won) {
+      (S.cbWins = S.cbWins || {})[kind] = (S.cbWins[kind] || 0) + 1;
+      if (!c.rank && !S.seoulCards?.[c.area]) { (S.seoulCards = S.seoulCards || {})[c.area] = Date.now(); rows.push({ iconHtml: seoulCardHTML(c.area), ko: `서울 카드 · ${SEOUL_CARDS[c.area].ko}`, en: `Seoul card ${Object.keys(S.seoulCards).length} / 6 (inventory → 서울 카드)` }); }
+      else for (const cc of chapterCards(ch, RANK_CARDS)) rows.push({ icon: "🃏", ko: `${WORD[cc.id].kr} · ${RARITY[cc.rar].ko}`, en: `${WORD[cc.id].en} · ${ch.title} · ${modText(cc)}`, color: RARITY[cc.rar].c });
+      if (c.rank && S.cbWins[kind] === 1) rows.push(c.rank < 8 ? { big: true, icon: "🏅", ko: `카드 랭크 업! 랭크 ${c.rank + 1}`, en: `card rank up: ${CB["sg" + (c.rank + 1)].name} (랭크 ${c.rank + 1}) will battle you now` } : { big: true, icon: "👑", ko: "최고 랭크!", en: "you beat every rank on the plaza" });
+    }
+    save();
+    showLine({ name: NPC_DEF[kind] || c.name }, won ? "cb_win" : "cb_lose", [{ ko: "(계속 · continue)", en: "", act: () => { closeDialog(); showReward(won ? "🃏 카드 배틀 승리! · you won" : "🃏 카드 배틀 · card battle", rows, () => fade(cgLeave)); } }]);
+  } else { rows.push({ icon: "🤝", ko: "친구와 연습 · a friendly match", en: "no prize in battles between friends (yet)" }); showReward(won ? "🃏 카드 배틀 승리! · you won" : "🃏 카드 배틀 · card battle", rows, () => fade(cgLeave)); }
+}
+function cgLeave() {
+  const d = cg; if (!d) return; cg = null;
+  for (const o of d.mons) scene.remove(o.m.root); scene.remove(d.oppModel.root); $("cg").hidden = true;
+  player.zone = d.back.zone; player.pos.set(d.back.x, 0, d.back.z); player.yaw = d.back.yaw; paused = false; $("hud").hidden = false;
+  if (comp) { comp.model.root.visible = true; comp.zone = player.zone; comp.pos.copy(player.pos).add(new THREE.Vector3(1.5, 0, 1.5)); }
+}
+function cgRender(dt) {
+  if (!cg) return;
+  const now = performance.now();
+  if (cg.phase === "pick") { const left = Math.max(0, (cg.endAt - now) / 1000); $("cgBar").style.width = left / cg.time * 100 + "%"; $("cgSec").textContent = Math.ceil(left); $("cg").classList.toggle("hurry", left < 3); if (left <= 0) cgEndTurn(true); }
+  if (cg.phase === "wait" && cg.pvp && !cg.picks[cg.round] && now - cg.waitT > cg.time * 1000 + 8000) { cg.picks[cg.round] = { sel: [], t: cg.time }; cgResolve(); }
+  if (cg.npc && cg.phase === "pick" && cg.picks[cg.round] && (now - cg.t0) / 1000 > cg.picks[cg.round].t) $("cgOppState").textContent = "✓ 다 골랐어요 · done";
+  cg.oppModel.anim?.(dt, {}); player.model.root.position.set(player.pos.x, 0, player.pos.z); player.model.root.rotation.y = Math.PI; player.model.anim(dt, {});
+  for (const r of remotes.values()) { if (r.model) r.model.root.visible = false; if (r.plate) r.plate.style.display = "none"; }
+  for (const o of cg.mons) {
+    if (o.gone) continue;
+    const age = (now - o.born) / 1000; if (age < 0) continue;
+    if (!o.shown) { o.shown = true; if (o.rar) FX.glow({ x: o.x, z: o.z }, { color: CG_GLOW[o.rar], pillar: true, r: .4 + o.rar * .15, h: 3 + o.rar * 2.5, life: .45, opacity: .55 }); FX.ring({ x: o.x, z: o.z }, { color: CG_GLOW[o.rar] || "#ffffff", r: 1.4 }); snd("field", .25, 1.4 + o.rar * .15); }
+    let sc = age < .35 ? o.s * (1 - Math.pow(1 - age / .35, 3)) * 1.15 : o.s;
+    if (o.fizzle) { const f = (now - o.fizzle) / 1000; sc = o.s * Math.max(0, 1 - f * 1.6); if (f > .62) { o.gone = true; FX.deathPoof(o.m.root.position, false); scene.remove(o.m.root); continue; } }
+    o.m.root.scale.setScalar(Math.max(.01, sc)); if (o.ring) o.ring.material.opacity = .45 + Math.sin(now / 180 + o.x) * .3;
+    let moving = false;
+    if (o.charge) {
+      const c = o.charge, v = c.to, tx = v.x, tz = v.z + o.side * 1.1; c.t += dt;
+      if (!c.hit) { const k = Math.min(1, c.t / .22); o.m.root.position.set(c.from.x + (tx - c.from.x) * k, Math.sin(k * Math.PI) * 1.2, c.from.z + (tz - c.from.z) * k); moving = true; if (k >= 1) { c.hit = true; c.t = 0; cgKill(v); } }
+      else { const k = Math.min(1, c.t / .25); o.m.root.position.set(tx + (c.from.x - tx) * k, 0, tz + (c.from.z - tz) * k); moving = true; if (k >= 1) { o.charge = null; o.m.root.position.set(o.x, 0, o.z); o.cheer = now; } }
+    }
+    if (o.cheer && now - o.cheer < 900) o.m.root.position.y = Math.abs(Math.sin((now - o.cheer) / 140)) * .5;
+    o.m.anim(dt, { moving, attack: o.charge && !o.charge.hit ? Math.min(1, o.charge.t / .22) : 0 });
+  }
+  camera.position.set(CARENA.x + FX.shakeState.x, 15 + FX.shakeState.y, CARENA.z + 15.5 + FX.shakeState.z); camera.lookAt(CARENA.x, 0, CARENA.z + 5.4);
+}
+addEventListener("keydown", e => {
+  if (!cg || $("cg").hidden) return;
+  e.stopImmediatePropagation();
+  if (cg.phase !== "pick") { if (!/^F\d+$/.test(e.key)) e.preventDefault(); return; }
+  const k = e.key === "0" ? 9 : +e.key - 1;
+  if (e.key >= "0" && e.key <= "9") { e.preventDefault(); cgToggle(k); }
+  else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); cgEndTurn(false); }
+  else if (!/^F\d+$/.test(e.key)) e.preventDefault();
+}, true);
+// co-op: challenge a friend standing next to you; the challenger deals (a shared seed), both play the same rules, picks are swapped
+let cgAsk = null, cgAccepted = null;
+function cgChallenge(r) {
+  if (battleDeck().length < CG_DECK) { cgNeedDeck(); return; }
+  cgAsk = { id: r.id, at: Date.now() }; netSend({ t: "cgReq", to: r.id, nm: myName() }); toast(`🃏 ${r.nm}에게 카드 배틀을 신청했어요 · challenge sent`);
+}
+function cgOnNet(d, src) {
+  if (d.t === "cgReq") {
+    if (cg || duel || exam) { netSend({ t: "cgNo", to: src, why: "busy" }); return; }
+    const box = $("inviteBox"); box.hidden = false;
+    box.innerHTML = `<b>🃏 ${esc(d.nm)}</b> 님이 카드 배틀을 신청했어요 · challenges you to a card battle<div class="ib"><button id="cgYes">배틀! · accept</button><button id="cgNo">거절 · decline</button></div>`;
+    $("cgYes").onclick = () => { box.hidden = true; if (battleDeck().length < CG_DECK) { cgNeedDeck(); netSend({ t: "cgNo", to: src, why: "deck" }); return; } const mine = battleDeck().slice(0, CG_DECK).map(id => ({ id, rar: bestRar(id) })); cgAccepted = { id: src, mine }; netSend({ t: "cgAcc", to: src, nm: myName(), cls: S.cls, deck: mine }); };
+    $("cgNo").onclick = () => { box.hidden = true; netSend({ t: "cgNo", to: src, why: "no" }); };
+    clearTimeout(showInvite.t); showInvite.t = setTimeout(() => { box.hidden = true; }, 30000); SFX.pickup(); logChat("system", `🃏 ${d.nm} challenges you to a card battle`);
+  } else if (d.t === "cgAcc") {
+    if (!cgAsk || cgAsk.id !== src || cg) return; cgAsk = null;
+    const mine = battleDeck().slice(0, CG_DECK).map(id => ({ id, rar: bestRar(id) })), seed = Math.floor(Math.random() * 2 ** 31);
+    netSend({ t: "cgGo", to: src, nm: myName(), cls: S.cls, deck: mine, seed });
+    cgStart({ pvp: { id: src, nm: d.nm, cls: d.cls, deck: d.deck, mine, seed, challenger: true } });
+  } else if (d.t === "cgGo") {
+    if (!cgAccepted || cgAccepted.id !== src || cg) return; const mine = cgAccepted.mine; cgAccepted = null;
+    cgStart({ pvp: { id: src, nm: d.nm, cls: d.cls, deck: d.deck, mine, seed: d.seed, challenger: false } });
+  } else if (d.t === "cgPick") { if (cg?.pvp?.id === src) { cg.picks[d.r] = { sel: d.sel || [], t: d.tm }; if (d.r === cg.round) { $("cgOppState").textContent = "✓ 다 골랐어요 · done"; cgTryResolve(); } } }
+  else if (d.t === "cgNo") { cgAsk = null; toast(d.why === "deck" ? "상대의 배틀 덱이 아직 40장이 안 돼요 · their battle deck isn't ready" : d.why === "busy" ? "지금 바빠요 · they're busy" : "거절했어요 · they declined"); }
+  else if (d.t === "cgQuit") { if (cg?.pvp?.id === src && cg.phase !== "end") { cg.wins = [2, cg.wins[1]]; toast("상대가 나갔어요 · your opponent left"); cgFinish(); } }
+}
 
 // ---- main loop ------------------------------------------------------------------------------------------
 let last = performance.now(), saveT = 0;
@@ -4282,7 +4564,7 @@ function render(dt) {
     else if (player.zone === "station") { camera.position.x = Math.min(STATION.x + 17, Math.max(STATION.x - 17, camera.position.x)); camera.position.z = Math.min(STATION.z + 9.4, Math.max(STATION.z - 9.4, camera.position.z)); camera.position.y = Math.min(4.6, camera.position.y); }
     camera.lookAt(p.x, 1.6, p.z);
     camera.position.x += FX.shakeState.x; camera.position.y += FX.shakeState.y; camera.position.z += FX.shakeState.z;
-    duelRender(dt);
+    duelRender(dt); cgRender(dt);
     if (player.zone === "street") world.occlude(camera.position, p);
     // pillars between the camera and you turn see-through
     for (const o of world.npcSpots.occluders) {
@@ -4346,7 +4628,7 @@ window.__seoul = {
   tp(x, z) { player.pos.set(x, 0, z); },
   spawn(kind, lvl, x, z, zone = "street") { spawnMonster({ kind, lvl, x, z, mon: null, zone }); return monsters[monsters.length - 1]; },
   wordCounts: () => wordCounts(), drawFriends: () => drawFriends(),
-  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, startCardBattle: k => startCardBattle(k), get cb() { return cb; }, cbPick: k => cbPick(k), CB, startDuel: k => startDuel(k), get duel() { return duel; }, duelPick: i => duelPick(i), relOf: k => relOf(k), setCompanion: k => setCompanion(k, { name: "test" }), dcMenu: k => dcMenu(npcs.find(n => n.kind === k), null), startExam: () => startExam(), get exam() { return exam; }, get examPending() { return examPending; }, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
+  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, startCardBattle: k => startCardBattle(k), get cb() { return cb; }, cgStart: o => cgStart(o), cgBegin: k => cgBegin(k), get cg() { return cg; }, cgToggle: i => cgToggle(i), cgEndTurn: () => cgEndTurn(false), autoBattleDeck: () => autoBattleDeck(), battleDeck: () => battleDeck(), cgScore: (c, r) => cgScore(c, r), cgRule: () => cgRule(Math.random), cbPick: k => cbPick(k), CB, startDuel: k => startDuel(k), get duel() { return duel; }, duelPick: i => duelPick(i), relOf: k => relOf(k), setCompanion: k => setCompanion(k, { name: "test" }), dcMenu: k => dcMenu(npcs.find(n => n.kind === k), null), startExam: () => startExam(), get exam() { return exam; }, get examPending() { return examPending; }, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
   get memo() { return memo; }, heart: n => addHeart(n), get comp() { return comp; }, get fishing() { return fishing; }, flip: i => flipStone(i), upgrade: () => upgradeMenu(npcs.find(n => n.kind === "smith")),
   talk: kind => talkTo(npcs.find(n => n.kind === kind)), get dialog() { return dialog; }, opt(i) { $("dOpts").children[i]?.click(); }, get quiz() { return quiz; }, quizAnswer(right = true) { if (quiz) answerQuiz(right ? quiz.opts.indexOf(quiz.answer) : (quiz.opts.indexOf(quiz.answer) + 1) % quiz.opts.length); },
 };
