@@ -6,14 +6,14 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdvbgym";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdvbgym";
-import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdvbgym";
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdvbgym";
-import * as FX from "./fx.js?v=mvdvbgym";
-import { LINES } from "./lines.js?v=mvdvbgym";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdvbgym";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdvbgym";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdwwaz6";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdwwaz6";
+import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdwwaz6";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdwwaz6";
+import * as FX from "./fx.js?v=mvdwwaz6";
+import { LINES } from "./lines.js?v=mvdwwaz6";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdwwaz6";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdwwaz6";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -435,7 +435,7 @@ function examNext() {
   }
   const id = exam.queue.shift(), w = WORD[id], pool = ownedWords().filter(x => x !== id);
   const others = shuffle(pool.length >= 3 ? pool : bookWords().map(x => x.id).filter(x => x !== id)).slice(0, 3).map(x => WORD[x]);
-  const koToEn = exam.n++ % 2 === 0, ans = koToEn ? { id, kr: w.en } : w;
+  exam.n++; const koToEn = false, ans = w;   /* Danny 2026-10-18: always the English meaning asked, Korean words as answers (English answers were awkward) */
   openQuiz({ title: `📝 레벨 업 시험 · level-up exam  ${exam.right} / ${exam.need}`,
     prompt: koToEn ? `<span class="qzKo">${esc(w.kr)}</span><span class="qzEn">무슨 뜻이에요? · what does it mean?</span>` : `<span class="qzKo">${esc(w.en)}</span><span class="qzEn">이 뜻의 단어는? · which word means this?</span>`,
     answer: ans, opts: shuffle([ans, ...others.map(o => koToEn ? { id: o.id, kr: o.en } : o)]),
