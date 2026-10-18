@@ -623,3 +623,18 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .cgVs .vsRow{font-size:clamp(34px,3.8vw,58px)}
 .cgVs{top:12%;z-index:30}
 .cgRule{transition:opacity .2s}.cg.vsOn .cgRule{opacity:0}
+/* card battle review: the best hand of every round (2026-10-18) */
+.cgReview{position:fixed;inset:0;z-index:8;overflow:auto;background:rgba(8,6,14,.92);color:#fff;font-family:var(--display);display:flex;justify-content:center;padding:24px 16px}
+.cgReview[hidden]{display:none}
+.crIn{width:min(1500px,100%);display:grid;gap:14px;align-content:start}
+.crIn h2{font:700 26px var(--display);margin:0}
+.crIn section{display:grid;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px}
+.crHead{display:flex;flex-wrap:wrap;gap:6px 16px;align-items:baseline}.crHead b{font:700 20px var(--display)}.crHead span{font-size:15px}
+.crGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.crCard{display:grid;gap:2px;text-align:left;padding:10px;border-radius:12px;border:2px solid #c9c4b8;background:#1c1830;color:#fff;cursor:pointer;opacity:.7}
+.crCard.r1{border-color:#5aa8ff}.crCard.r2{border-color:#b47aff}.crCard.r3{border-color:#ffb03a}
+.crCard b{font:700 19px var(--display)}.crCard .ty{font-size:13px;color:#ffd23d}.crCard small{font-size:12px;opacity:.85}.crCard i{font-style:normal;font-size:13px;opacity:.9}
+.crCard.best{opacity:1;background:linear-gradient(180deg,#4a3a10,#2a2010);box-shadow:0 0 0 2px #ffd23d}
+.crCard.ok{opacity:1;outline:3px solid #6ad86a;outline-offset:2px}.crCard.no{opacity:1;outline:3px solid #ff5a5a;outline-offset:2px}
+.crCard:hover{opacity:1}
+.crGo{justify-self:center;font:700 18px var(--display);padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(180deg,#ffd23d,#e0a21c);color:#1d1612;cursor:pointer}

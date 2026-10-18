@@ -4342,6 +4342,7 @@ function cgResolve() {
   const win = a.total !== b.total ? a.total > b.total : a.n !== b.n ? a.n > b.n : cg.myEnd !== op.t ? cg.myEnd < op.t : !cg.challenger;
   const why = a.total !== b.total ? "" : a.n !== b.n ? "같은 점수 → 카드가 더 많은 쪽 · tie: more cards wins" : cg.myEnd !== op.t ? "같은 점수, 같은 장수 → 더 빨리 끝낸 쪽 · tie: the faster turn wins" : "완전히 같아요 → 도전한 쪽이 져요 · dead even: the challenger loses";
   my.forEach((c, k) => { if (a.pts[k] > 0) stat(c.id).c++; else stat(c.id).w++; });
+  (cg.hist = cg.hist || []).push({ r, rule: cg.rule, hand: cg.hand, sel: cg.sel.slice(), pts: a.pts, got: a.total, best: cgBest(cg.hand, cg.rule) });
   cgDrawHand(true); cg.wins[win ? 0 : 1]++;
   const now = performance.now();
   cg.mons = [...cgSpawn(1, my, a.pts, now), ...cgSpawn(-1, them, b.pts, now)];
@@ -4382,7 +4383,27 @@ function cgKill(v) {
   FX.ring(at, { color: CG_GLOW[v.rar] || "#ffffff", r: 2 + v.rar * .5 }); FX.shake(.2 + v.rar * .08); FX.stop(.05);
   snd("boom", .55, 1.2 - v.rar * .1); snd("glass", .3, 1.4); scene.remove(v.m.root);
 }
+// the best hand of a round: for every type the rule names, its highest cards up to the limit
+function cgBest(hand, rule) { const sel = []; for (const [t, n] of Object.entries(rule.lim)) sel.push(...hand.map((c, i) => i).filter(i => cgPos(hand[i].id) === t).sort((a, b) => hand[b].rar - hand[a].rar).slice(0, n)); return sel; }
 function cgFinish() {
+  if (!cg || cg.phase === "end") return;
+  cg.phase = "end"; $("cg").hidden = true; $("cgVs").hidden = true;
+  if (cg.hist?.length) cgReview(cgFinishRewards); else cgFinishRewards();
+}
+function cgReview(then) {
+  const box = $("cgReview"), h0 = cg.hist;
+  box.innerHTML = `<div class="crIn"><h2>📖 복습 · the best hand you could have played</h2><p class="fine">★ 최고의 패 · the best hand · ✓ 낸 카드 · you played it (✗ = 0 points) · 단어를 누르면 소리가 나요 · click a word to hear it</p>` +
+    h0.map(h => { const bp = cgScore(h.best.map(i => h.hand[i]), h.rule).total, perfect = h.got >= bp;
+      return `<section><div class="crHead"><b>라운드 ${h.r + 1}</b><span>${ruleKo(h.rule)} · ${ruleEn(h.rule)}</span><span class="${perfect ? "okc" : "warn"}">내 점수 · yours ${h.got} / 최고 · best ${bp}${perfect ? " · 완벽! · perfect" : ""}</span></div>
+        <div class="crGrid">${h.hand.map((c, i) => { const w = WORD[c.id], t = CG_TYPE[cgPos(c.id)], b = h.best.includes(i), p = h.sel.includes(i), ok = p && h.pts[h.sel.indexOf(i)] > 0;
+          return `<button class="crCard r${c.rar}${b ? " best" : ""}${p ? (ok ? " ok" : " no") : ""}" data-id="${c.id}"><b>${esc(w.kb || w.kr)}</b><span class="ty">${t.ko} · ${t.en}</span><small>${esc(w.en)}</small><i>+${CG_PTS[c.rar]}${b ? " ★" : ""}${p ? (ok ? " ✓" : " ✗") : ""}</i></button>`; }).join("")}</div></section>`; }).join("") +
+    `<button class="crGo" id="crGo">계속 · continue <kbd>Enter</kbd></button></div>`;
+  box.hidden = false; box.scrollTop = 0;
+  box.querySelectorAll(".crCard").forEach(b => b.onclick = () => say([wordClip(b.dataset.id)], { interrupt: true }));
+  $("crGo").onclick = () => { box.hidden = true; then(); };
+}
+addEventListener("keydown", e => { if ($("cgReview").hidden || (e.key !== "Enter" && e.key !== " ")) return; e.preventDefault(); e.stopImmediatePropagation(); $("crGo").click(); }, true);
+function cgFinishRewards() {
   const d = cg, won = d.wins[0] >= 2; d.phase = "end"; $("cg").hidden = true; $("cgVs").hidden = true;
   const rows = [{ big: true, icon: won ? "🏆" : "🃏", ko: `${d.wins[0]} : ${d.wins[1]}`, en: won ? `you beat ${d.oppName}` : `${d.oppName} won (first to 2 rounds)` }];
   if (d.gaveUp) rows.push({ icon: "🏳", ko: "포기했어요 · you gave up", en: "" }); else if (d.oppQuit) rows.push({ icon: "🏳", ko: `${d.oppName} 님이 포기했어요`, en: "your opponent gave up" });
