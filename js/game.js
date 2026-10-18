@@ -6,14 +6,14 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdska9d";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdska9d";
-import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdska9d";
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdska9d";
-import * as FX from "./fx.js?v=mvdska9d";
-import { LINES } from "./lines.js?v=mvdska9d";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdska9d";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdska9d";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdstnfd";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdstnfd";
+import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdstnfd";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdstnfd";
+import * as FX from "./fx.js?v=mvdstnfd";
+import { LINES } from "./lines.js?v=mvdstnfd";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdstnfd";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdstnfd";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -4331,7 +4331,7 @@ function cgNextRound() {
   cg.hand = cg.myOrder.slice(r * CG_HAND, (r + 1) * CG_HAND); cg.oppHand = cg.oppOrder.slice(r * CG_HAND, (r + 1) * CG_HAND);
   cg.rule = cg.rules[r]; cg.sel = []; cg.myPts = null; cg.time = CG_TIME[Math.min(r, 2)];
   cgPips(); $("cgScore").hidden = true; $("cgOppState").textContent = "고르는 중… · choosing";
-  $("cgRound").textContent = `라운드 ${r + 1} · round ${r + 1}${r === 2 ? " · 마지막! · last one!" : ""}`; $("cgRule").textContent = ruleKo(cg.rule); $("cgRuleEn").textContent = ruleEn(cg.rule) + " · 다른 종류나 최대보다 많은 카드는 1장에 −1 · other types or more than the max: −1 each";
+  $("cgRound").textContent = `라운드 ${r + 1} · round ${r + 1}${r === 2 ? " · 마지막! · last one!" : ""}`; $("cgRule").textContent = ruleKo(cg.rule); $("cgRuleEn").textContent = ruleEn(cg.rule);   /* Danny 2026-10-18: the −1 line only confused; the −1 shows on the cards after the round */
   cgBanner(`라운드 ${r + 1}`, ruleKo(cg.rule)); snd("bell", .5, 1 + r * .15);
   cg.phase = "intro"; cgDrawHand(false);
   if (cg.npc) { const sel = cgAiPick(cg.oppHand, cg.rule, cg.rank, cg.wins[1] > cg.wins[0], cg.luck); cg.picks[r] = { sel, t: +(cg.time * rand(.35, .9) * (1.1 - cg.rank * .06)).toFixed(2) }; }
