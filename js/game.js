@@ -363,7 +363,7 @@ const gapClass = lv => { const g = lvlGap(lv); return g >= 5 ? "lv-red" : g >= 3
 // Danny 2026-10-17: Lv 9 after the 문어 왕 is too slow later on, early pace is good -> kill XP grows with the monster level
 // (Lv 1 x1, Lv 7 x1.9, Lv 12 x2.65, Lv 15 x3.1)
 const KILL_XP = lv => 1 + .15 * (lv - 1);
-const monsterXp = m => m.def.xp * KILL_XP(m.lvl) * (1 + .3 * (m.lvl - m.def.lvl)) * Math.max(.2, Math.min(1.5, 1 + .2 * (m.lvl - S.level)));
+const monsterXp = m => .75 * m.def.xp * KILL_XP(m.lvl) * (1 + .3 * (m.lvl - m.def.lvl)) * Math.max(.2, Math.min(1.5, 1 + .2 * (m.lvl - S.level)));
 function gainXp(n, at) {
   if (S.level >= MAX_LEVEL) return;
   n = Math.round(n); S.xp += n;
@@ -404,7 +404,7 @@ function startExam() {
 function examNext() {
   if (!exam) return;
   if (exam.right >= exam.need) {
-    exam = null; paused = false; examPending = false; levelUp(); drawExamBtn();
+    exam = null; paused = false; examPending = false; levelUp(); drawExamBtn(); setTimeout(() => cardPack(1), 900);
     if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) gainXp(0);   // enough XP for the next level too: another exam
     return;
   }
@@ -941,7 +941,7 @@ function nearestInteract0() {
     if ((S.camp || 0) >= 5 && dist2(player.pos, BEDROLL()) < 2.6) return { t: "bench", label: `${E} · 잠자리에서 자기 · sleep in a bedroll` };
     for (const rk of BIKE_RACKS) if (rk.zone === "yeouido" && dist2(player.pos, rk) < 2.8) return { t: "rack", label: S.bikeRented ? `${E} · 따릉이 반납 · return the bike` : `${E} · 따릉이 빌리기 ₩1,000 · rent a bike` };
     if (dist2(player.pos, YEOUIDO.museumDoor) < 3.4) return { t: "museum", label: `${E} · 박물관에 들어가기 · enter the museum (dungeon, Lv 16–18)` };
-    if (dist2(player.pos, YEOUIDO.marketDoor) < 3.4) return { t: "market", label: `${E} · 수산시장에 들어가기 · enter the fish market (dungeon, Lv 12–15)` };
+    if (dist2(player.pos, YEOUIDO.marketDoor) < 3.4) { const nw = new Set(S.cards.map(c => c.id)).size; return nw >= MARKET_CARDS ? { t: "market", label: `${E} · 수산시장에 들어가기 · enter the fish market (dungeon, Lv 12–15)` } : { t: "marketGate", label: `${E} · 수산시장 경비원 · the guard wants ${MARKET_CARDS} different words (you have ${nw})` }; }
     if (dist2(player.pos, YEOUIDO.towerDoor) < 3.4) return { t: "tower", label: `${E} · 63빌딩에 들어가기 · enter the 63 Building (dungeon, Lv 10–12)` };
     for (const [a, it] of Object.entries(MAP_ITEMS)) if (it.zone === "yeouido" && !S[it.flag] && dist2(player.pos, it.spot) < 2.8) return { t: "map", area: a, label: `${E} · ${it.ko} 가져가기 · take the ${it.en}` };
     for (const n of npcs) if (n.zone === "yeouido" && dist2(n.pos, player.pos) < 3.4) return { t: "npc", n, label: `${E} · ${n.name}${wa(n.name)} 이야기하기` };
@@ -994,6 +994,7 @@ function interact() {
   else if (it.t === "panel") orderPuzzle();
   else if (it.t === "rack") rackUse();
   else if (it.t === "market") fade(toMarket);
+  else if (it.t === "marketGate") endWith({ name: "수산시장 경비원 · market guard" }, "mg_gate");
   else if (it.t === "museum") fade(toMuseum);
   else if (it.t === "museumOut") fade(museumToYd);
   else if (it.t === "scroll") scrollQuiz(it.i);
@@ -1032,15 +1033,21 @@ function toStreet() { populateStreet(); player.zone = "street"; player.pos.set(E
 function showScreen(id) { for (const s of ["title", "classPick", "deckPick", "deckView", "charView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "menu", "bookView", "friendsView", "rewardView"]) $(s).hidden = s !== id; }
 let newBook = "5a", newMode = "story";
 const CHAPTER_LVL = i => 1 + 2 * i;   // story mode: 1과 at Lv 1, then one every 2 levels (8과 at Lv 15)
+// Danny 2026-10-18: a chapter opens when you own 70% of the one before it (chapters never close again; old saves keep theirs)
+const STORY_PCT = .7;
+const chOwnedPct = ch => { const ws = bookWords().filter(w => w.ch === ch.id); if (!ws.length) return 1; const o = new Set(S.cards.map(c => c.id)); return ws.filter(w => o.has(w.id)).length / ws.length; };
+function storyNext() { const chs = bookChapters(), open = chs.filter(c => S.chapters.includes(c.id)), cur = open[open.length - 1] || chs[0], next = chs[chs.indexOf(cur) + 1]; return { cur, next, pct: Math.round(chOwnedPct(cur) * 100) }; }
 function syncStory(announce) {
   if (S.mode !== "story") return;
-  const open = bookChapters().filter((c, i) => S.level >= CHAPTER_LVL(i)).map(c => c.id);
+  const chs = bookChapters(), set = new Set(S.chapters.filter(id => chs.some(c => c.id === id))); set.add(chs[0].id);
+  for (let i = 0; i < chs.length - 1; i++) if (set.has(chs[i].id) && chOwnedPct(chs[i]) >= STORY_PCT) set.add(chs[i + 1].id);
+  const open = chs.filter(c => set.has(c.id)).map(c => c.id);
   const fresh = open.filter(id => !S.chapters.includes(id));
   S.chapters = open;
   if (announce) for (const id of fresh) { const c = DATA.chapters.find(x => x.id === id); toast(`📖 새 과가 열렸어요! ${c.title}${c.theme ? " " + c.theme : ""} · a new chapter opened — its words drop now`); logChat("system", `📖 ${c.title} 열림 · chapter opened`); SFX.kill(); }
 }
 function drawModePick() {
-  const M = [["story", "이야기 모드 · Story", "1과부터 시작해서 2레벨마다 새 과가 열려요 · start with 1과, a new chapter every 2 levels"], ["practice", "연습 모드 · Practice", "공부할 과를 직접 골라요 · choose the chapters you want to practise"]];
+  const M = [["story", "이야기 모드 · Story", "1과부터 시작해서 70% 모으면 다음 과가 열려요 · start with 1과; the next chapter opens when you own 70% of the current one"], ["practice", "연습 모드 · Practice", "공부할 과를 직접 골라요 · choose the chapters you want to practise"]];
   $("modePick").innerHTML = `<span class="fine">모드 · mode</span>` + M.map(([k, t, d]) => `<button class="chip" data-m="${k}" aria-pressed="${k === newMode}" title="${d}">${t}</button>`).join("") + `<span class="fine modeDesc">${M.find(m => m[0] === newMode)[2]}</span>`;
   $("modePick").querySelectorAll("[data-m]").forEach(x => x.onclick = () => { newMode = x.dataset.m; drawModePick(); });
 }
@@ -1120,7 +1127,7 @@ function cardHTML(c, extra = "") {
 }
 function drawChapterPick() {
   if (S.mode === "story") {
-    $("dvChapters").innerHTML = `<span class="fine">${(BOOKS.find(b => b.id === S.book) || BOOKS[0]).title} · 이야기 모드 · story mode: 2레벨마다 새 과 · a new chapter every 2 levels (most drops come from the newest one)</span>` + bookChapters().map((c, i) => { const open = S.level >= CHAPTER_LVL(i); return `<span class="chip" aria-pressed="${open}">${open ? "" : "🔒 "}${c.title}${c.theme ? " " + c.theme : ""}${open ? "" : " · Lv " + CHAPTER_LVL(i)}</span>`; }).join("");
+    $("dvChapters").innerHTML = `<span class="fine">${(BOOKS.find(b => b.id === S.book) || BOOKS[0]).title} · 이야기 모드 · story mode: 70% 모으면 다음 과 · the next chapter opens at 70% collected (most drops come from the newest one)</span>` + bookChapters().map((c, i) => { const open = S.chapters.includes(c.id); return `<span class="chip" aria-pressed="${open}">${open ? "" : "🔒 "}${c.title}${c.theme ? " " + c.theme : ""} · ${Math.round(chOwnedPct(c) * 100)}%</span>`; }).join("");
     return;
   }
   $("dvChapters").innerHTML = `<span class="fine">${(BOOKS.find(b => b.id === S.book) || BOOKS[0]).title} · 단어가 나오는 과 · chapters your words come from (drops, the card trader, quizzes):</span>` + bookChapters().map(c => `<button class="chip" data-ch="${c.id}" aria-pressed="${S.chapters.includes(c.id)}">${c.title}${c.theme ? " " + c.theme : ""}</button>`).join("");
@@ -1137,10 +1144,10 @@ function drawCollection() {
   const wordsOf = ch => bookWords().filter(w => w.ch === ch.id), ownedN = ws => ws.filter(w => copies[w.id]).length;
   if (!collCh || !chs.some(c => c.id === collCh)) collCh = (chs.filter(c => S.chapters.includes(c.id)).slice(-1)[0] || chs[0]).id;
   const all = bookWords(), cur = chs.find(c => c.id === collCh), ws = wordsOf(cur), o = ownedN(ws), p = Math.round(o / Math.max(1, ws.length) * 100);
-  const open = S.mode !== "story" || S.chapters.includes(cur.id), lvlAt = CHAPTER_LVL(chs.indexOf(cur));
+  const open = S.mode !== "story" || S.chapters.includes(cur.id), prev = chs[chs.indexOf(cur) - 1], sn = storyNext();
   const shown = ws.filter(w => collFilter === "all" || (collFilter === "own") === !!copies[w.id]);
   $("dvColl").innerHTML = `<div class="clChs">${chs.map(c => { const cw = wordsOf(c), cp = Math.round(ownedN(cw) / Math.max(1, cw.length) * 100), op = S.mode !== "story" || S.chapters.includes(c.id); return `<button class="chip" data-cc="${c.id}" aria-pressed="${c.id === collCh}">${op ? "" : "🔒 "}${c.title} · ${cp}%</button>`; }).join("")}</div>
-    <div class="clHead"><div><b>${cur.title}${cur.theme ? " " + cur.theme : ""}</b> · ${o} / ${ws.length} 단어 · words owned (${p}%)${open ? "" : ` · <span class="warn">🔒 Lv ${lvlAt}에 열려요 · this chapter's cards start dropping at Lv ${lvlAt}</span>`}</div>
+    <div class="clHead"><div><b>${cur.title}${cur.theme ? " " + cur.theme : ""}</b> · ${o} / ${ws.length} 단어 · words owned (${p}%)${open ? "" : ` · <span class="warn">🔒 ${prev ? prev.title : ""}를 70% 모으면 열려요 · opens when ${prev ? prev.title : "the chapter before"} is 70% collected (now ${prev ? Math.round(chOwnedPct(prev) * 100) : 0}%)</span>`}${S.mode === "story" && open && sn.cur === cur && sn.next ? ` · <span class="okc">70%가 되면 ${sn.next.title}가 열려요 · ${sn.next.title} opens at 70%</span>` : ""}</div>
       <div class="bar xp clBar"><i style="width:${p}%"></i></div>
       <span class="fine">책 전체 · whole book: ${ownedN(all)} / ${all.length} (${Math.round(ownedN(all) / Math.max(1, all.length) * 100)}%) · 단어를 누르면 소리가 나요, 마우스를 올리면 예문이 보여요 · click a word to hear it, hover for an example</span></div>
     <div class="clFilt">${[["all", "전체 · all"], ["own", "가진 것 · owned"], ["miss", "없는 것 · missing"]].map(([k, t]) => `<button class="chip" data-cf="${k}" aria-pressed="${collFilter === k}">${t}</button>`).join("")}</div>
@@ -1201,17 +1208,26 @@ function monsterPool(kind) {
   const h = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
   return DATA.words.filter(w => ch.includes(w.ch)).sort((a, b) => h(kind + a.id) - h(kind + b.id)).slice(0, 15).map(w => w.id);
 }
+// a few cards at once from your newest chapter, missing words first (quests, exams)
+function cardPack(n) {
+  const ch = S.mode === "story" ? storyNext().cur : bookChapters().find(c => S.chapters.includes(c.id)) || bookChapters()[0];
+  const pool = bookWords().filter(w => w.ch === ch.id), owned = new Set(S.cards.map(c => c.id)), miss = shuffle(pool.filter(w => !owned.has(w.id)));
+  const got = [];
+  for (let i = 0; i < n; i++) { const w = miss[i] || pick(pool); if (!w) break; const c = newCard(w.id, rollRarity()); S.cards.push(c); got.push(c); }
+  if (got.length) { const names = got.map(c => `${WORD[c.id].kr}`).join(", "); toast(`🃏 카드 팩! ${names} · card pack (K)`); logChat("system", `🃏 카드 팩 · card pack: ${got.map(c => WORD[c.id].kr + " (" + WORD[c.id].en + ")").join(", ")}`); }
+  save(); return got;
+}
 function dropChapters() {
   const ch = S.chapters.length ? S.chapters : bookChapters().map(c => c.id);
-  if (S.mode !== "story" || ch.length < 2) return ch;
+  if (S.mode !== "story" || ch.length < 2) return ch;   /* (chapters open by collection now, see syncStory) */
   const order = bookChapters().map(c => c.id).filter(id => ch.includes(id));
   return Math.random() < .7 ? order.slice(-1) : order.slice(0, -1);
 }
 function dropCard(m) {
-  if (Math.random() >= (m.def?.alien || m.def?.boss ? 1 : .45)) return;
+  if (Math.random() >= (m.def?.alien || m.def?.boss ? 1 : .7)) return;   /* Danny 2026-10-18: 45% → 70% */
   const chs = dropChapters(), pool = bookWords().filter(w => chs.includes(w.ch)).map(w => w.id); if (!pool.length) return;
   const owned = new Set(S.cards.map(c => c.id)), unowned = pool.filter(id => !owned.has(id));
-  const id = unowned.length && Math.random() < .8 ? pick(unowned) : pick(pool);
+  const id = unowned.length && Math.random() < .9 ? pick(unowned) : pick(pool);
   if (!id || !WORD[id]) return;
   // once you own every word of these chapters, duplicates come with better rarity
   let rar = m.def?.alien ? Math.max(rollRarity(), rollRarity()) : rollRarity(); if (!unowned.length) rar = Math.max(rar, rollRarity());
@@ -1339,7 +1355,7 @@ function openCharView() {
     ["사거리 · Range", `${cd.range} m`],
     ...Object.keys(SLOTS).map(sl => { const it = itemBy(S.equip[sl]); return [SLOTS[sl], it ? `${itemName(it)} (${itemInfo(it)})` : "없음 · none"]; }),
     ["레벨 보너스 · Level bonus", `health +${Math.round((lvlHp() - 1) * 100)}%, damage +${Math.round((lvlDmg() - 1) * 100)}%`],
-    ["모드 · Mode", S.mode === "story" ? `이야기 · story (next chapter at Lv ${(bookChapters().map((c, i) => CHAPTER_LVL(i)).find(l => l > S.level)) || "—"})` : "연습 · practice (you choose the chapters, K)"],
+    ["모드 · Mode", S.mode === "story" ? (() => { const n = storyNext(); return n.next ? `이야기 · story (${n.next.title} opens when ${n.cur.title} is 70% collected: now ${n.pct}%)` : "이야기 · story (every chapter open)"; })() : "연습 · practice (you choose the chapters, K)"],
     ["교재 · Textbook", `${(BOOKS.find(x => x.id === S.book) || BOOKS[0]).en} · ${S.chapters.map(id => DATA.chapters.find(c => c.id === id)?.title).filter(Boolean).join(", ")}`],
     ["출신 보너스 · Origin bonus", b.txt],
     [`2 · ${skillDef("s2").ko}`, skillBlock("s2") || "준비됨 · ready"],
@@ -1558,7 +1574,7 @@ function completeQuest(id) {
   if (r.gear) att.gear = [r.gear];
   if (r.card) { const pool = DATA.words.filter(w => (S.chapters.length ? S.chapters : [w.ch]).includes(w.ch)); att.cards = [{ id: pick(pool.filter(w => (w.book || "5a") === S.book)).id, rar: r.card }]; }
   if (att.gear || att.cards) setTimeout(() => sendMail(NPC_DEF[q.giver].split(" · ")[0], "도와줘서 고마워요. 작은 선물을 보내요. 역에 있는 우체통에서 받으세요.", "Thank you for helping. I'm sending a small gift. Pick it up at the post box in the station.", att), 1500);
-  toast(`퀘스트 완료! ${q.ko} · +${won(r.won || 0)}`); SFX.kill();
+  toast(`퀘스트 완료! ${q.ko} · +${won(r.won || 0)}`); SFX.kill(); setTimeout(() => cardPack(3), 600);
   gainXp(r.xp); save();
 }
 function onKillForQuests(m) {
@@ -2510,6 +2526,7 @@ function fishTick(dt) {
     onDone: ok => {
       const again = () => { if (!player.moving && player.zone === "street" && !player.dead && !fishing && dist2(player.pos, PIER) < 6) { fishing = { t: .5 }; SFX.dash(); } };
       if (!ok) { toast("놓쳤어요… · it got away"); setTimeout(again, 350); return; }
+      if (!S.cards.some(c => c.id === w.id)) { S.cards.push(newCard(w.id, 0)); toast(`🃏 새 카드! ${w.kr} · ${w.en} — you caught a word you didn't own`); }
       let r = Math.random(), f = FISH[0]; for (const x of FISH) { if ((r -= x.p) < 0) { f = x; break; } }
       S.fish = S.fish || {}; S.fish[f.ko] = (S.fish[f.ko] || 0) + 1; S.fishTotal = (S.fishTotal || 0) + 1;
       toast(`🐟 ${f.ko} · ${f.en}! (편의점에서 ${won(f.won)})`); floater(player.pos, "🐟 " + f.ko, "#9ec8ff", false, 3); SFX.pickup(); save(); setTimeout(again, 350);
@@ -3475,6 +3492,7 @@ function setBonus(k) {
   const w = itemBy(S.equip?.weapon), a = itemBy(S.equip?.armor), sw = w && GEAR[w.g].set;
   return sw && a && GEAR[a.g].set === sw ? SETS[sw].bonus[k] || 0 : 0;
 }
+const MARKET_CARDS = 100;   /* Danny 2026-10-18: a guard before the fish market wants cards */
 const ownsG = g => S.items.some(i => i.g === g);
 let bossSnap = null;
 const lootSnap = () => ({ cards: S.cards.length, items: S.items.length, mats: { ...(S.mats || {}) }, stones: S.rerollStones || 0, scrolls: S.scrolls || 0 });
@@ -3968,8 +3986,10 @@ function aptHint() {
   phoneText(["g_apt_hint"], "서교 아파트에 가 봤어요? 동쪽 문으로 나가면 돼요.", "Have you been to the 서교 apartments? Go out through the east gate.");
 }
 
+let storyT = 0;
 function step(dt) {
   if (paused || !started) return;
+  if ((storyT -= dt) <= 0) { storyT = 2; syncStory(true); }   /* a new chapter can open as soon as a card arrives */
   clock += dt;
   S.time += dt * GAME_MIN_PER_SEC;
   night = nightFactor();

@@ -1,6 +1,7 @@
 // Every spoken line in the game. key -> { ko, en, say? }  (say = what Piper reads, when it differs from ko)
 // After editing: node tools/gen-lines.js  (makes audio/lines/<key>.wav for new keys)
 export const LINES = {
+  mg_gate: { ko: "단어 카드가 백 장은 있어야 들어갈 수 있어요. 더 모아 오세요.", en: "You need at least a hundred word cards to get in. Collect more and come back." },
   // the student card battlers (2026-10-18)
   cb_hi: { ko: "단어 카드 배틀 할래요? 제 카드가 더 세요!", en: "Want a word card battle? My cards are stronger!" },
   cb_again: { ko: "또 해요? 이번에는 안 질 거예요!", en: "Again? I won't lose this time!" },
