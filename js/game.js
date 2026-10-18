@@ -2360,7 +2360,7 @@ function onNet(d, from) {
     case "sl": if (NET.role === "guest") { const at = new THREE.Vector3(d.x, 0, d.z); makeRing(at, d.r, d.tele); setTimeout(() => { SFX.slam(); slamFx(at, d.r, player.zone === "market"); if (!player.dead && player.zone !== "station" && dist2(player.pos, at) < d.r) hurt(d.dmg, { lvl: d.lv }); }, d.tele * 1000); } break;
     case "chat": if (NET.role === "host") netSend({ t: "chat", id: from, nm: d.nm, text: d.text }); showRemoteChat(d.id || from, d.nm, d.text); break;
     case "em": if (NET.role === "host") netSend({ t: "em", id: from, e: d.e }); { const r = remotes.get(d.id || from); if (r) { r.model.emote?.(d.e); remoteBubble(r, d.e === "wave" ? "👋" : "🙇"); } } break;
-    case "cgReq": case "cgAcc": case "cgGo": case "cgPick": case "cgNo": case "cgQuit": if (NET.role === "host" && d.to !== "host") { netSend({ ...d, from }); break; } if (d.to === myId()) cgOnNet(d, d.from || from); break;
+    case "cgReq": case "cgAcc": case "cgGo": case "cgPick": case "cgNo": case "cgQuit": case "cgQz": case "cgSteal": if (NET.role === "host" && d.to !== "host") { netSend({ ...d, from }); break; } if (d.to === myId()) cgOnNet(d, d.from || from); break;
     case "gift": if (NET.role === "host" && d.to !== "host") { netSend({ ...d, from }); break; } if (d.to === myId()) sendMail(d.nm, "선물을 보내요. 잘 쓰세요!", "I'm sending you a present. Use it well!", d.attach); break;
   }
 }
@@ -4188,6 +4188,7 @@ addEventListener("keydown", e => {
 // then the challenger loses. 12 s to choose, 9 s in round 2, 7 s in round 3 (Danny 2026-10-18: was 10/7/5, too hectic). Every card is a monster on the field (word type = species,
 // rarity = size and glow); the round winner's monsters destroy the loser's. Against students (their chapter's words, better cards and
 // fewer slips at higher ranks, more slips when they lead, and some days they're just unlucky) or a friend in co-op (no prize, for fun).
+const CG_WRONG = -1;   /* Danny 2026-10-18: a card that doesn't fit the rule costs a point */
 const CG_PTS = [1, 2, 3, 4], CG_DECK = 40, CG_HAND = 10, CG_TIME = [12, 9, 7];
 const CG_TYPE = { noun: { ko: "명사", en: "noun", mon: "dokkaebi", col: ["#ff7a5a", "#ffd23d"] }, verb: { ko: "동사", en: "verb", mon: "spark", col: ["#fff36a", "#7af0ff"] }, adjective: { ko: "형용사", en: "adjective", mon: "wisp", col: ["#3ad8c8", "#9ff8e8"] }, adverb: { ko: "부사", en: "adverb", mon: "magpie", col: ["#5a6aff", "#ffffff"] }, other: { ko: "기타", en: "expression", mon: "book", col: ["#c8402f", "#f6f0e0"] } };
 const CG_GLOW = [null, "#5aa8ff", "#b47aff", "#ffb03a"], CG_SIZE = [.55, .66, .8, .96];
@@ -4237,7 +4238,7 @@ const ruleKo = r => Object.entries(r.lim).map(([t, n]) => `${CG_TYPE[t].ko} 최�
 const ruleEn = r => "at most " + Object.entries(r.lim).map(([t, n]) => `${n} ${CG_TYPE[t].en}${n > 1 ? "s" : ""}`).join(" + ");
 function cgScore(cards, rule) {
   const by = {}, pts = cards.map(() => 0); cards.forEach((c, i) => (by[cgPos(c.id)] = by[cgPos(c.id)] || []).push(i));
-  for (const [t, idx] of Object.entries(by)) { const over = Math.max(0, idx.length - (rule.lim[t] || 0)); idx.sort((a, b) => cards[b].rar - cards[a].rar).forEach((i, k) => { pts[i] = k < over ? 0 : CG_PTS[cards[i].rar]; }); }
+  for (const [t, idx] of Object.entries(by)) { const over = Math.max(0, idx.length - (rule.lim[t] || 0)); idx.sort((a, b) => cards[b].rar - cards[a].rar).forEach((i, k) => { pts[i] = k < over ? CG_WRONG : CG_PTS[cards[i].rar]; }); }
   return { total: pts.reduce((a, b) => a + b, 0), n: pts.filter(p => p > 0).length, pts };
 }
 // a student's deck and play: their chapter's words, better cards at higher ranks; they slip more at low ranks, when they lead, on bad days
@@ -4300,11 +4301,11 @@ function cgPips() { $("cgMyWins").textContent = "●".repeat(cg.wins[0]) + "○"
 function cgClearField() { for (const m of cg.mons) if (!m.gone) { FX.deathPoof(m.m.root.position, false); scene.remove(m.m.root); } cg.mons = []; }
 function cgNextRound() {
   if (!cg || cg.phase === "end") return;
-  cgClearField(); cg.round++; const r = cg.round; $("cgVs").hidden = true; $("cg").classList.remove("vsOn");
+  cgClearField(); cg.round++; const r = cg.round; $("cgVs").hidden = true; $("cgQz").hidden = true; $("cg").classList.remove("vsOn");
   cg.hand = cg.myOrder.slice(r * CG_HAND, (r + 1) * CG_HAND); cg.oppHand = cg.oppOrder.slice(r * CG_HAND, (r + 1) * CG_HAND);
   cg.rule = cg.rules[r]; cg.sel = []; cg.myPts = null; cg.time = CG_TIME[Math.min(r, 2)];
   cgPips(); $("cgScore").hidden = true; $("cgOppState").textContent = "고르는 중… · choosing";
-  $("cgRound").textContent = `라운드 ${r + 1} · round ${r + 1}${r === 2 ? " · 마지막! · last one!" : ""}`; $("cgRule").textContent = ruleKo(cg.rule); $("cgRuleEn").textContent = ruleEn(cg.rule);
+  $("cgRound").textContent = `라운드 ${r + 1} · round ${r + 1}${r === 2 ? " · 마지막! · last one!" : ""}`; $("cgRule").textContent = ruleKo(cg.rule); $("cgRuleEn").textContent = ruleEn(cg.rule) + " · 안 맞는 카드 −1 · cards that don't fit −1";
   cgBanner(`라운드 ${r + 1}`, ruleKo(cg.rule)); snd("bell", .5, 1 + r * .15);
   cg.phase = "intro"; cgDrawHand(false);
   if (cg.npc) { const sel = cgAiPick(cg.oppHand, cg.rule, cg.rank, cg.wins[1] > cg.wins[0], cg.luck); cg.picks[r] = { sel, t: +(cg.time * rand(.35, .9) * (1.1 - cg.rank * .06)).toFixed(2) }; }
@@ -4318,7 +4319,7 @@ function cgVs(ma, mb, win, why) {
 function cgBanner(big, small, cls = "") { const b = $("cgBanner"); b.innerHTML = `<b>${big}</b>${small ? `<span>${small}</span>` : ""}`; b.className = "cgBanner " + cls; b.hidden = false; void b.offsetWidth; b.classList.add("show"); clearTimeout(cgBanner.t); cgBanner.t = setTimeout(() => { b.hidden = true; }, 1600); }
 function cgDrawHand(reveal) {
   $("cgHand").innerHTML = cg.hand.map((c, i) => { const w = WORD[c.id], on = cg.sel.includes(i), p = reveal && on ? cg.myPts[cg.sel.indexOf(i)] : null;
-    return `<button class="cgCard r${c.rar}${on ? " on" : ""}${reveal ? " rev" : ""}${p === null ? "" : p > 0 ? " ok" : " no"}" data-i="${i}" ${reveal ? "disabled" : ""}><kbd>${(i + 1) % 10}</kbd><b style="font-size:${[...(w.kb || w.kr)].length > 6 ? "clamp(11px,1vw,17px)" : [...(w.kb || w.kr)].length > 4 ? "clamp(13px,1.35vw,22px)" : "clamp(16px,1.8vw,28px)"}">${esc(w.kb || w.kr)}</b><span class="pt">+${CG_PTS[c.rar]}</span>${reveal ? `<small>${CG_TYPE[cgPos(c.id)].ko}${on ? (p > 0 ? ` ✓ +${p}` : " ✗ 0") : ""}</small>` : ""}</button>`; }).join("");
+    return `<button class="cgCard r${c.rar}${on ? " on" : ""}${reveal ? " rev" : ""}${p === null ? "" : p > 0 ? " ok" : " no"}" data-i="${i}" ${reveal ? "disabled" : ""}><kbd>${(i + 1) % 10}</kbd><b style="font-size:${[...(w.kb || w.kr)].length > 6 ? "clamp(11px,1vw,17px)" : [...(w.kb || w.kr)].length > 4 ? "clamp(13px,1.35vw,22px)" : "clamp(16px,1.8vw,28px)"}">${esc(w.kb || w.kr)}</b><span class="pt">+${CG_PTS[c.rar]}</span>${reveal ? `<small>${CG_TYPE[cgPos(c.id)].ko}${on ? (p > 0 ? ` ✓ +${p}` : ` ✗ ${p}`) : cg.rmMine === i ? " 🗑" : ""}</small>` : ""}</button>`; }).join("");
   if (!reveal) $("cgHand").querySelectorAll(".cgCard").forEach(b => b.onclick = () => cgToggle(+b.dataset.i));
   $("cgEnd").disabled = reveal || cg.phase !== "pick"; $("cgCount").textContent = reveal ? "" : `${cg.sel.length}장 · cards`;
 }
@@ -4334,15 +4335,105 @@ function cgEndTurn(timeout) {
   for (const id of cg.sel.map(i => cg.hand[i].id)) stat(id).s++;
   cgTryResolve();
 }
-function cgTryResolve() { if (cg?.phase === "wait" && cg.picks[cg.round]) cgResolve(); }
+function cgTryResolve() { if (cg?.phase === "wait" && cg.picks[cg.round]) cgQuizStart(); }
+// ---- ⚡ the speed quiz ----
+const QZ_N = 10, QZ_MAX = 30, QZ_STEAL = 5, QZ_T = ["noun", "verb", "adjective", "adverb"];
+function cgQuizStart() {
+  const r = cg.round; cg.phase = "quiz"; cg.rmMine = cg.rmOpp = null;
+  const words = shuffle([...new Set(cg.myOrder.map(c => c.id))]).slice(0, QZ_N);
+  cg.qz = { r, words, i: 0, c: 0, t0: performance.now(), done: false, lock: false };
+  if (cg.npc) {   /* the student's run: more right and faster at higher ranks, a little luck */
+    const acc = Math.min(.97, Math.max(.45, (.66 + cg.rank * .035) / Math.sqrt(cg.luck))); let c = 0, t = 0; const at = [];
+    for (let k = 0; k < QZ_N; k++) { if (Math.random() < acc) c++; t += Math.max(.45, rand(.6, 1.4) - cg.rank * .05); at.push(t); }
+    cg.qzOpp = { r, c, t: +t.toFixed(2), at };
+    setTimeout(cgQzTry, t * 1000 + 40);   /* when the student finishes (also when no frames are drawn) */
+  } else cg.qzOpp = cg.qzOppEarly?.[r] || null;
+  const box = $("cgQz"); box.hidden = false; box.className = "cgQz";
+  $("cgQzHead").innerHTML = `<b>⚡ 스피드 퀴즈 · speed quiz</b><span>무슨 단어예요? 10개 다 빨리 맞히면 상대 카드 1장을 없앨 수 있어요 · what kind of word? most right (then fastest) removes one of their cards</span>`;
+  $("cgQzOpts").innerHTML = QZ_T.map((t, k) => `<button data-k="${k}"><kbd>${k + 1}</kbd>${CG_TYPE[t].ko}<small>${CG_TYPE[t].en}</small></button>`).join("");
+  $("cgQzOpts").querySelectorAll("button").forEach(b => b.onclick = () => cgQzAnswer(+b.dataset.k));
+  snd("bell", .5, 1.5); cgQzDraw();
+}
+function cgQzDraw() {
+  const q = cg.qz, id = q.words[q.i];
+  $("cgQzWord").textContent = q.done ? "✓" : WORD[id] ? (WORD[id].kb || WORD[id].kr) : "";
+  $("cgQzMe").textContent = `나 · you ${q.c} ✓ / ${q.i} 문제`;
+  $("cgQzOpts").querySelectorAll("button").forEach(b => { b.className = ""; b.disabled = q.done; });
+}
+function cgQzAnswer(k) {
+  const q = cg?.qz; if (!q || cg.phase !== "quiz" || q.done || q.lock || k < 0 || k > 3) return;
+  const id = q.words[q.i], right = cgPos(id), ok = QZ_T[k] === right, btns = $("cgQzOpts").children;
+  q.lock = true; if (ok) q.c++;
+  btns[k].className = ok ? "ok" : "no"; if (!ok && QZ_T.indexOf(right) >= 0) btns[QZ_T.indexOf(right)].className = "ok";
+  snd(ok ? "wood" : "punchM", .35, ok ? 1.6 : .8);
+  setTimeout(() => { if (!cg?.qz || cg.qz !== q) return; q.lock = false; q.i++; if (q.i >= QZ_N) cgQzDone(); else cgQzDraw(); }, ok ? 180 : 650);
+}
+function cgQzDone() {
+  const q = cg.qz; if (q.done) return; q.done = true; q.t = +((performance.now() - q.t0) / 1000).toFixed(2); cgQzDraw();
+  if (cg.pvp) netSend({ t: "cgQz", to: cg.pvp.id, r: q.r, c: q.c, tm: q.t });
+  cgQzTry();
+}
+function cgQzTry() {
+  const q = cg?.qz, o = cg?.qzOpp; if (!q || !o || o.r !== q.r || cg.phase !== "quiz") return;
+  const el = (performance.now() - q.t0) / 1000;
+  if (!q.done && o.c >= QZ_N && el > o.t) { q.i = QZ_N; cgQzDone(); return; }   /* they got all 10 before you could: no need to go on */
+  if (!q.done) return;
+  if (cg.npc && el < o.t && !(q.c > o.c || (q.c === o.c && q.t < o.t))) return;   /* the student is still answering and could still win */
+  cg.phase = "steal";
+  const me = q.c > o.c || (q.c === o.c && (q.t < o.t || (q.t === o.t && !cg.challenger))), none = !q.c && !o.c;
+  $("cgQzOpp").textContent = `${cg.oppName} ${o.c} ✓ · ${o.t}s`; $("cgQzMe").textContent = `나 · you ${q.c} ✓ · ${q.t}s`;
+  const them = cg.picks[q.r].sel.filter(i => i >= 0 && i < cg.oppHand.length);
+  if (none) { cgQzMsg("아무도 못 맞혔어요 · nobody got one right", "", () => cgAfterSteal()); return; }
+  if (me && !them.length) { cgQzMsg("⚡ 퀴즈 승리! · you won the quiz", "상대 필드에 카드가 없어요 · their field is empty", () => cgAfterSteal()); return; }
+  if (!me && !cg.sel.length) { cgQzMsg(`⚡ ${cg.oppName} 승리 · they won the quiz`, "내 필드에 카드가 없어요 · your field is empty", () => cgAfterSteal()); return; }
+  if (me) {
+    $("cgQz").className = "cgQz steal"; $("cgQzWord").textContent = "🗑";
+    $("cgQzHead").innerHTML = `<b>⚡ 퀴즈 승리! · you won the quiz (${q.c} ✓, ${q.t}s)</b><span>${QZ_STEAL}초 안에 상대 카드 1장을 없애세요 · remove one of their cards in ${QZ_STEAL} s (a card that didn't count anyway is a waste)</span>`;
+    $("cgQzOpts").innerHTML = them.map((hi, k) => { const c = cg.oppHand[hi], w = WORD[c.id]; return `<button class="r${c.rar}" data-h="${hi}"><kbd>${k + 1}</kbd>${esc(w.kb || w.kr)}<small>+${CG_PTS[c.rar]}</small></button>`; }).join("");
+    $("cgQzOpts").querySelectorAll("button").forEach(b => b.onclick = () => cgSteal(+b.dataset.h));
+    cg.stealEnd = performance.now() + QZ_STEAL * 1000; snd("bell", .6, 1.2);
+  } else {
+    cgQzMsg(`⚡ ${cg.oppName} 승리 · they won the quiz (${o.c} ✓)`, "상대가 내 카드 1장을 고르고 있어요… · they're choosing one of your cards to remove", null);
+    if (cg.npc) setTimeout(() => {   /* the student usually takes your best card that counts; low ranks often pick wrong */
+      if (!cg || cg.phase !== "steal") return;
+      const mine = cg.sel.map(i => cg.hand[i]), sc = cgScore(mine, cg.rule), best = sc.pts.indexOf(Math.max(...sc.pts));
+      const k = Math.random() < Math.min(.9, .45 + cg.rank * .06) ? best : Math.floor(Math.random() * mine.length);
+      cgStolen(cg.sel[k]);
+    }, rand(1200, 2600));
+    else cg.stealWait = performance.now() + (QZ_STEAL + 7) * 1000;
+  }
+}
+function cgQzMsg(big, small, then) {
+  $("cgQz").className = "cgQz msg"; $("cgQzOpts").innerHTML = ""; $("cgQzWord").textContent = "";
+  $("cgQzHead").innerHTML = `<b>${big}</b>${small ? `<span>${small}</span>` : ""}`;
+  if (then) setTimeout(() => { if (cg && cg.phase === "steal") then(); }, 1600);
+}
+function cgSteal(hi) {   /* I remove the opponent's card at their hand index hi (−1 = time ran out) */
+  if (!cg || cg.phase !== "steal" || cg.rmOpp !== null) return;
+  cg.rmOpp = hi; cg.stealEnd = 0;
+  if (cg.pvp) netSend({ t: "cgSteal", to: cg.pvp.id, r: cg.round, h: hi });
+  if (hi >= 0) { const w = WORD[cg.oppHand[hi].id]; cgQzMsg(`🗑 ${w.kb || w.kr} 없앴어요!`, "removed from their field", () => cgAfterSteal()); snd("boom", .5, 1.4); }
+  else cgQzMsg("⏰ 시간 끝 · time's up", "아무 카드도 없애지 못했어요 · nothing removed", () => cgAfterSteal());
+}
+function cgStolen(hi) {   /* the opponent removed my card at hand index hi */
+  if (!cg || cg.phase !== "steal" || cg.rmMine !== null) return;
+  cg.rmMine = hi; cg.stealWait = 0;
+  if (hi >= 0 && cg.sel.includes(hi)) { const w = WORD[cg.hand[hi].id]; cg.sel = cg.sel.filter(x => x !== hi); cgQzMsg(`🗑 ${cg.oppName}: ${w.kb || w.kr} 없앴어요`, "they removed one of your cards", () => cgAfterSteal()); snd("punchH", .5, .9); }
+  else cgQzMsg("상대가 아무것도 못 없앴어요 · they removed nothing", "", () => cgAfterSteal());
+}
+function cgAfterSteal() {
+  if (!cg) return; $("cgQz").hidden = true;
+  if (cg.rmOpp !== null && cg.rmOpp >= 0) cg.picks[cg.round].sel = cg.picks[cg.round].sel.filter(x => x !== cg.rmOpp);
+  cg.phase = "wait"; cgResolve();
+}
 function cgResolve() {
-  const r = cg.round, op = cg.picks[r]; cg.phase = "reveal"; $("cgOppState").textContent = "✓";
+  const r = cg.round, op = cg.picks[r]; if (cg.phase !== "wait") return; cg.phase = "reveal"; $("cgOppState").textContent = "✓";
   const my = cg.sel.map(i => cg.hand[i]), them = op.sel.filter(i => i >= 0 && i < cg.oppHand.length).map(i => cg.oppHand[i]);
   const a = cgScore(my, cg.rule), b = cgScore(them, cg.rule); cg.myPts = a.pts;
   const win = a.total !== b.total ? a.total > b.total : a.n !== b.n ? a.n > b.n : cg.myEnd !== op.t ? cg.myEnd < op.t : !cg.challenger;
   const why = a.total !== b.total ? "" : a.n !== b.n ? "같은 점수 → 카드가 더 많은 쪽 · tie: more cards wins" : cg.myEnd !== op.t ? "같은 점수, 같은 장수 → 더 빨리 끝낸 쪽 · tie: the faster turn wins" : "완전히 같아요 → 도전한 쪽이 져요 · dead even: the challenger loses";
   my.forEach((c, k) => { if (a.pts[k] > 0) stat(c.id).c++; else stat(c.id).w++; });
-  (cg.hist = cg.hist || []).push({ r, rule: cg.rule, hand: cg.hand, sel: cg.sel.slice(), pts: a.pts, got: a.total, best: cgBest(cg.hand, cg.rule) });
+  (cg.hist = cg.hist || []).push({ r, rule: cg.rule, hand: cg.hand, sel: cg.sel.slice(), pts: a.pts, got: a.total, best: cgBest(cg.hand, cg.rule), rm: cg.rmMine });
   cgDrawHand(true); cg.wins[win ? 0 : 1]++;
   const now = performance.now();
   cg.mons = [...cgSpawn(1, my, a.pts, now), ...cgSpawn(-1, them, b.pts, now)];
@@ -4366,9 +4457,9 @@ function cgSpawn(side, cards, pts, now) {
 function cgCount(ma, mb, at) {   /* the totals tick up while each monster's points pop over it */
   let a = 0, b = 0;
   cg.mons.forEach((o, k) => setTimeout(() => { if (!cg || o.gone) return;
-    floater({ x: o.x, z: o.z }, `${WORD[o.id].kb || WORD[o.id].kr} ${o.pts > 0 ? "+" + o.pts : "✗"}`, o.pts > 0 ? (o.side > 0 ? "#ffd23d" : "#d8b8ff") : "#9a9a9a", false, o.m.height * o.s + .6 + (k % 2) * 1.1);   /* every second one higher: neighbours don't overlap */
+    floater({ x: o.x, z: o.z }, `${WORD[o.id].kb || WORD[o.id].kr} ${o.pts > 0 ? "+" + o.pts : "✗ " + o.pts}`, o.pts > 0 ? (o.side > 0 ? "#ffd23d" : "#d8b8ff") : "#9a9a9a", false, o.m.height * o.s + .6 + (k % 2) * 1.1);   /* every second one higher: neighbours don't overlap */
     if (o.pts > 0) { if (o.side > 0) a += o.pts; else b += o.pts; $("cgMyPts").textContent = a; $("cgOppPts").textContent = b; snd("coins", .25, 1 + o.pts * .1); }
-    else { o.fizzle = performance.now(); snd("punchM", .25, .7); }
+    else { if (o.side > 0) a += o.pts; else b += o.pts; $("cgMyPts").textContent = a; $("cgOppPts").textContent = b; o.fizzle = performance.now(); snd("punchM", .25, .7); }
   }, at - performance.now() + k * 110));
 }
 function cgAttack(win) {
@@ -4387,7 +4478,7 @@ function cgKill(v) {
 function cgBest(hand, rule) { const sel = []; for (const [t, n] of Object.entries(rule.lim)) sel.push(...hand.map((c, i) => i).filter(i => cgPos(hand[i].id) === t).sort((a, b) => hand[b].rar - hand[a].rar).slice(0, n)); return sel; }
 function cgFinish() {
   if (!cg || cg.phase === "end") return;
-  cg.phase = "end"; $("cg").hidden = true; $("cgVs").hidden = true;
+  cg.phase = "end"; $("cg").hidden = true; $("cgVs").hidden = true; $("cgQz").hidden = true;
   if (cg.hist?.length) cgReview(cgFinishRewards); else cgFinishRewards();
 }
 function cgReview(then) {
@@ -4396,7 +4487,7 @@ function cgReview(then) {
     h0.map(h => { const bp = cgScore(h.best.map(i => h.hand[i]), h.rule).total, perfect = h.got >= bp;
       return `<section><div class="crHead"><b>라운드 ${h.r + 1}</b><span>${ruleKo(h.rule)} · ${ruleEn(h.rule)}</span><span class="${perfect ? "okc" : "warn"}">내 점수 · yours ${h.got} / 최고 · best ${bp}${perfect ? " · 완벽! · perfect" : ""}</span></div>
         <div class="crGrid">${h.hand.map((c, i) => { const w = WORD[c.id], t = CG_TYPE[cgPos(c.id)], b = h.best.includes(i), p = h.sel.includes(i), ok = p && h.pts[h.sel.indexOf(i)] > 0;
-          return `<button class="crCard r${c.rar}${b ? " best" : ""}${p ? (ok ? " ok" : " no") : ""}" data-id="${c.id}"><b>${esc(w.kb || w.kr)}</b><span class="ty">${t.ko} · ${t.en}</span><small>${esc(w.en)}</small><i>+${CG_PTS[c.rar]}${b ? " ★" : ""}${p ? (ok ? " ✓" : " ✗") : ""}</i></button>`; }).join("")}</div></section>`; }).join("") +
+          return `<button class="crCard r${c.rar}${b ? " best" : ""}${p ? (ok ? " ok" : " no") : ""}" data-id="${c.id}"><b>${esc(w.kb || w.kr)}</b><span class="ty">${t.ko} · ${t.en}</span><small>${esc(w.en)}</small><i>+${CG_PTS[c.rar]}${b ? " ★" : ""}${p ? (ok ? " ✓" : " ✗ " + h.pts[h.sel.indexOf(i)]) : h.rm === i ? " 🗑 removed" : ""}</i></button>`; }).join("")}</div></section>`; }).join("") +
     `<button class="crGo" id="crGo">계속 · continue <kbd>Enter</kbd></button></div>`;
   box.hidden = false; box.scrollTop = 0;
   box.querySelectorAll(".crCard").forEach(b => b.onclick = () => say([wordClip(b.dataset.id)], { interrupt: true }));
@@ -4429,7 +4520,15 @@ function cgRender(dt) {
   if (!cg) return;
   const now = performance.now();
   if (cg.phase === "pick") { const left = Math.max(0, (cg.endAt - now) / 1000); $("cgBar").style.width = left / cg.time * 100 + "%"; $("cgSec").textContent = Math.ceil(left); $("cg").classList.toggle("hurry", left < 3); if (left <= 0) cgEndTurn(true); }
-  if (cg.phase === "wait" && cg.pvp && !cg.picks[cg.round] && now - cg.waitT > cg.time * 1000 + 8000) { cg.picks[cg.round] = { sel: [], t: cg.time }; cgResolve(); }
+  if (cg.phase === "wait" && cg.pvp && !cg.picks[cg.round] && now - cg.waitT > cg.time * 1000 + 8000) { cg.picks[cg.round] = { sel: [], t: cg.time }; cgQuizStart(); }
+  if (cg.phase === "quiz" && cg.qz) {
+    const el = (now - cg.qz.t0) / 1000;
+    if (!cg.qz.done && el > QZ_MAX) { cg.qz.i = QZ_N; cgQzDone(); }
+    if (cg.npc && cg.qzOpp) { const n = cg.qzOpp.at.filter(t => t <= el).length; $("cgQzOpp").textContent = `${cg.oppName} ${n} / ${QZ_N}`; cgQzTry(); }
+    else if (cg.pvp && !cg.qzOpp) { $("cgQzOpp").textContent = `${cg.oppName} 푸는 중… · answering`; if (cg.qz.done && el > QZ_MAX + 10) { cg.qzOpp = { r: cg.round, c: 0, t: 99 }; cgQzTry(); } }
+  }
+  if (cg.phase === "steal" && cg.stealEnd) { const left = Math.max(0, (cg.stealEnd - now) / 1000); $("cgQzWord").textContent = "🗑 " + Math.ceil(left); if (left <= 0) cgSteal(-1); }
+  if (cg.phase === "steal" && cg.stealWait && now > cg.stealWait) cgStolen(-1);
   if (cg.npc && cg.phase === "pick" && cg.picks[cg.round] && (now - cg.t0) / 1000 > cg.picks[cg.round].t) $("cgOppState").textContent = "✓ 다 골랐어요 · done";
   cg.oppModel.anim?.(dt, {}); player.model.root.position.set(player.pos.x, 0, player.pos.z); player.model.root.rotation.y = Math.PI; player.model.anim(dt, {});
   for (const r of remotes.values()) { if (r.model) r.model.root.visible = false; if (r.plate) r.plate.style.display = "none"; }
@@ -4455,6 +4554,8 @@ function cgRender(dt) {
 addEventListener("keydown", e => {
   if (!cg || $("cg").hidden) return;
   e.stopImmediatePropagation();
+  if (cg.phase === "quiz" && e.key >= "1" && e.key <= "4") { e.preventDefault(); cgQzAnswer(+e.key - 1); return; }
+  if (cg.phase === "steal" && cg.stealEnd && e.key >= "1" && e.key <= "9") { e.preventDefault(); const b = $("cgQzOpts").children[+e.key - 1]; if (b) b.click(); return; }
   if (cg.phase !== "pick") { if (!/^F\d+$/.test(e.key)) e.preventDefault(); return; }
   const k = e.key === "0" ? 9 : +e.key - 1;
   if (e.key >= "0" && e.key <= "9") { e.preventDefault(); cgToggle(k); }
@@ -4484,7 +4585,9 @@ function cgOnNet(d, src) {
   } else if (d.t === "cgGo") {
     if (!cgAccepted || cgAccepted.id !== src || cg) return; const mine = cgAccepted.mine; cgAccepted = null;
     cgStart({ pvp: { id: src, nm: d.nm, cls: d.cls, deck: d.deck, mine, seed: d.seed, challenger: false } });
-  } else if (d.t === "cgPick") { if (cg?.pvp?.id === src) { cg.picks[d.r] = { sel: d.sel || [], t: d.tm }; if (d.r === cg.round) { $("cgOppState").textContent = "✓ 다 골랐어요 · done"; cgTryResolve(); } } }
+  } else if (d.t === "cgQz") { if (cg?.pvp?.id === src) { const o = { r: d.r, c: d.c, t: d.tm }; if (cg.qz?.r === d.r) { cg.qzOpp = o; cgQzTry(); } else (cg.qzOppEarly = cg.qzOppEarly || {})[d.r] = o; } }
+  else if (d.t === "cgSteal") { if (cg?.pvp?.id === src && d.r === cg.round) cgStolen(d.h); }
+  else if (d.t === "cgPick") { if (cg?.pvp?.id === src) { cg.picks[d.r] = { sel: d.sel || [], t: d.tm }; if (d.r === cg.round) { $("cgOppState").textContent = "✓ 다 골랐어요 · done"; cgTryResolve(); } } }
   else if (d.t === "cgNo") { cgAsk = null; toast(d.why === "deck" ? "상대의 배틀 덱이 아직 40장이 안 돼요 · their battle deck isn't ready" : d.why === "busy" ? "지금 바빠요 · they're busy" : "거절했어요 · they declined"); }
   else if (d.t === "cgQuit") { if (cg?.pvp?.id === src && cg.phase !== "end") { cg.wins = [2, cg.wins[1]]; cg.oppQuit = true; toast(`🏳 ${cg.oppName} 님이 포기했어요 · your opponent gave up`); cgFinish(); } }
 }

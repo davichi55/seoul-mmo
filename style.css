@@ -638,3 +638,17 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .crCard.ok{opacity:1;outline:3px solid #6ad86a;outline-offset:2px}.crCard.no{opacity:1;outline:3px solid #ff5a5a;outline-offset:2px}
 .crCard:hover{opacity:1}
 .crGo{justify-self:center;font:700 18px var(--display);padding:12px 28px;border-radius:12px;border:none;background:linear-gradient(180deg,#ffd23d,#e0a21c);color:#1d1612;cursor:pointer}
+/* ⚡ speed quiz + removing a card (2026-10-18) */
+.cgQz{position:fixed;left:50%;top:44%;transform:translate(-50%,-50%);z-index:9;width:min(720px,94vw);display:grid;gap:10px;justify-items:center;padding:16px 20px 18px;border-radius:20px;background:rgba(14,10,28,.95);border:3px solid #35e3ff;box-shadow:0 0 40px rgba(53,227,255,.35);color:#fff;font-family:var(--display);pointer-events:auto}
+.cgQz[hidden]{display:none}
+.qzHead{display:grid;justify-items:center;gap:3px;text-align:center}.qzHead b{font:700 22px var(--display)}.qzHead span{font-size:13px;opacity:.85}
+.qzScore{display:flex;gap:24px;font-size:15px}.qzScore span:first-child{color:#ffd23d}.qzScore span:last-child{color:#d8b8ff}
+.qzWord{font:700 clamp(40px,5vw,64px) var(--display);min-height:1.2em;line-height:1.2}
+.qzOpts{display:flex;flex-wrap:wrap;justify-content:center;gap:10px}
+.qzOpts button{position:relative;display:grid;justify-items:center;min-width:120px;padding:14px 16px 10px;border-radius:14px;border:2px solid rgba(255,255,255,.25);background:#241e3a;color:#fff;font:700 22px var(--display);cursor:pointer}
+.qzOpts button small{font-size:12px;font-weight:500;opacity:.8}.qzOpts button kbd{position:absolute;left:8px;top:5px;font-size:11px;opacity:.6}
+.qzOpts button.ok{background:#2f6a3a;border-color:#6ad86a}.qzOpts button.no{background:#6a2a2a;border-color:#ff5a5a}
+.qzOpts button:hover:not([disabled]){border-color:#35e3ff}
+.cgQz.steal{border-color:#ffd23d;box-shadow:0 0 40px rgba(255,210,61,.4)}
+.cgQz.steal .qzOpts button.r1{border-color:#5aa8ff}.cgQz.steal .qzOpts button.r2{border-color:#b47aff}.cgQz.steal .qzOpts button.r3{border-color:#ffb03a}
+.cgQz.msg{border-color:#c08aff}
