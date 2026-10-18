@@ -231,9 +231,9 @@ addEventListener("keydown", e => {
   const toggles = { char: "charView", deck: "deckView", inv: "invView", quests: "questView", map: "mapView", ach: "achView", book: "bookView", friends: "friendsView" };
   if (started && act && toggles[act] && !$(toggles[act]).hidden) { showScreen(null); paused = false; return; }
   if (order && started) { if (/^[1-9]$/.test(e.key)) orderPick(+e.key - 1); else if (k === "backspace") orderUndo(); return; }
+  if (started && quiz) { const n = +e.key; if (n >= 1 && n <= 4) { e.preventDefault(); answerQuiz(n - 1); } return; }
+  if (started && dialog) { const n = +e.key; if (n >= 1 && n <= 9) { const b = $("dOpts").children[n - 1]; if (b) b.click(); } return; }
   if (!started || paused) return;
-  if (dialog) { const n = +e.key; if (n >= 1 && n <= 9) { const b = $("dOpts").children[n - 1]; if (b) b.click(); } return; }
-  if (quiz) { const n = +e.key; if (n >= 1 && n <= 4) answerQuiz(n - 1); return; }
   if (ritual) { const n = +e.key; if (n >= 1 && n <= CHOICES) { e.preventDefault(); pickCard(n - 1); return; } }
   else if (act === "basic" || act === "s2" || act === "s3" || act === "sleep" || act === "silence") { startRitual(act); return; }
   else if (act && /^bar\d$/.test(act)) { useBar(+act.slice(3)); return; }
@@ -358,7 +358,7 @@ function gainXp(n, at) {
   if (S.level >= MAX_LEVEL) return;
   n = Math.round(n); S.xp += n;
   floater(at || player.pos, `+${n} XP`, "#c3b2ff", true, at ? 2 : 3.2);
-  if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level) && !examPending) { examPending = true; examSnooze = 0; toast("📝 레벨 업 시험 준비! · level-up exam ready: 5 right answers about your words"); SFX.charge(); }
+  if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level) && !examPending) { examPending = true; examSnooze = 0; toast("📝 레벨 업 시험 준비! 준비되면 📝 버튼 · level-up exam ready: press the 📝 button when you are"); SFX.charge(); }
   drawExamBtn(); save();
 }
 function levelUp() {
@@ -382,14 +382,14 @@ function drawExamBtn() { const b = $("examBtn"); if (b) b.hidden = !examPending 
 function levelExamTick(dt) {
   if (!examPending || exam || quiz || ritual || dialog || paused || duel || player.dead || clock < examSnooze) { calmT = 0; return; }
   if (monsters.some(m => !m.dead && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 25)) { calmT = 0; return; }
-  if ((calmT += dt) > 2) startExam();
+  calmT += dt;   /* Danny 2026-10-18: no automatic exam any more, the player starts it with the 📝 button */
 }
 function startExam() {
   if (exam || !examPending || duel) return;
   const pool = ownedWords();
   if (pool.length < 4) { examPending = false; levelUp(); drawExamBtn(); return; }   // nothing to test yet
   const need = Math.min(EXAM_N, pool.length);
-  exam = { queue: pickWeighted(pool, need), right: 0, need, n: 0 }; cancelRitual(); closeDialog(); paused = true; drawExamBtn(); examNext();
+  exam = { queue: pickWeighted(pool, need), right: 0, need, n: 0 }; cancelRitual(); closeDialog(); paused = !NET.role; drawExamBtn(); examNext();
 }
 function examNext() {
   if (!exam) return;
@@ -407,7 +407,7 @@ function examNext() {
     onDone: ok => { if (!exam) return; if (ok) exam.right++; else exam.queue.push(id); examNext(); } });
 }
 function postponeExam() { $("quiz").hidden = true; quiz = null; exam = null; paused = false; examSnooze = clock + 60; drawExamBtn(); toast("시험은 나중에 · exam postponed — 📝 button when you're ready"); }
-function recalcMax() { const keep = player.hp / player.maxHp; player.maxHp = Math.round(classDef().hp * (1 + bonus().hp + gearStat("hp")) * lvlHp() * (buffOn("vigor") ? 1.2 : 1) * (player.lsUntil > clock ? 1.3 : 1) * (player.cryUntil > clock ? 1.1 : 1)); player.hp = Math.min(player.maxHp, isFinite(keep) ? keep * player.maxHp : player.maxHp); }
+function recalcMax() { const keep = player.hp / player.maxHp; player.maxHp = Math.round(classDef().hp * (1 + bonus().hp + gearStat("hp")) * lvlHp() * (buffOn("vigor") ? 1.2 : 1) * (perk("gayoung") ? 1.15 : 1) * (player.lsUntil > clock ? 1.3 : 1) * (player.cryUntil > clock ? 1.1 : 1)); player.hp = Math.min(player.maxHp, isFinite(keep) ? keep * player.maxHp : player.maxHp); }
 
 // ---- collision -----------------------------------------------------------------------------------
 const ZONES = ["street", "dungeon", "yeouido", "tower", "market", "museum"], RZONES = { dungeon: DUNGEON, tower: TOWER, yeouido: YEOUIDO, market: MARKET, museum: MUSEUM };
@@ -607,7 +607,7 @@ function castRitual() {
   const cards = correct.map(x => deck.find(c => c.id === x.id)).filter(Boolean);
   const sumMod = t => cards.reduce((s, c) => s + (c.mod.t === t ? c.mod.v : 0), 0);
   const b = bonus();
-  cds[r.k] = clock + sk.cd * Math.max(.5, 1 - sumMod("cd") - b.cd) * (r.k === "basic" && player.hawkUntil > clock ? .5 : 1);
+  cds[r.k] = clock + sk.cd * (perk("gangsa") ? .9 : 1) * Math.max(.5, 1 - sumMod("cd") - b.cd) * (r.k === "basic" && player.hawkUntil > clock ? .5 : 1);
   if (!correct.length) { cds[r.k] = clock + Math.min(sk.cd, 3); toast("주문 실패! · the attack fizzled"); SFX.empty(); floater(player.pos, "실패", "#aaa", true, 2.8); return; }
   const t = r.target, range = (sk.range || classDef().range) + (r.k === "basic" && player.hawkUntil > clock ? 5 : 0);
   if (t.dead || dist2(t.pos, player.pos) > range + 4) { toast("빗나갔어요 · it got away"); return; }
@@ -1321,7 +1321,7 @@ function openCharView() {
   $("cvStats").innerHTML = rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join("");
   $("cvPass").textContent = cd.pass;
   const lv = heartLvl(), next = HEARTS[lv], prev = HEARTS[lv - 1] || 0;
-  $("cvComp").innerHTML = !S.companion ? "" : S.companion === "gumiho"
+  $("cvComp").innerHTML = S.compKey ? `<h3>동료 · Companion</h3><div class="cvc"><b>💞 ${dcName(S.compKey)} ♥ Lv ${relOf(S.compKey).lvl}</b><span class="fine">${PERKS[S.compKey].ko} · ${PERKS[S.compKey].en}</span></div>` : !S.companion ? "" : S.companion === "gumiho"
     ? `<h3>동료 · Companion</h3><div class="cvc"><b>💗 수아 · 구미호</b><span class="hearts">${"♥".repeat(lv)}${"♡".repeat(5 - lv)}</span><div class="bar xp"><i style="width:${next ? ((S.suaHeart || 0) - prev) / (next - prev) * 100 : 100}%"></i><span>${next ? `${S.suaHeart || 0} / ${next}` : "MAX"}</span></div><span class="fine">싸울 때 16초마다 체력 ${5 + lv}% 회복, 가까이 있으면 공격 +5% · heals ${5 + lv}% every 16 s in fights, +5% damage while she's close. 같이 괴물을 이기면 ♥ +1, 퀘스트 +3, 터널 +10.</span></div>`
     : `<h3>동료 · Companion</h3><div class="cvc"><b>🐾 ${esc(petName())} · 꼬마 도깨비</b><span class="fine">근처 괴물은 8% 더 다쳐요, 15초마다 괴물 하나를 4초 동안 데려가요 · monsters near it take +8%, every 15 s it lures one away for 4 s.</span><button id="cvRename">이름 바꾸기 · rename</button></div>`;
   if ($("cvRename")) $("cvRename").onclick = () => { showScreen(null); askPetName(() => openCharView()); };
@@ -2005,9 +2005,9 @@ function killMonster(m, by = myId()) {
   else if (target === m) setTarget(null);
 }
 function rewardKill(m) {
-  const money = Math.round(rand(...m.def.money) * (1 + .2 * (m.lvl - m.def.lvl)) / 100) * 100; S.money += money; S.kills++; if (comp && comp.zone === m.zone && dist2(comp.pos, m.pos) < 20) addHeart(1); S.killsBy[m.kind] = (S.killsBy[m.kind] || 0) + 1;
+  const money = Math.round(rand(...m.def.money) * (1 + .2 * (m.lvl - m.def.lvl)) * (perk("trader") ? 1.15 : 1) / 100) * 100; S.money += money; S.kills++; if (comp && comp.zone === m.zone && dist2(comp.pos, m.pos) < 20) addHeart(1); S.killsBy[m.kind] = (S.killsBy[m.kind] || 0) + 1;
   floater(m.pos, "+" + won(money), "#e5b84a", false, 1.6);
-  SFX.kill(); if (m.def.boss) bossSnap = lootSnap(); gainXp(monsterXp(m), m.pos); dropCard(m); dropGear(m); dropMat(m); dropStones(m); dropScroll(m); onKillForQuests(m); if (m.def.boss) autoCreditBossQuests();
+  SFX.kill(); if (m.def.boss) bossSnap = lootSnap(); gainXp(monsterXp(m) * (perk("jieun") ? 1.1 : 1), m.pos); dropCard(m); dropGear(m); dropMat(m); dropStones(m); dropScroll(m); onKillForQuests(m); if (m.def.boss) autoCreditBossQuests();
   if (m.def.boss) (m.zone === "tower" ? towerCleared : m.zone === "market" ? marketCleared : m.zone === "museum" ? museumCleared : dungeonCleared)();
   if (target === m) setTarget(null);
   showMissed([...m.missed]);
@@ -2317,6 +2317,7 @@ function drawDungeonMap(ctx, W, H, cx, cz, span, full, D = DUNGEON, zone = "dung
 
 // ---- sleep talisman (taught by the 부적 선생님) ----
 function applySleep(t, dur) {
+  if (perk("teacher")) dur *= 1.3;
   ccFx(t, "sleep");
   if (NET.role === "guest") netSend({ t: "sleep", mid: t.id, dur });
   t.sleepUntil = clock + dur; t.state = "idle"; t.tgtId = null; t.slamT = 0;
@@ -2352,6 +2353,7 @@ $("dnNow").onclick = () => { clearInterval(downedT); respawnNow(); };
 
 // ---- aliens (decisions 3, 8, 16): rare, dangerous; the caster charges an orb you must dodge or silence ----------
 function applySilence(t, dur) {
+  if (perk("teacher")) dur *= 1.3;
   ccFx(t, "silence");
   if (NET.role === "guest") netSend({ t: "silence", mid: t.id, dur });
   t.silencedUntil = clock + dur; t.charging = 0;
@@ -2565,7 +2567,7 @@ function companionTick(dt) {
   comp.model.root.position.set(comp.pos.x, 0, comp.pos.z); comp.model.root.rotation.y = comp.yaw; comp.model.anim(dt, { moving });
   const fight = !player.dead && player.zone !== "station" && monsters.some(m => !m.dead && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 20);
   if (!fight) return;
-  if ((S.compKey || S.companion === "gumiho") && (comp.healT -= dt) <= 0) { comp.healT = 16;   /* Danny 2026-10-17: was 8 s, too strong */ if (player.hp < player.maxHp) { const h = player.maxHp * (.05 + .01 * heartLvl()); player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "💗 +" + Math.round(h), "#ff9ec4", true, 2.4); } }
+  if (!S.compKey && S.companion === "gumiho" && (comp.healT -= dt) <= 0) { comp.healT = 16;   /* Danny 2026-10-17: was 8 s, too strong */ if (player.hp < player.maxHp) { const h = player.maxHp * (.05 + .01 * heartLvl()); player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "💗 +" + Math.round(h), "#ff9ec4", true, 2.4); } }
   if (!S.compKey && S.companion === "pet" && NET.role !== "guest" && (comp.tauntT -= dt) <= 0) {
     comp.tauntT = 15;
     const ms = monsters.filter(m => !m.dead && !m.def.boss && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 20);
@@ -2581,7 +2583,7 @@ function companionTick(dt) {
 // 구미호: +5% damage while she's close to you; 깨비: monsters near it take 8% more damage
 function companionDamageMul(t) {
   if (!comp || comp.zone !== player.zone) return 1;
-  if ((S.compKey || S.companion === "gumiho") && dist2(comp.pos, player.pos) < 10) return 1.05;
+  if (!S.compKey && S.companion === "gumiho" && dist2(comp.pos, player.pos) < 10) return 1.05;
   if (!S.compKey && S.companion === "pet" && dist2(comp.pos, t.pos) < 6) return 1.08;
   return 1;
 }
@@ -3008,6 +3010,7 @@ const selfTarget = () => ({ pos: player.pos, missed: new Set(), dead: false, def
 const CC_TEXT = { stun: "기절 · stunned", fear: "도망쳐요! · fleeing", root: "묶임 · rooted", taunt: "도발! · taunted" };
 function applyCC(m, kind, dur, by = myId()) {
   if (!m || m.dead) return;
+  if (perk("teacher")) dur *= 1.3;
   if (NET.role === "guest") netSend({ t: "cc", mid: m.id, kind, dur });
   if (m.def.boss) { if (kind === "fear") { floater(m.pos, "면역 · immune", "#aaa", true, m.model.height); return; } if (kind === "root") { m.slowUntil = clock + dur; floater(m.pos, "느려짐 · slowed", "#9ec8ff", true, m.model.height); return; } if (kind === "stun") dur = Math.min(dur, 1); }
   m[kind + "Until"] = clock + dur;
@@ -3623,7 +3626,8 @@ function handongShop(n) {
   showLine(n, "h_hello", opts);
 }
 $("rwOk").onclick = closeReward;
-$("examBtn").onclick = () => { examSnooze = 0; startExam(); };
+const inFight = () => monsters.some(m => !m.dead && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 25);
+$("examBtn").onclick = () => { if (inFight()) { toast("전투가 끝나면 시험을 봐요 · finish the fight first"); return; } examSnooze = 0; startExam(); };
 
 // ---- quiz duels + relationship levels with the Dreamcatcher-named women (Danny 2026-10-18) ----
 // A 1-on-1 race on a stage: 10 questions from "her" chapter (also words you haven't learned yet). No visible timer: after 10 s
@@ -3631,6 +3635,16 @@ $("examBtn").onclick = () => { examSnooze = 0; startExam(); };
 // Danny (same day): "it should be a battle who kills the most goblins": ten goblins stand in front of the stage; whoever answers right
 // blasts the goblin that stepped forward with lightning, a fireball or an ice shard, and it explodes. The score is goblins.
 // 6+ right = relationship XP (10/10 the most); 5 or less = "practise more". Each new level gives a card; at Lv 5 she can travel with you.
+const PERKS = {
+  sua: { ko: "16초마다 회복, 가까이 있으면 공격 +5%", en: "heals you every 16 s, +5% damage near her" },
+  trader: { ko: "괴물이 주는 돈 +15%", en: "+15% won from monsters" },
+  jieun: { ko: "괴물 경험치 +10%", en: "+10% XP from monsters" },
+  teacher: { ko: "기절·잠·묶기·침묵 +30% 길게", en: "stuns, sleep, roots and silence last 30% longer" },
+  gayoung: { ko: "최대 체력 +15%", en: "+15% max health" },
+  gangsa: { ko: "스킬 재사용 대기 −10%", en: "−10% skill cooldowns" },
+  handong: { ko: "배고픔이 반만 줄어요", en: "hunger drops half as fast" },
+};
+const perk = k => S.compKey === k;
 const DC_CH = { trader: 0, jieun: 1, teacher: 2, sua: 3, gayoung: 4, gangsa: 5, handong: 6 };   // the order you meet them = 1과, 2과, …
 const REL_XP = [0, 50, 130, 240, 380, 560], REL_CARD = [0, 0, 1, 1, 2, 3], DUEL_XP = [0, 0, 0, 0, 0, 0, 20, 30, 40, 55, 75];
 const relOf = kind => (S.rel = S.rel || {})[kind] || (S.rel[kind] = { xp: 0, lvl: 0 });
@@ -3641,15 +3655,15 @@ function dcChapter(kind) { const chs = bookChapters(); return chs[Math.min(DC_CH
 function dcMenu(n, base) {
   const kind = n.kind, r = relOf(kind), ch = dcChapter(kind), compNow = kind === "sua" ? !S.compKey && S.companion === "gumiho" : S.compKey === kind;
   const opts = [{ ko: `⚔ 시험 대결 · quiz duel`, en: `${ch.title}${ch.theme ? " " + ch.theme : ""} · ♥ Lv ${r.lvl}${r.lvl < 5 ? ` (${r.xp - REL_XP[r.lvl]} / ${REL_XP[r.lvl + 1] - REL_XP[r.lvl]})` : " MAX"}`, act: () => { closeDialog(); fade(() => startDuel(kind)); } }];
-  if (!compNow && (r.lvl >= 5 || (kind === "sua" && S.companion === "gumiho"))) opts.push({ ko: "💞 같이 다녀요 · travel with me", en: kind === "sua" ? "수아 comes back as your companion" : `${dcName(kind)} becomes your companion (수아 waits here)`, act: () => setCompanion(kind, n) });
+  if (!compNow && (r.lvl >= 5 || (kind === "sua" && S.companion === "gumiho"))) opts.push({ ko: "💞 같이 다녀요 · travel with me", en: kind === "sua" ? `수아 comes back · ${PERKS.sua.en}` : `${dcName(kind)} becomes your companion · ${PERKS[kind].en}`, act: () => setCompanion(kind, n) });
   if (base) opts.push({ ko: "(다른 이야기 · something else)", en: "", act: base });
   opts.push({ ko: "(대화 끝내기)", en: "leave", act: closeDialog });
   showLine(n, "dc_hi", opts);
 }
 function setCompanion(kind, n) {
-  S.compKey = kind === "sua" ? null : kind; save();
+  S.compKey = kind === "sua" ? null : kind; recalcMax(); save();
   endWith(n, "dc_comp"); spawnCompanion(); syncQuestNpcs(); SFX.pickup();
-  toast(kind === "sua" ? "💗 수아가 다시 함께해요 · Sua travels with you again" : `💞 ${dcName(kind)}와 함께해요 · ${dcName(kind)} travels with you (heals, +5% damage); 수아 waits at her spot`);
+  toast(kind === "sua" ? "💗 수아가 다시 함께해요 · Sua travels with you again" : `💞 ${dcName(kind)}와 함께해요 · ${PERKS[kind].ko} · ${PERKS[kind].en}`);
 }
 // talking to your companion opens the same menu
 function compTalk() { const kind = S.compKey || "sua"; dcMenu({ kind, name: NPC_DEF[kind], model: comp.model, pos: comp.pos }, null); }
@@ -3687,7 +3701,7 @@ function startDuel(kind) {
   player.zone = "arena"; player.pos.set(ARENA.x - 4, 0, ARENA.z); player.yaw = Math.PI;
   const gobs = qs.map((_, i) => { const g = makeMonster("dokkaebi"); g.root.scale.setScalar(.75); g.root.rotation.y = Math.PI; g.root.position.set(ARENA.x - 6.3 + i * 1.4, 0, ARENA.z - 7.5); scene.add(g.root); return { m: g, to: g.root.position.clone() }; });
   duel = { kind, ch, qs, i: -1, me: 0, her: 0, back, model: her, timer: null, open: false, lvl: relOf(kind).lvl, gobs, shots: [] };
-  paused = true; $("hud").hidden = true;
+  paused = !NET.role; $("hud").hidden = true;
   $("duName").textContent = dcName(kind); $("duMy").textContent = "0"; $("duHer").textContent = "0"; $("duOpts").innerHTML = ""; $("duPrompt").innerHTML = ""; $("duel").hidden = false;
   speak("qm_start"); SFX.charge();
   let n = 3; $("duMsg").textContent = `${ch.title}${ch.theme ? " " + ch.theme : ""} · 준비… · get ready`;
@@ -3811,16 +3825,18 @@ const seoulCardHTML = (k, owned = true, n = 0) => { const c = SEOUL_CARDS[k]; re
   ? `<div class="sCard" style="--c1:${c.c[0]};--c2:${c.c[1]}"><span class="sNo">${String(Object.keys(SEOUL_CARDS).indexOf(k) + 1).padStart(2, "0")} / 06</span><span class="sIc">${c.icon}</span><b>${c.ko}</b><small>${c.en}</small><em>${c.sub}</em><span class="sTag">SEOUL CARD</span></div>`
   : `<div class="sCard locked"><span class="sNo">${String(Object.keys(SEOUL_CARDS).indexOf(k) + 1).padStart(2, "0")} / 06</span><span class="sIc">?</span><b>???</b><small>${c.en}의 학생을 이기세요 · beat the student</small></div>`; };
 const syl = s => [...s.replace(/\s/g, "")];
+const cbChapter = kind => { const chs = bookChapters(); return chs[Math.min(CB[kind].ch + (S.cbWins?.[kind] || 0), chs.length - 1)]; };
 const cbWords = kind => {
-  const chs = bookChapters(), ch = chs[Math.min(CB[kind].ch, chs.length - 1)];
-  const ok = w => w.pos === "noun" && (window.DEFS || {})[w.id] && syl(w.kb || w.kr).length >= 2 && syl(w.kb || w.kr).length <= 4;
-  const pool = bookWords().filter(w => w.ch === ch.id && ok(w));
-  return pool.length >= 4 ? pool : bookWords().filter(ok);
+  const ch = cbChapter(kind), wins = S.cbWins?.[kind] || 0;
+  const ok = (w, min = 2) => w.pos === "noun" && (window.DEFS || {})[w.id] && syl(w.kb || w.kr).length >= min && syl(w.kb || w.kr).length <= 4;
+  const long = bookWords().filter(w => w.ch === ch.id && ok(w, 3));
+  const pool = wins >= 2 && long.length >= 4 ? long : bookWords().filter(w => w.ch === ch.id && ok(w));
+  return pool.length >= 4 ? pool : bookWords().filter(w => ok(w));
 };
 function cbTalk(n) {
   const won = S.seoulCards?.[CB[n.kind].area];
   showLine(n, won ? "cb_again" : "cb_hi", [
-    { ko: "🃏 카드 배틀! · card battle", en: won ? "rematch (practice)" : `win the ${SEOUL_CARDS[CB[n.kind].area].ko} Seoul card`, act: () => { closeDialog(); startCardBattle(n.kind); } },
+    { ko: "🃏 카드 배틀! · card battle", en: won ? `rematch · ${cbChapter(n.kind).title} words${(S.cbWins?.[n.kind] || 0) >= 2 ? ", longer ones" : ""}` : `win the ${SEOUL_CARDS[CB[n.kind].area].ko} Seoul card`, act: () => { closeDialog(); startCardBattle(n.kind); } },
     { ko: "(대화 끝내기)", en: "leave", act: closeDialog }]);
 }
 let cb = null;
@@ -3828,7 +3844,7 @@ function startCardBattle(kind) {
   if (cb || duel || quiz || exam) return;
   const words = shuffle(cbWords(kind).slice()).slice(0, 4);
   if (words.length < 4) { toast("카드가 아직 없어요 · no cards for this chapter yet"); return; }
-  cb = { kind, words, i: -1, me: 0, her: 0 }; cancelRitual(); paused = true;
+  cb = { kind, words, i: -1, me: 0, her: 0 }; cancelRitual(); paused = !NET.role;
   $("cbName").textContent = CB[kind].name; $("cardb").hidden = false; SFX.open(); cbNext();
 }
 function cbHearts() { $("cbMeHp").textContent = "♥".repeat(Math.max(0, 4 - cb.her)) + "♡".repeat(Math.min(4, cb.her)); $("cbHerHp").textContent = "♥".repeat(Math.max(0, 4 - cb.me)) + "♡".repeat(Math.min(4, cb.me)); }
@@ -3873,6 +3889,7 @@ function cbEnd() {
   const d = cb, win = d.me >= 3, area = CB[d.kind].area, first = win && !S.seoulCards?.[area];
   $("cardb").hidden = true; cb = null; paused = false;
   const rows = [{ big: true, icon: win ? "🏆" : "🃏", ko: `${d.me} : ${d.her}`, en: win ? `you beat ${CB[d.kind].name}` : `${CB[d.kind].name} won · 3 of 4 wins` }];
+  if (win) (S.cbWins = S.cbWins || {})[d.kind] = (S.cbWins[d.kind] || 0) + 1;
   if (first) { (S.seoulCards = S.seoulCards || {})[area] = Date.now(); rows.push({ iconHtml: seoulCardHTML(area), ko: `서울 카드 · ${SEOUL_CARDS[area].ko}`, en: `Seoul card ${Object.keys(S.seoulCards).length} / 6 (inventory → 서울 카드)` }); }
   else if (win) { rows.push({ icon: "✨", ko: "+60 XP", en: "rematch practice" }); setTimeout(() => gainXp(60), 400); }
   save();
@@ -3924,7 +3941,7 @@ function step(dt) {
   clock += dt;
   S.time += dt * GAME_MIN_PER_SEC;
   night = nightFactor();
-  S.hunger = Math.max(0, S.hunger - dt * 100 / HUNGER_SECONDS);
+  S.hunger = Math.max(0, S.hunger - dt * 100 / HUNGER_SECONDS * (perk("handong") ? .5 : 1));
   checkAchievements(dt); netTick(dt); quizTick(dt); areaWatch(dt); levelExamTick(dt);
   if (S.hunger <= 0 && !step.warned) { toast("배고파요! 식당에 가세요 · you're hungry: attacks do 75%"); step.warned = true; } if (S.hunger > 0) step.warned = false;
   // movement (camera-relative WASD, the character turns to where it walks)
