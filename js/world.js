@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 export const STATION = { x: 400, z: 0 };            // the station interior lives far from the street
-export const STREET = { minX: -84, maxX: 308, minZ: -107, maxZ: 198 };   // walkable bounds: Hongdae (x < 108) + 서교 아파트 (x 110..308)   // walkable district bounds (name kept from the 1-street version)
+export const STREET = { minX: -84, maxX: 308, minZ: -249, maxZ: 198 };   /* z < −110: 연남동 + 신촌 (2026-10-18) */   // walkable bounds: Hongdae (x < 108) + 서교 아파트 (x 110..308)   // walkable district bounds (name kept from the 1-street version)
 export const ENTRANCE = { x: -51.5, z: 2 };         // Line 2 exit on the boulevard's east sidewalk (stairs open to -z)
 const FONT = '"Black Han Sans","Malgun Gothic","Apple SD Gothic Neo",sans-serif';
 
@@ -45,6 +45,16 @@ export const SPAWNS = [
 
 // the tourist information booth where the Hongdae map lies, and where the quest people stand on the street
 export const MAPSPOT = { x: -40, z: 31 };
+// 연남동 + 신촌 (2026-10-18): map stands, and their monsters (연남동 like 홍대, 신촌 like the complex)
+export const MAPSPOT_YN = { x: -42, z: -165 }, MAPSPOT_SC = { x: 224, z: -141 };
+export const NORTH_SPAWNS = [
+  { x: -10, z: -174, kind: "dokkaebi" }, { x: 25, z: -170, kind: "vine" }, { x: 70, z: -178, kind: "haetae" }, { x: 100, z: -166, kind: "dokkaebi" },
+  { x: -62, z: -150, kind: "dokkaebi" }, { x: -62, z: -225, kind: "vine" }, { x: 0, z: -214, kind: "haetae" }, { x: 50, z: -214, kind: "dokkaebi" }, { x: 95, z: -214, kind: "vine" },
+  { x: 35, z: -214, kind: "vine", night: true }, { x: -62, z: -190, kind: "haetae", night: true },
+  { x: 211, z: -150, kind: "dokkaebi", lvl: 4 }, { x: 211, z: -235, kind: "vine", lvl: 5 }, { x: 145, z: -140, kind: "dokkaebi", lvl: 4 }, { x: 145, z: -190, kind: "vine", lvl: 4 }, { x: 145, z: -235, kind: "haetae", lvl: 5 },
+  { x: 250, z: -155, kind: "haetae", lvl: 5 }, { x: 300, z: -170, kind: "dokkaebi", lvl: 4 }, { x: 300, z: -232, kind: "vine", lvl: 5 }, { x: 262, z: -205, kind: "dokkaebi", lvl: 4 },
+  { x: 145, z: -165, kind: "haetae", lvl: 5, night: true }, { x: 240, z: -245, kind: "vine", lvl: 5, night: true },
+];
 // the first dungeon: a Line 2 tunnel, its own zone far from the city. Rects are local (group at DUN), the rest world coords.
 export const DUN = { x: -1000, z: 0 };
 const W = (x, z) => ({ x: DUN.x + x, z: DUN.z + z });
@@ -1153,6 +1163,100 @@ export function buildWorld(scene) {
     add(new THREE.BoxGeometry(.3, 4, 4), toon("#14161a"), .4, 2, 0, D, 0, false); add(new THREE.BoxGeometry(4, 4, .3), toon("#14161a"), 253, 2, -19.6, D, 0, false);
     for (const [x, z, c, i] of [[20, 0, "#ffe2b0", 50], [67, 0, "#ff9a4a", 70], [107, 0, "#9fe0c8", 55], [146, 0, "#ffe2b0", 50], [186, 0, "#ffd27a", 60], [234, 0, "#ff7a5a", 90]]) { const L = new THREE.PointLight(c, i, 40, 2); L.position.set(X(x), 6, MU.z + z); scene.add(L); }
   }
+  // ===== 연남동 (Lv 1–3) + 신촌 (Lv 4–5): Danny 2026-10-18 "areas next to the old ones with the same level of monsters, so there is more
+  // to do without the levels rushing". A band north of 홍대 and 서교 아파트 (z −250..−110). 양화로 runs on north into 연남동; 신촌 is
+  // through a gap in the complex's north wall. Built last so the seeded layout of everything before it stays exactly the same.
+  {
+    const N0 = -250;
+    const board = (text, bg, w = 8, h = 1.4, fs = 54, fg = "#fff") => { const c = document.createElement("canvas"); c.width = 512; c.height = Math.max(32, Math.round(512 * h / w)); const x = c.getContext("2d"); x.fillStyle = bg; x.fillRect(0, 0, c.width, c.height); x.fillStyle = fg; x.font = `${fs}px ${FONT}`; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(text, 256, c.height / 2 + 3); return toon("#ffffff", { map: canvasTex(c) }); };
+    // open the two ways in: take away the rubble on the 양화로 and in the middle of the complex's north wall
+    const zero = new THREE.Matrix4().makeScale(0, 0, 0), v = new THREE.Vector3();
+    const clearRubble = (x0, x1, z0, z1) => {
+      for (const o of [...street.children]) if (o.isMesh && o.geometry.type === "DodecahedronGeometry" && o.position.x > x0 && o.position.x < x1 && o.position.z > z0 && o.position.z < z1) street.remove(o);
+      leafM.forEach((m, i) => { v.setFromMatrixPosition(m); if (v.x > x0 && v.x < x1 && v.z > z0 && v.z < z1 && v.y < 4) leafM[i] = zero; });
+    };
+    const dropCol = (x0, x1, z0) => { const i = colliders.street.findIndex(c => c.x0 !== undefined && Math.abs(c.x0 - x0) < .01 && Math.abs(c.x1 - x1) < .01 && Math.abs(c.z0 - z0) < .01); if (i >= 0) colliders.street.splice(i, 1); };
+    clearRubble(-88, -45, -112, -106); dropCol(-86.4, -46.6, -110.4);
+    clearRubble(199, 223, -112, -106); dropCol(108.6, 311.4, -110.4);
+    colliders.street.push({ x0: 108.6, x1: 199, z0: -110.4, z1: -107.6 }, { x0: 223, x1: 311.4, z0: -110.4, z1: -107.6 });
+    for (const x of [198.4, 223.6]) add(new THREE.BoxGeometry(1.2, 4, 1.2), toon("#c9c2b4"), x, 2, -109, street, .06);
+    add(new THREE.PlaneGeometry(10, 1.3), board("↑ 신촌", "#2f5aa8", 10, 1.3, 60), 211, 4.6, -108.4, street, 0, false);
+    // edges: rubble on the west, north and east, a wall between the two areas with a gap at z −200
+    barricade(-86, -110, -86, N0); barricade(-86, N0, 310, N0); barricade(310, -110, 310, N0);
+    barricade(108, -136, 108, -192); barricade(108, -208, 108, N0);
+    // ground
+    flat(394, 140, 112, -180, ROAD, .012);
+    flat(30, 140, -70, -180, "#6f7078", .02); flat(.4, 140, -70.4, -180, "#e3c24a", .03); flat(.4, 140, -69.6, -180, "#e3c24a", .03);
+    for (const x of [-78, -62]) for (let z = -246; z < -112; z += 8) flat(.3, 3.6, x, z, "#e9e7df", .03);
+    flat(7, 140, -51.5, -180, WALK, .05);
+    for (let z = -118; z > N0 + 4; z -= 13) if (Math.abs(z + 150) > 6 && Math.abs(z + 225) > 6 && Math.abs(z + 190) > 6) tree(-70, z, rand(5, 7));
+    for (let k = 0; k < 40; k++) { const px = rand(-82, 305), pz = rand(-246, -114); const p = flat(rand(1.5, 4), rand(1.5, 4), px, pz, LEAF[3], .055); p.rotation.z = R() * 3; for (let j = 0; j < 20; j++) tuft(px + rand(-1.6, 1.6), pz + rand(-1.6, 1.6), rand(.6, 1.2)); }
+    const keepOut = [...NORTH_SPAWNS, { x: -25, z: -171 }, { x: 35, z: -178 }, { x: 88, z: -171 }, { x: -42, z: -165 }, { x: -44, z: -173 }, { x: 40, z: -157.5 }, { x: 245, z: -172 }, { x: 300, z: -150 }, { x: 238, z: -200 }, { x: 290, z: -244 }];
+    const free = (x, z, r = 5) => !keepOut.some(s => Math.hypot(s.x - x, s.z - z) < r);
+    const row = (xs, z, w, d, face) => { for (const x of xs) { shop(x, z, w, d, face); solid(x - w / 2, x + w / 2, z - d / 2, z + d / 2); } };
+    const xsFrom = (a, b, step, gaps) => { const o = []; for (let x = a; x <= b; x += step) if (!gaps.some(([g0, g1]) => x > g0 && x < g1)) o.push(x); return o; };
+    // --- 연남동 ---
+    // 연트럴파크: the 경의선숲길 goes on here (grass, a winding path, the old tracks, lots of trees)
+    const PK = { x0: -48, x1: 108, z0: -186, z1: -160 };
+    flat(PK.x1 - PK.x0, PK.z1 - PK.z0, (PK.x0 + PK.x1) / 2, (PK.z0 + PK.z1) / 2, "#5e9a3e", .06);
+    for (let x = PK.x0; x < PK.x1; x += 4) flat(4.2, 3, x + 2, -174 + Math.sin(x * .07) * 5, "#d7c9a6", .07);
+    for (let x = PK.x0 + 2; x < PK.x1; x += 1.2) add(new THREE.BoxGeometry(.25, .12, 2.4), toon("#6b4a32"), x, .1, -163.5, street, 0, false);
+    for (const z of [-164.2, -162.8]) add(new THREE.BoxGeometry(PK.x1 - PK.x0, .14, .12), toon("#7d7a70"), (PK.x0 + PK.x1) / 2, .2, z, street, 0, false);
+    for (let x = PK.x0 + 6; x < PK.x1 - 3; x += rand(6, 9)) { if (free(x, -183, 6)) tree(x, rand(-184, -181)); if (R() < .6 && free(x, -167, 6)) tree(x + rand(-2, 2), rand(-168, -166)); }
+    for (let i = 0; i < 1300; i++) tuft(rand(PK.x0, PK.x1), rand(PK.z0, PK.z1), rand(.7, 1.4));
+    for (let i = 0; i < 5; i++) { const bx = rand(-30, 100); if (free(bx, -176)) add(new THREE.BoxGeometry(3, .45, .7), toon("#6b4a32"), bx, .25, -177.5 + Math.sin(bx * .07) * 5 + 2.6, street, .03); }
+    { add(new THREE.BoxGeometry(.2, 2.6, .2), toon("#555"), -44, 1.3, -173, street); const p = add(new THREE.PlaneGeometry(4.4, 1.1), board("연트럴파크", "#3a8f4c", 4.4, 1.1, 64), -44, 2.9, -172.9, street, 0, false); p.rotation.y = Math.PI / 2; }
+    // the park's info stand: the 연남동 map lies on it
+    { add(new THREE.BoxGeometry(1.6, 1.2, .9), toon("#3a8f4c"), -42, .6, -164.65, street, .04); add(new THREE.PlaneGeometry(1.4, .5), board("안내 · info", "#1f2a3a", 1.4, .5, 60), -42, .8, -164.19, street, 0, false); colliders.street.push({ x0: -42.9, x1: -41.1, z0: -165.2, z1: -164.1 }); }
+    // cafés facing the park (south side), houses north of it on both sides of 연남로; gaps are alleys
+    row(xsFrom(-38, 100, 12, [[10, 28], [58, 74]]), -150, 10, 9, "-z");
+    row(xsFrom(-38, 100, 12, [[10, 28], [58, 74]]), -197, 10, 9, "+z");
+    row(xsFrom(-38, 100, 12, [[-6, 6], [40, 52], [84, 96]]), -232, 10, 9, "+z");
+    // the flower shop: a stall of pots in the lane between the cafés and the park
+    { add(new THREE.BoxGeometry(5, .9, 1.4), toon("#8a5a32"), 40, .45, -155.6, street, .04); add(new THREE.PlaneGeometry(4, .9), board("꽃집", "#d2601e", 4, .9, 70), 40, 1.9, -154.9, street, 0, false).rotation.y = Math.PI;
+      for (let i = 0; i < 6; i++) { const px = 38 + i * .8; add(new THREE.CylinderGeometry(.22, .16, .35, 8), toon("#b8644a"), px, 1.08, -155.6, street); add(new THREE.SphereGeometry(.26, 8, 6), toon(pick(["#ff6fa0", "#ffd23d", "#ff9a3a", "#c88aff"])), px, 1.4, -155.6, street); }
+      colliders.street.push({ x0: 37.4, x1: 42.6, z0: -156.4, z1: -154.8 }); }
+    // the three flower beds that need water (side quest)
+    for (const [fx, fz] of [[-25, -171], [35, -178], [88, -171]]) { flat(3.4, 2.2, fx, fz - 1.8, "#6a4a32", .075); for (let i = 0; i < 9; i++) add(new THREE.SphereGeometry(.2, 6, 5), toon(pick(["#ff6fa0", "#ffd23d", "#ffffff"])), fx + rand(-1.4, 1.4), .3, fz - 1.8 + rand(-.8, .8), street); }
+    // --- 신촌 ---
+    // 연세로: the bus street north from the complex, sidewalks on both sides
+    flat(22, 140, 211, -180, "#6f7078", .02); for (const x of [200.6, 221.4]) flat(1.2, 140, x, -180, "#c85a3c", .03);
+    for (let z = -246; z < -112; z += 8) flat(.3, 3.6, 211, z, "#e9e7df", .03);
+    for (const x of [198, 224]) flat(4, 140, x, -180, WALK, .05);
+    // shop rows: 연세로 west side (facing the street), back to back with the rows of the 먹자골목, and the row by the wall
+    const scZ = xsFrom(-245, -120, 11, [[-172, -158], [-212, -195]]);
+    for (const z of scZ) { shop(186, z, 10, 9, "+x"); shop(168, z, 10, 9, "-x"); solid(163, 191, z - 4.5, z + 4.5); }
+    for (const z of xsFrom(-245, -140, 11, [[-210, -190]])) { shop(124, z, 10, 9, "+x"); solid(119, 129, z - 4.5, z + 4.5); }
+    flat(32, 120, 146, -185, "#b8a890", .045);   // the 먹자골목's paving
+    // the campus: a stone wall along 연세로 with the gate, lawn, halls, a clock tower and the library
+    flat(78, 136, 269, -180, "#5e9a3e", .04);
+    for (const [z0, z1] of [[-112, -170], [-185, -250]]) { add(new THREE.BoxGeometry(1, 1.6, z0 - z1), toon("#b8a88a"), 228, .8, (z0 + z1) / 2, street, .05); colliders.street.push({ x0: 227.5, x1: 228.5, z0: z1, z1: z0 }); }
+    for (const z of [-170.5, -184.5]) add(new THREE.BoxGeometry(1.8, 6, 1.8), toon("#a89878"), 228, 3, z, street, .06);
+    { add(new THREE.BoxGeometry(1.4, 1.2, 16), toon("#7a2a2a"), 228, 6.4, -177.5, street, .05); for (const s of [-1, 1]) { const p = add(new THREE.PlaneGeometry(13, 1), board("신촌대학교 · 정문", "#7a2a2a", 13, 1, 58), 228 + s * .72, 6.4, -177.5, street, 0, false); p.rotation.y = s * Math.PI / 2; } }
+    for (let x = 230; x < 306; x += 4) flat(4.2, 3.4, x + 2, -177.5, "#d7c9a6", .06);
+    for (let z = -244; z < -142; z += 4) flat(3.4, 4.2, 262, z + 2, "#d7c9a6", .06);
+    const stone = "#cbbca2", roofC = "#5a4a44";
+    const hall = (x, z, w, d, h, name, s) => {   /* s = +1: the front looks to +z, −1: to −z */
+      add(new THREE.BoxGeometry(w, h, d), toon(stone), x, h / 2, z, street, .12); solid(x - w / 2, x + w / 2, z - d / 2, z + d / 2);
+      const rg = new THREE.CylinderGeometry(.01, d * .76, 4, 4, 1); rg.rotateY(Math.PI / 4); const r = add(rg, toon(roofC), x, h + 2, z, street, .1); r.scale.set(w / d, 1, 1);
+      for (let k = 0; k < Math.floor(w / 4); k++) for (let f = 0; f < Math.floor(h / 4); f++) add(new THREE.PlaneGeometry(1.3, 2.2), toon("#6a8aa0"), x - w / 2 + 2 + k * 4, 2 + f * 4, z + s * (d / 2 + .03), street, 0, false).rotation.y = s > 0 ? 0 : Math.PI;
+      if (name) add(new THREE.PlaneGeometry(Math.min(w * .6, 10), .9), board(name, "#3a2a22", Math.min(w * .6, 10), .9, 56), x, h - 1.2, z + s * (d / 2 + .05), street, 0, false).rotation.y = s > 0 ? 0 : Math.PI;
+    };
+    hall(272, -132, 32, 12, 13, "본관", -1);
+    hall(246, -228, 24, 12, 10, "도서관", 1);
+    { add(new THREE.BoxGeometry(7, 22, 7), toon(stone), 285, 11, -195, street, .12); solid(281.5, 288.5, -198.5, -191.5);
+      const pr = add(new THREE.ConeGeometry(5.6, 6, 4), toon(roofC), 285, 25, -195, street, .1); pr.rotation.y = Math.PI / 4;
+      const c = document.createElement("canvas"); c.width = c.height = 128; const g = c.getContext("2d"); g.fillStyle = "#f6f0e0"; g.beginPath(); g.arc(64, 64, 60, 0, 7); g.fill(); g.strokeStyle = "#2a1f17"; g.lineWidth = 6; g.beginPath(); g.moveTo(64, 64); g.lineTo(64, 22); g.moveTo(64, 64); g.lineTo(94, 72); g.stroke();
+      for (const [dx, dz, ry] of [[0, 3.53, 0], [-3.53, 0, -Math.PI / 2]]) { const p = add(new THREE.CircleGeometry(2, 20), toon("#ffffff", { map: canvasTex(c) }), 285 + dx, 17, -195 + dz, street, 0, false); p.rotation.y = ry; } }
+    for (let i = 0; i < 30; i++) { const tx = rand(234, 304), tz = rand(-246, -116); if (free(tx, tz, 6) && Math.abs(tz + 177.5) > 4 && Math.abs(tx - 264) > 4 && !(tx > 253 && tx < 291 && tz > -141 && tz < -123) && !(tx > 230 && tx < 262 && tz > -237 && tz < -219) && Math.hypot(tx - 285, tz + 195) > 8 && Math.hypot(tx - 245, tz + 172) > 4) tree(tx, tz); }
+    for (let i = 0; i < 900; i++) tuft(rand(230, 308), rand(-248, -112), rand(.7, 1.3));
+    // the bus stop on 연세로 (the 신촌 map is left on its bench)
+    { add(new THREE.BoxGeometry(4, .12, 1.6), toon("#2f6db3"), 224.5, 2.6, -137, street, .03); for (const z of [-138.8, -135.2]) add(new THREE.BoxGeometry(.12, 2.6, .12), toon("#555"), 225.2, 1.3, z, street);
+      add(new THREE.PlaneGeometry(3.6, 2.2), toon("#bfe6ff", { transparent: true, opacity: .45 }), 225.3, 1.4, -137, street, 0, false).rotation.y = -Math.PI / 2;
+      add(new THREE.BoxGeometry(1.6, 1.2, .9), toon("#2f6db3"), 224, .6, -140.65, street, .04); add(new THREE.PlaneGeometry(1.4, .5), board("버스 · bus", "#1f2a3a", 1.4, .5, 60), 224, .8, -140.19, street, 0, false);
+      colliders.street.push({ x0: 223.1, x1: 224.9, z0: -141.2, z1: -140.1 }); }
+    SPAWNS.push(...NORTH_SPAWNS);
+  }
   // instanced foliage, cel outline on leaves too
   const leafGeo = new THREE.IcosahedronGeometry(1, 1), tuftGeo = new THREE.ConeGeometry(.07, .5, 4);
   const lm = new THREE.InstancedMesh(leafGeo, toon("#ffffff", {}), leafM.length);
@@ -1187,7 +1291,15 @@ export function buildWorld(scene) {
     { t: "편의점", x: 40, z: 141, area: "river" }, { t: "낚시터", x: -20, z: 190, area: "river" }, { t: "부서진 다리", x: 220, z: 214, area: "river" }, { t: "자전거길", x: -40, z: 164, area: "river" }, { t: "주차장", x: 170, z: -42, area: "apt" }, { t: "주차장", x: 270, z: 38, area: "apt" },
   ];
   rects.push(...ydMap.rects); labels.push(...ydMap.labels);
-  const areas = { yongsan: { minX: YD.x + 149, maxX: YD.x + 460, minZ: YD.z - 32, maxZ: YD.z + 427 }, noryangjin: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z + 330, maxZ: YD.z + 562 }, yeouido: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z - 4, maxZ: YD.z + 332 }, hongdae: { minX: -84, maxX: 108, minZ: -108, maxZ: 108 }, apt: { minX: 108, maxX: 310, minZ: -108, maxZ: 108 }, river: { minX: -84, maxX: 310, minZ: 108, maxZ: 250 } };
+  rects.push(R2(-84, 108, -250, -110, "road", "yeonnam"), R2(BOUL.x0, BOUL.x1, -250, -110, "boul", "yeonnam"), R2(-48, 108, -186, -160, "park", "yeonnam"),
+    ...[-150, -197].flatMap(z => [[-43, 15], [29, 63], [77, 99]].map(([a, b]) => R2(a, b, z - 4.5, z + 4.5, "block", "yeonnam"))), ...[[-43, -9], [5, 39], [53, 87]].map(([a, b]) => R2(a, b, -236.5, -227.5, "block", "yeonnam")),
+    ...[-20, 22, 64, 106].map(x => R2(x - 19, x + 19, -133.5, -122.5, "slab", "yeonnam")),
+    R2(108, 310, -250, -110, "road", "sinchon"), R2(130, 162, -245, -125, "square", "sinchon"), R2(200, 222, -250, -110, "boul", "sinchon"), R2(229, 308, -249, -111, "park", "sinchon"),
+    ...[[-249.5, -207.5], [-194.5, -174.5], [-161.5, -119.5]].map(([a, b]) => R2(163, 191, a, b, "block", "sinchon")), ...[[-249.5, -207.5], [-194.5, -141.5]].map(([a, b]) => R2(119, 129, a, b, "block", "sinchon")),
+    R2(256, 288, -138, -126, "slab", "sinchon"), R2(234, 258, -234, -222, "slab", "sinchon"), R2(281.5, 288.5, -198.5, -191.5, "slab", "sinchon"));
+  labels.push({ t: "연트럴파크", x: 30, z: -173, area: "yeonnam" }, { t: "연남로", x: 30, z: -214, area: "yeonnam" }, { t: "양화로", x: -70, z: -200, rot: -Math.PI / 2, area: "yeonnam" }, { t: "꽃집", x: 40, z: -159, area: "yeonnam" },
+    { t: "연세로", x: 211, z: -200, rot: -Math.PI / 2, area: "sinchon" }, { t: "먹자골목", x: 146, z: -185, area: "sinchon" }, { t: "신촌대학교", x: 268, z: -165, area: "sinchon" }, { t: "도서관", x: 246, z: -241, area: "sinchon" }, { t: "버스", x: 232, z: -139, area: "sinchon" });
+  const areas = { yongsan: { minX: YD.x + 149, maxX: YD.x + 460, minZ: YD.z - 32, maxZ: YD.z + 427 }, noryangjin: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z + 330, maxZ: YD.z + 562 }, yeouido: { minX: YD.x - 152, maxX: YD.x + 152, minZ: YD.z - 4, maxZ: YD.z + 332 }, hongdae: { minX: -84, maxX: 108, minZ: -108, maxZ: 108 }, yeonnam: { minX: -84, maxX: 108, minZ: -250, maxZ: -108 }, sinchon: { minX: 108, maxX: 310, minZ: -250, maxZ: -108 }, apt: { minX: 108, maxX: 310, minZ: -108, maxZ: 108 }, river: { minX: -84, maxX: 310, minZ: 108, maxZ: 250 } };
   const map = { bounds: STREET, rects, labels, areas };
   return { street, station, dungeon, yeouido, tower, market, museum, colliders, camBlocks, npcSpots, setNight, update, occlude, sun, hemi, map };
 }

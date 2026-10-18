@@ -1,6 +1,16 @@
 // Every spoken line in the game. key -> { ko, en, say? }  (say = what Piper reads, when it differs from ko)
 // After editing: node tools/gen-lines.js  (makes audio/lines/<key>.wav for new keys)
 export const LINES = {
+  x_map7: { ko: "연남동 지도를 찾았어요!", en: "You found the Yeonnam-dong map!" },
+  x_map8: { ko: "신촌 지도를 찾았어요!", en: "You found the Sinchon map!" },
+  sq_fl_hi: { ko: "어서 오세요. 꽃 좀 보세요, 예쁘죠?", en: "Welcome. Look at the flowers, pretty, right?" },
+  sq_fl_q: { ko: "공원의 꽃밭 세 곳에 물을 줘야 하는데 괴물 때문에 못 가요. 대신 물을 줄 수 있어요?", en: "I need to water three flower beds in the park, but I can't go because of the monsters. Could you water them for me?" },
+  sq_fl_wait: { ko: "꽃밭에 물 줬어요? 연트럴파크에 세 곳이 있어요.", en: "Did you water the flower beds? There are three in Yeontral Park." },
+  sq_fl_done: { ko: "고마워요! 꽃들이 다시 살아났어요.", en: "Thank you! The flowers came back to life." },
+  sq_st_hi: { ko: "안녕하세요. 저는 이 대학교 학생이에요.", en: "Hello. I'm a student at this university." },
+  sq_st_q: { ko: "괴물을 피해서 도망가다가 교과서 세 권을 떨어뜨렸어요. 캠퍼스에서 찾아 줄 수 있어요?", en: "I dropped three textbooks while running from the monsters. Could you find them on campus?" },
+  sq_st_wait: { ko: "책 찾았어요? 캠퍼스 어딘가에 있을 거예요.", en: "Did you find the books? They must be somewhere on campus." },
+  sq_st_done: { ko: "다 찾았네요! 이제 시험 공부를 할 수 있어요. 고마워요!", en: "You found them all! Now I can study for my exam. Thank you!" },
   sq_bu_hi: { ko: "안녕하세요! 저는 여기서 매일 노래해요.", en: "Hi! I sing here every day." },
   sq_bu_q: { ko: "바람 때문에 가사 종이 세 장이 날아갔어요. 찾아 줄 수 있어요?", en: "The wind blew away three of my lyric sheets. Could you find them?" },
   sq_bu_wait: { ko: "가사 종이 찾았어요? 홍대 거리 어딘가에 있을 거예요.", en: "Did you find the lyric sheets? They must be somewhere in Hongdae." },

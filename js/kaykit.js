@@ -54,6 +54,8 @@ const ROLES = {
   sqBike: { file: "knight", show: [], tint: "#b8e8a8", idle: "Idle" },
   sqPhoto: { file: "mage", show: [], tint: "#ffd0d8", idle: "Idle" },
   sqGongsi: { file: "rogue", show: [], tint: "#d0d8e8", idle: "Idle" },
+  sqFlorist: { file: "mage", show: [], tint: "#ffd8c8", idle: "Idle" },
+  sqStudent: { file: "rogue", show: [], tint: "#c8d8f8", idle: "Idle" },
   sqDocent: { file: "mage", show: ["Spellbook_open"], tint: "#e8dcc0", idle: "Idle" },
   stuB: { file: "rogue", show: [], tint: "#d8e4d0", idle: "Idle" },
   stuC: { file: "hooded", show: [], tint: "#b8b8c8", idle: "Idle" },
