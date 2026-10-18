@@ -6,14 +6,14 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdwwaz6";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdwwaz6";
-import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdwwaz6";
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdwwaz6";
-import * as FX from "./fx.js?v=mvdwwaz6";
-import { LINES } from "./lines.js?v=mvdwwaz6";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdwwaz6";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdwwaz6";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdxix7r";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdxix7r";
+import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdxix7r";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdxix7r";
+import * as FX from "./fx.js?v=mvdxix7r";
+import { LINES } from "./lines.js?v=mvdxix7r";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdxix7r";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdxix7r";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -2235,7 +2235,7 @@ function updateMonsters(dt) {
         if (def.shield) shieldTick(m, dt);
         if (def.examQ) examTick(m, dt, tg);
         if (def.sweep) sweepTick(m, dt, tg);
-        if (def.volley) generalTick(m, dt, tg);
+        if (typeof def.volley === "object") generalTick(m, dt, tg);   /* the general's line volleys; the commander's volley: 3 is its orb count (Danny's crash 2026-10-18) */
         if (def.grow) { const g0 = m.grow || 0; m.grow = Math.min(def.grow.max, g0 + dt * def.grow.add / def.grow.every); if (g0 < .2 && m.grow >= .2) floater(m.pos, "그슨대가 커져요! · it's growing", "#b8a8d8", true, m.model.height); m.model.root.scale.setScalar(m.baseScale * (1 + m.grow)); }
         if (def.slam) {
           m.slamCd -= dt;
@@ -3000,16 +3000,19 @@ function orderPick(k) {
 }
 function orderUndo() { if (!order || order.lock) return; order.picked.pop(); drawOrder(); }
 function orderClose() { if (!order || order.lock) return; order = null; $("order").hidden = true; paused = false; }
+// Danny 2026-10-18: Korean word order is flexible, so other natural orders count too (data/order_alts.js, checked sentence by
+// sentence; only used while the sentence is still the same one)
+function orderAlts(w, toks) { const a = (window.SEOUL_ORDER || {})[w.id]; return a && a.s === toks.join(" ") ? a.alts.map(p => p.map(i => toks[i]).join(" ")) : []; }
 function orderCheck() {
-  const o = order, ok = o.picked.map(k => o.tiles[k].t).join(" ") === o.toks.join(" ");
+  const o = order, got = o.picked.map(k => o.tiles[k].t).join(" "), book = o.toks.join(" "), alt = got !== book && orderAlts(o.w, o.toks).includes(got), ok = got === book || alt;
   o.lock = true; $("orLine").classList.add(ok ? "ok" : "no");
-  if (ok) { stat(o.w.id).c++; say([exClip(o.w.id)], { interrupt: true }); SFX.shotGood(); }
+  if (ok) { stat(o.w.id).c++; say([exClip(o.w.id)], { interrupt: true }); SFX.shotGood(); if (alt) $("orEn").innerHTML = `이 순서도 맞아요! · this order works too — 책에서는 · the book says: <b>${esc(book)}</b>`; }
   else { stat(o.w.id).w++; SFX.resist(); $("orEn").innerHTML = `<b>${esc(o.toks.join(" "))}</b> · ${esc(o.w.ex[1])}`; }
   setTimeout(() => {
     $("order").hidden = true; $("orLine").classList.remove("ok", "no"); order = null; paused = false;
     if (NET.role === "guest") netSend({ t: "order", ok });
     applyOrder(ok);
-  }, ok ? 1600 : 3200);
+  }, ok ? (alt ? 3000 : 1600) : 3200);
 }
 function applyOrder(ok) {
   if (ok) {
@@ -4802,10 +4805,20 @@ function render(dt) {
   }
   composer.render();
 }
+// Danny 2026-10-18 "the game just crashed": one error in a frame used to stop the loop for good (the next frame was asked for after
+// it). Now the next frame is asked for first, and an error is caught, kept (localStorage seoulmmo_err, newest first) and shown once
+let errShown = 0;
+function frameError(e) {
+  const msg = String(e && e.message || e), at = String(e && e.stack || "").split("\n").slice(1, 4).map(l => l.trim()).join(" | ");
+  console.error(e);
+  try { const L = JSON.parse(localStorage.getItem("seoulmmo_err") || "[]"); if (!L.length || L[0].msg !== msg) { L.unshift({ t: new Date().toISOString(), msg, at, zone: player.zone }); localStorage.setItem("seoulmmo_err", JSON.stringify(L.slice(0, 10))); } } catch (x) {}
+  if (performance.now() - errShown > 20000) { errShown = performance.now(); try { toast("⚠ 오류 · error: " + msg.slice(0, 80) + " — the game keeps going"); } catch (x) {} }
+}
 function loop(now) {
-  const dt = Math.min(.05, (now - last) / 1000); last = now;
-  step(performance.now() < FX.hitStop.until ? dt * .06 : dt); render(dt);
   requestAnimationFrame(loop);
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  try { step(performance.now() < FX.hitStop.until ? dt * .06 : dt); } catch (e) { frameError(e); }
+  try { render(dt); } catch (e) { frameError(e); }
 }
 
 // ---- boot ---------------------------------------------------------------------------------------------
