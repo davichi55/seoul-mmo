@@ -6,18 +6,18 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mve0ix4f";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mve0ix4f";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mve0ix4f";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mve0ix4f";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mve0qb6e";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mve0qb6e";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mve0qb6e";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mve0qb6e";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mve0ix4f";
-import * as FX from "./fx.js?v=mve0ix4f";
-import { LINES } from "./lines.js?v=mve0ix4f";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mve0ix4f";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mve0ix4f";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mve0qb6e";
+import * as FX from "./fx.js?v=mve0qb6e";
+import { LINES } from "./lines.js?v=mve0qb6e";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mve0qb6e";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mve0qb6e";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -1892,19 +1892,39 @@ function drawMap(ctx, W, H, cx, cz, span, full, areas = Object.keys(MAP_ITEMS)) 
 function openMap() {
   if (!S.cls) return;
   paused = true; showScreen("mapView");
-  if (player.zone === "dungeon") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "홍대 터널"; $("bigMap").width = 720; $("bigMap").height = 300; drawDungeonMap($("bigMap").getContext("2d"), 720, 300, DUNGEON.wrects[0].x0 + 150, 0, 316, true); return; }
-  if (player.zone === "museum") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "국립중앙박물관"; $("bigMap").width = 720; $("bigMap").height = 300; drawDungeonMap($("bigMap").getContext("2d"), 720, 300, MU.x + 128, MU.z, 270, true, MUSEUM, "museum"); return; }
-  if (player.zone === "market") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "노량진 수산시장"; $("bigMap").width = 720; $("bigMap").height = 300; drawDungeonMap($("bigMap").getContext("2d"), 720, 300, MK.x + 128, MK.z, 270, true, MARKET, "market"); return; }
-  if (player.zone === "tower") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "63빌딩"; $("bigMap").width = 720; $("bigMap").height = 300; drawDungeonMap($("bigMap").getContext("2d"), 720, 300, TW.x + 131, TW.z, 276, true, TOWER, "tower"); return; }
+  if (player.zone === "dungeon") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "홍대 터널"; mapSet(DUNGEON.wrects[0].x0 + 150, 0, 316, (ctx, a, b, sp) => drawDungeonMap(ctx, 720, 720, a, b, sp, true)); return; }
+  if (player.zone === "museum") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "국립중앙박물관"; mapSet(MU.x + 128, MU.z, 270, (ctx, a, b, sp) => drawDungeonMap(ctx, 720, 720, a, b, sp, true, MUSEUM, "museum")); return; }
+  if (player.zone === "market") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "노량진 수산시장"; mapSet(MK.x + 128, MK.z, 270, (ctx, a, b, sp) => drawDungeonMap(ctx, 720, 720, a, b, sp, true, MARKET, "market")); return; }
+  if (player.zone === "tower") { $("mapNone").hidden = true; $("bigMap").hidden = false; $("mapTitle").textContent = "63빌딩"; mapSet(TW.x + 131, TW.z, 276, (ctx, a, b, sp) => drawDungeonMap(ctx, 720, 720, a, b, sp, true, TOWER, "tower")); return; }
   const own = ownedAreas().filter(a => (MAP_ITEMS[a].zone || "street") === player.zone);
   $("mapNone").hidden = own.length > 0; $("bigMap").hidden = !own.length;
   $("mapTitle").textContent = own.map(a => MAP_ITEMS[a].ko.replace(" 지도", "")).join(" · ") || "지도";
   if (!own.length) return;
   const bs = own.map(a => world.map.areas[a]);
   const x0 = Math.min(...bs.map(b => b.minX)), x1 = Math.max(...bs.map(b => b.maxX)), z0 = Math.min(...bs.map(b => b.minZ)), z1 = Math.max(...bs.map(b => b.maxZ));
-  const W = 720, H = Math.round(720 * Math.min(1, (z1 - z0) / (x1 - x0) + .05));
-  $("bigMap").width = W; $("bigMap").height = H;
-  drawMap($("bigMap").getContext("2d"), W, H, (x0 + x1) / 2, (z0 + z1) / 2, Math.max(x1 - x0, (z1 - z0) * W / H) + 12, true, own);
+  mapSet((x0 + x1) / 2, (z0 + z1) / 2, Math.max(x1 - x0, z1 - z0) + 12, (ctx, a, b, sp) => drawMap(ctx, 720, 720, a, b, sp, true, own));
+}
+// zoom (Danny 2026-10-19: "an option to zoom into this map, so we can read the names better"): scroll wheel or + / − zoom towards the
+// pointer, drag moves, ⤢ shows the whole map again. The names keep their size on screen, so zooming in pulls them apart.
+let mapZ = null;
+function mapSet(cx, cz, span, draw) { const c = $("bigMap"); c.width = c.height = 720; mapZ = { cx, cz, span, fit: span, draw, x0: cx, z0: cz }; mapRedraw(); }
+function mapRedraw() { if (!mapZ) return; mapZ.draw($("bigMap").getContext("2d"), mapZ.cx, mapZ.cz, mapZ.span); $("mzFit").disabled = mapZ.span >= mapZ.fit; }
+function mapZoom(f, px = 360, pz = 360) {   // f < 1 zooms in; (px, pz) = the canvas point that stays put
+  if (!mapZ) return;
+  const k = 720 / mapZ.span, wx = mapZ.cx + (px - 360) / k, wz = mapZ.cz + (pz - 360) / k;
+  mapZ.span = Math.max(mapZ.fit / 10, Math.min(mapZ.fit, mapZ.span * f));
+  const k2 = 720 / mapZ.span; mapZ.cx = wx - (px - 360) / k2; mapZ.cz = wz - (pz - 360) / k2;
+  if (mapZ.span >= mapZ.fit) { mapZ.cx = mapZ.x0; mapZ.cz = mapZ.z0; }
+  mapRedraw();
+}
+{
+  const c = $("bigMap"), at = e => { const r = c.getBoundingClientRect(); return [(e.clientX - r.left) * 720 / r.width, (e.clientY - r.top) * 720 / r.height]; };
+  c.addEventListener("wheel", e => { e.preventDefault(); const [x, z] = at(e); mapZoom(e.deltaY < 0 ? 1 / 1.25 : 1.25, x, z); }, { passive: false });
+  let drag = null;
+  c.addEventListener("pointerdown", e => { drag = at(e); c.setPointerCapture(e.pointerId); c.style.cursor = "grabbing"; });
+  c.addEventListener("pointermove", e => { if (!drag || !mapZ) return; const p = at(e), k = 720 / mapZ.span; mapZ.cx -= (p[0] - drag[0]) / k; mapZ.cz -= (p[1] - drag[1]) / k; drag = p; mapRedraw(); });
+  const end = () => { drag = null; c.style.cursor = ""; }; c.addEventListener("pointerup", end); c.addEventListener("pointercancel", end);
+  $("mzIn").onclick = () => mapZoom(1 / 1.5); $("mzOut").onclick = () => mapZoom(1.5); $("mzFit").onclick = () => mapZoom(1e9);
 }
 const mapItems = {};
 function takeMap(area) {

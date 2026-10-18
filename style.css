@@ -667,3 +667,8 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 
 /* character screen: the class look switch (2026-10-19) */
 .cvLook{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0 4px}.cvLook>span{color:#b8aec4;font-size:14px;margin-right:4px}.cvLook small{opacity:.7}
+
+/* map zoom (2026-10-19) */
+#bigMap{cursor:grab;touch-action:none}
+.mapZoom{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:8px}.mapZoom button{min-width:44px;font-size:18px;font-weight:700}.mapZoom button:disabled{opacity:.45}
+#bigMap[hidden]+.mapZoom{display:none}
