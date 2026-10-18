@@ -6,25 +6,28 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mve1m7hf";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mve1m7hf";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mve1m7hf";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mve1m7hf";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mve26byj";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mve26byj";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mve26byj";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mve26byj";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mve1m7hf";
-import * as FX from "./fx.js?v=mve1m7hf";
-import { LINES } from "./lines.js?v=mve1m7hf";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mve1m7hf";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mve1m7hf";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mve26byj";
+import * as FX from "./fx.js?v=mve26byj";
+import { LINES } from "./lines.js?v=mve26byj";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mve26byj";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mve26byj";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
 const BOOKS = DATA.books || [{ id: "5a", title: "5A", en: "Korean 5A" }];
 // every character studies one book (Danny 2026-10-12); S.chapters = the chapters whose words it sees (drops, quizzes, murals)
 const bookChapters = () => DATA.chapters.filter(c => (c.book || "5a") === S.book);
-const bookWords = () => DATA.words.filter(w => (w.book || "5a") === S.book);
+// ★ 시험 단어 (Danny 2026-10-19): with S.prio on, only the words starred on his sheet / in his notes (the exam words) are in play
+const inPlay = w => !S.prio || !!w.star;
+const playWords = () => DATA.words.filter(inPlay);
+const bookWords = () => DATA.words.filter(w => (w.book || "5a") === S.book && inPlay(w));
 const pickChapters = () => S.mode === "story" ? bookChapters().filter(c => S.chapters.includes(c.id)) : bookChapters();
 const $ = id => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -410,7 +413,7 @@ function levelUp() {
 // ---- the level-up exam (Danny 2026-10-18): every word you have ever owned, the least practised ones most often ----
 const EXAM_N = 5;
 let examPending = false, examSnooze = 0, exam = null, calmT = 0;
-const ownedWords = () => [...new Set([...(S.owned || []), ...S.cards.map(c => c.id)])].filter(id => WORD[id]);
+const ownedWords = () => [...new Set([...(S.owned || []), ...S.cards.map(c => c.id)])].filter(id => WORD[id] && inPlay(WORD[id]));
 function examWeight(id) { const k = mastery(id).k, basic = deckCards("basic").some(c => c.id === id); return (k === "mastered" ? .3 : k === "learned" ? 1 : 3) * (basic ? .35 : 1); }
 function pickWeighted(ids, n) {
   const out = [], pool = ids.slice();
@@ -1077,7 +1080,7 @@ function toStreet() { populateStreet(); player.zone = "street"; player.pos.set(E
 
 // ---- UI: class pick, deck picker, deck view, menu --------------------------------------------------------------
 function showScreen(id) { for (const s of ["title", "classPick", "deckPick", "deckView", "charView", "invView", "questView", "mapView", "achView", "bankView", "mailView", "menu", "bookView", "friendsView", "rewardView"]) $(s).hidden = s !== id; }
-let newBook = "5a", newMode = "story";
+let newBook = "5a", newMode = "story", newPrio = false;
 const CHAPTER_LVL = i => 1 + 2 * i;   // story mode: 1과 at Lv 1, then one every 2 levels (8과 at Lv 15)
 // Danny 2026-10-18: a chapter opens when you own 70% of the one before it (chapters never close again; old saves keep theirs)
 const STORY_PCT = .7;
@@ -1097,12 +1100,17 @@ function drawModePick() {
   $("modePick").innerHTML = `<span class="fine">모드 · mode</span>` + M.map(([k, t, d]) => `<button class="chip" data-m="${k}" aria-pressed="${k === newMode}" title="${d}">${t}</button>`).join("") + `<span class="fine modeDesc">${M.find(m => m[0] === newMode)[2]}</span>`;
   $("modePick").querySelectorAll("[data-m]").forEach(x => x.onclick = () => { newMode = x.dataset.m; drawModePick(); });
 }
+function drawPrioPick() {
+  const n = p => DATA.words.filter(w => (w.book || "5a") === newBook && (!p || w.star)).length;
+  $("prioPick").innerHTML = `<span class="fine">단어 · words</span>` + [[false, `전체 · all words (${n(false)})`], [true, `★ 시험 단어만 · exam words only (${n(true)})`]].map(([p, t]) => `<button class="chip" data-p="${p ? 1 : 0}" aria-pressed="${p === newPrio}">${t}</button>`).join("") + `<span class="fine modeDesc">${newPrio ? "책에 별표(★)가 있는 단어만 나와요 · only the words starred on your sheet and in your notes: the ones for the exam" : "모든 단어가 나와요 · every word of the book"}</span>`;
+  $("prioPick").querySelectorAll("[data-p]").forEach(x => x.onclick = () => { newPrio = x.dataset.p === "1"; drawPrioPick(); });
+}
 function drawBookPick() {
   $("bookPick").innerHTML = `<span class="fine">교재 · textbook</span>` + BOOKS.map(b => `<button class="chip" data-b="${b.id}" aria-pressed="${b.id === newBook}">${b.title} · ${b.en} (${DATA.words.filter(w => (w.book || "5a") === b.id).length} words)</button>`).join("");
-  $("bookPick").querySelectorAll("[data-b]").forEach(x => x.onclick = () => { newBook = x.dataset.b; drawBookPick(); });
+  $("bookPick").querySelectorAll("[data-b]").forEach(x => x.onclick = () => { newBook = x.dataset.b; drawBookPick(); drawPrioPick(); });
 }
 function buildClassPick() {
-  drawBookPick(); drawModePick();
+  drawBookPick(); drawModePick(); drawPrioPick();
   $("classes").innerHTML = "";
   for (const [k, c] of Object.entries(CLASSES)) {
     const b = document.createElement("button"); b.className = "cls";
@@ -1124,7 +1132,7 @@ function drawDeckPicker() {
   for (const c of pickChapters()) { const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", c.id === pickCh); b.textContent = `${c.title} ${c.theme}`; b.onclick = () => { pickCh = c.id; pickSecs = null; drawDeckPicker(); }; $("chTabs").appendChild(b); }
   for (const s of ch.sections) { const b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", pickSecs.includes(s.id)); b.textContent = s.title; b.onclick = () => { pickSecs = pickSecs.includes(s.id) ? pickSecs.filter(x => x !== s.id) : [...pickSecs, s.id]; drawDeckPicker(); }; $("secChips").appendChild(b); }
   const g = $("wordGrid"); g.innerHTML = "";
-  DATA.words.filter(w => w.ch === pickCh && pickSecs.includes(w.sec)).forEach(w => {
+  playWords().filter(w => w.ch === pickCh && pickSecs.includes(w.sec)).forEach(w => {
     const b = document.createElement("button"); b.className = "wcard"; b.setAttribute("aria-pressed", pickSel.includes(w.id)); b.dataset.tip = tipWord(w);
     const m = mastery(w.id);
     b.innerHTML = `<i>${POSKO[w.pos]}</i><b>${w.kr}</b><span>${w.en}</span>${m.k !== "new" ? `<span class="m">● ${m.ko}</span>` : ""}`;
@@ -1141,7 +1149,7 @@ function drawTray() {
   $("trayBonus").textContent = S.origin ? `출신 보너스 (already set) · ${S.origin.txt}` : pickSel.length === BASIC_DECK ? `출신 보너스 · origin bonus: ${b.txt}` : "";
   $("deckDone").disabled = pickSel.length !== BASIC_DECK;
 }
-$("deckRandom").onclick = () => { if (!pickSecs) drawDeckPicker(); const pool = DATA.words.filter(w => w.ch === pickCh && pickSecs.includes(w.sec) && !pickSel.includes(w.id)); pickSel = pickSel.concat(shuffle(pool).slice(0, BASIC_DECK - pickSel.length).map(w => w.id)); drawDeckPicker(); };
+$("deckRandom").onclick = () => { if (!pickSecs) drawDeckPicker(); const pool = playWords().filter(w => w.ch === pickCh && pickSecs.includes(w.sec) && !pickSel.includes(w.id)); pickSel = pickSel.concat(shuffle(pool).slice(0, BASIC_DECK - pickSel.length).map(w => w.id)); drawDeckPicker(); };
 $("deckClear").onclick = () => { pickSel = []; drawDeckPicker(); };
 // the stranger's cards are gifts: they only live in the basic attack deck, and go back to him when you swap them out
 $("deckDone").onclick = () => {
@@ -1276,7 +1284,7 @@ function monsterPool(kind) {
   let ch = S.chapters.length ? S.chapters : [...new Set(deckIds("basic").map(id => WORD[id].ch))];
   if (!ch.length) ch = bookChapters().map(c => c.id);
   const h = s => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
-  return DATA.words.filter(w => ch.includes(w.ch)).sort((a, b) => h(kind + a.id) - h(kind + b.id)).slice(0, 15).map(w => w.id);
+  return playWords().filter(w => ch.includes(w.ch)).sort((a, b) => h(kind + a.id) - h(kind + b.id)).slice(0, 15).map(w => w.id);
 }
 // a few cards at once from your newest chapter, missing words first (quests, exams)
 function cardPack(n) {
@@ -1316,7 +1324,7 @@ function dropGear(m) {
 function shopOffers() {
   const day = dayNum();
   if (!S.shop || S.shop.day !== day) {
-    const owned = [...new Set(S.cards.map(c => c.id))], pool = DATA.words.filter(w => S.chapters.includes(w.ch)).map(w => w.id);
+    const owned = [...new Set(S.cards.map(c => c.id))], pool = playWords().filter(w => S.chapters.includes(w.ch)).map(w => w.id);
     const offers = [];
     for (let i = 0; i < 4; i++) { const id = i < 2 && owned.length ? pick(owned) : pick(pool.length ? pool : owned); const rar = Math.min(2, rollRarity()); offers.push({ id, rar, mod: rollMod(rar), sold: false }); }
     S.shop = { day, offers };
@@ -1419,6 +1427,8 @@ function openCharView() {
   const looks = LOOKS[S.cls] || [];
   $("cvLook").innerHTML = peopleReady() && looks.length ? `<span>외모 · look</span>` + looks.map((l, i) => `<button class="chip" data-i="${i}" aria-pressed="${(S.look || 0) === i}">${i + 1} · ${l.ko} <small>${l.en}</small></button>`).join("") : "";
   $("cvLook").querySelectorAll("button").forEach(b => b.onclick = () => { S.look = +b.dataset.i; save(); setPlayerModel(); SFX.select(); openCharView(); });
+  $("cvPrio").innerHTML = `<span>단어 · words</span>` + [[false, "전체 · all"], [true, "★ 시험 단어만 · exam words only"]].map(([p, t]) => `<button class="chip" data-p="${p ? 1 : 0}" aria-pressed="${!!S.prio === p}">${t}</button>`).join("");
+  $("cvPrio").querySelectorAll("button").forEach(b => b.onclick = () => { S.prio = b.dataset.p === "1"; syncStory(true); save(); SFX.select(); toast(S.prio ? "★ 이제 시험 단어만 나와요 · from now on only the exam words drop and get asked" : "이제 모든 단어가 나와요 · every word is back in play"); openCharView(); });
   $("cvXp").innerHTML = S.level >= MAX_LEVEL ? "최고 레벨 · max level" : `<div class="bar xp xpbig"><i style="width:${S.xp / xpNeed(S.level) * 100}%"></i><span>XP ${S.xp} / ${xpNeed(S.level)} · 다음 레벨까지 ${xpNeed(S.level) - S.xp}</span></div>`;
   const minsLeft = k => Math.max(0, Math.round((S.buffs[k] - S.time) / GAME_MIN_PER_SEC / 60));
   const food = Object.keys(BUFFS).filter(buffOn).map(k => `${BUFFS[k].ko} (${minsLeft(k)} min)`).join("<br>") || "없음 · none";
@@ -1509,7 +1519,7 @@ function newGame(cls) {
   setTimeout(() => sendMail("역무원", "홍대입구역에 온 것을 환영해요. 배가 고프면 할머니 식당에 가세요. 밤에는 괴물이 많아요. 조심하세요!", "Welcome to Hongik University Station. When you're hungry, go to Grandma's restaurant. There are many monsters at night. Be careful!", { won: 3000 }), 4000);
   for (const k in cds) { cds[k] = 0; comeBacks[k] = []; }
   player.guardUntil = 0;
-  wipe(); S = fresh(); S.cls = cls; S.book = newBook; S.mode = newMode; syncStory(false); spawnPlayer(); started = true;
+  wipe(); S = fresh(); S.cls = cls; S.book = newBook; S.mode = newMode; S.prio = newPrio; syncStory(false); spawnPlayer(); started = true;
   toStation(); const st = world.npcSpots.stranger; player.pos.set(st.x + 1, 0, st.z + 3.2); player.yaw = 0;
   showScreen(null); $("hud").hidden = false; paused = false;
   const n = npcs.find(x => x.kind === "stranger");
@@ -1802,7 +1812,7 @@ function completeQuest(id) {
   if (r.won) S.money += r.won;
   const att = {};
   if (r.gear) att.gear = [r.gear];
-  if (r.card) { const pool = DATA.words.filter(w => (S.chapters.length ? S.chapters : [w.ch]).includes(w.ch)); att.cards = [{ id: pick(pool.filter(w => (w.book || "5a") === S.book)).id, rar: r.card }]; }
+  if (r.card) { const pool = playWords().filter(w => (S.chapters.length ? S.chapters : [w.ch]).includes(w.ch)); att.cards = [{ id: pick(pool.filter(w => (w.book || "5a") === S.book)).id, rar: r.card }]; }
   if (att.gear || att.cards) setTimeout(() => sendMail(NPC_DEF[q.giver].split(" · ")[0], "도와줘서 고마워요. 작은 선물을 보내요. 역에 있는 우체통에서 받으세요.", "Thank you for helping. I'm sending a small gift. Pick it up at the post box in the station.", att), 1500);
   toast(`퀘스트 완료! ${q.ko} · +${won(r.won || 0)}`); SFX.kill(); setTimeout(() => cardPack(3), 600);
   gainXp(r.xp); save();
@@ -2658,7 +2668,7 @@ function dungeonCleared() {
   S.dunClears = (S.dunClears || 0) + 1; addHeart(10); clearReward("tunnel", "홍대 터널");
   toast("🏆 던전 클리어! 홍대 터널 · dungeon cleared!");
   if (S.dunClears === 1) setTimeout(() => sendMail("낯선 사람", "잘했어요. 터널의 주인을 물리쳤군요. 이건 선물이에요. 역에서 다시 만나요.", "Well done. You defeated the master of the tunnel. This is a present. Let's meet again at the station.",
-    { cards: [{ id: pick(DATA.words.filter(w => S.chapters.includes(w.ch))).id, rar: 2 }], gear: ["t_club"] }), 2500);
+    { cards: [{ id: pick(playWords().filter(w => S.chapters.includes(w.ch))).id, rar: 2 }], gear: ["t_club"] }), 2500);
   save();
 }
 function drawDungeonMap(ctx, W, H, cx, cz, span, full, D = DUNGEON, zone = "dungeon") {
@@ -3115,7 +3125,7 @@ function towerCleared() {
   S.towerClears = (S.towerClears || 0) + 1; addHeart(10); clearReward("tower", "63빌딩");
   toast("🏆 63빌딩 클리어! 외계인 사령관을 물리쳤어요 · the 63 Building is cleared!");
   if (S.towerClears === 1) setTimeout(() => sendMail("낯선 사람", "63빌딩의 사령관을 물리쳤군요. 고마워요. 거기에서 무엇을 봤어요? 역에서 이야기해요.", "You defeated the commander of the 63 Building. Thank you. What did you see there? Let's talk at the station.",
-    { cards: [{ id: pick(DATA.words.filter(w => S.chapters.includes(w.ch))).id, rar: 3 }], gear: ["t_core"] }), 2500);
+    { cards: [{ id: pick(playWords().filter(w => S.chapters.includes(w.ch))).id, rar: 3 }], gear: ["t_core"] }), 2500);
   save();
 }
 const mdmg = m => m.def.dmg * m.mul * (1 + (m.grow || 0)) * (m.feebleUntil > clock ? .8 : 1);

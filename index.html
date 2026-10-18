@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>서울의 수수께끼 존재 · The Mysterious Creature of Seoul</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="style.css?v=mve1m7hf">
+<link rel="stylesheet" href="style.css?v=mve26byj">
 </head>
 <body>
 <div id="game"></div>
@@ -123,7 +123,7 @@
 <!-- ============ screens ============ -->
 <div id="title" class="screen">
   <div class="panel center">
-    <div class="eyebrow">Sogang 5A · first playable</div>
+    <div class="eyebrow">Sogang Level 5 · first playable</div>
     <h1>서울의 수수께끼 존재</h1>
     <div class="sub">The Mysterious Creature of Seoul</div>
     <div class="btns"><button class="big" id="btnContinue" hidden>계속하기 · Continue</button><button class="big" id="btnNew">새 게임 · New game</button></div>
@@ -137,6 +137,7 @@
     <h2>누구로 살아남을까요? · Choose your class</h2>
     <div class="bookPick" id="bookPick"></div>
     <div class="bookPick" id="modePick"></div>
+    <div class="bookPick" id="prioPick"></div>
     <div class="classes" id="classes"></div>
   </div>
 </div>
@@ -287,6 +288,7 @@
     <div class="deckHead"><div><div class="eyebrow">캐릭터 · character</div><h2 id="cvTitle"></h2></div><button class="x" id="cvClose">✕</button></div>
     <div id="cvXp"></div>
     <div id="cvLook" class="cvLook"></div>
+    <div id="cvPrio" class="cvLook"></div>
     <div class="cvCols">
       <div><table class="cvStats"><tbody id="cvStats"></tbody></table><p class="fine" id="cvPass"></p>
       <div id="cvComp"></div></div><div class="cvRight"><h3>단어 · Words</h3><div class="cvWords" id="cvWords"></div><h3>내 덱 · My deck</h3><div class="cvDeck" id="cvDeck"></div></div>
@@ -324,9 +326,9 @@
 <div id="deathScreen" class="screen dark" hidden><div class="panel center"><h2>정신을 잃었어요…</h2><p>You passed out. Someone carries you to the station. Nothing is lost.</p></div></div>
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/jsm/" } }</script>
-<script src="data/words.js?v=mve1m7hf"></script>
-<script src="data/defs.js?v=mve1m7hf"></script>
-<script src="data/order_alts.js?v=mve1m7hf"></script>
-<script type="module" src="js/game.js?v=mve1m7hf"></script>
+<script src="data/words.js?v=mve26byj"></script>
+<script src="data/defs.js?v=mve26byj"></script>
+<script src="data/order_alts.js?v=mve26byj"></script>
+<script type="module" src="js/game.js?v=mve26byj"></script>
 </body>
 </html>
