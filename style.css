@@ -594,3 +594,14 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .clTile.bd{border-left:5px solid var(--rc)}
 .cgQuit{font:600 13px var(--display);padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(20,14,30,.75);color:#ddd;cursor:pointer}
 .cgQuit[data-sure]{background:#7a1f2b;color:#fff;border-color:#ff5a6a}
+/* card battle: bigger cards, scores in the name boxes, a slimmer rule card (Danny 2026-10-18) */
+.cgScore{display:none!important}
+.cgPts{font:700 34px var(--display);font-style:normal;line-height:1;color:#ffd23d}.cgSide.them .cgPts{color:#d8b8ff}
+.cgRule{padding:6px 20px;gap:2px}.cgRule b{font-size:22px}
+.cgCard{flex:0 1 150px;padding:20px 8px 10px;border-radius:14px}
+.cgCard .pt,.cgCard small{font-size:clamp(11px,.85vw,14px)}
+.cgCard kbd{font-size:12px}
+.cgCard.on{transform:translateY(-18px)}
+.cgHand{width:min(1560px,98vw)}
+.cgCard{min-height:clamp(84px,11vh,120px)}
+.cgRule b{font-size:clamp(20px,2vw,30px)}
