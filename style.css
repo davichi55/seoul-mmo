@@ -652,3 +652,10 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .cgQz.steal{border-color:#ffd23d;box-shadow:0 0 40px rgba(255,210,61,.4)}
 .cgQz.steal .qzOpts button.r1{border-color:#5aa8ff}.cgQz.steal .qzOpts button.r2{border-color:#b47aff}.cgQz.steal .qzOpts button.r3{border-color:#ffb03a}
 .cgQz.msg{border-color:#c08aff}
+/* mail: take all / delete all (2026-10-18) */
+.mlTop{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between}
+.mlAll{display:flex;gap:8px;flex-wrap:wrap}
+.mlAll button{font:600 14px var(--display);padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.06);color:inherit;cursor:pointer}
+.mlAll button:hover:not([disabled]){border-color:#ffd23d}
+.mlAll button[disabled]{opacity:.4;cursor:default}
+#mlDelAll[data-sure]{background:#7a1f2b;border-color:#ff5a6a;color:#fff}

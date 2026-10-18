@@ -2113,11 +2113,36 @@ function attachText(a) {
   return [a.won && won(a.won), ...(a.gear || []).map(g => gearName(g)), ...(a.cards || []).map(c => `[${RARITY[c.rar].ko}] ${WORD[c.id].kr}`)].filter(Boolean).join(" · ");
 }
 let mailSel = null;
+function takeMail(m) {
+  const a = m.attach; if (a.won) S.money += a.won;
+  for (const g of a.gear || []) addItem(g);
+  for (const c of a.cards || []) S.cards.push({ uid: newUid(), id: c.id, rar: c.rar, mod: c.mod || rollMod(c.rar) });
+  m.taken = true;
+}
+// Danny 2026-10-18: take every gift at once, delete every letter at once (gifts are taken first, so nothing is lost)
+function takeAllMail() {
+  const open = S.mail.filter(m => hasAttach(m) && !m.taken); if (!open.length) return 0;
+  let w = 0, n = 0, g = 0; for (const m of open) { w += m.attach.won || 0; n += (m.attach.cards || []).length; g += (m.attach.gear || []).length; takeMail(m); m.read = true; }
+  toast(`📎 ${open.length}개 받았어요 · took ${open.length} gift${open.length > 1 ? "s" : ""}` + [w && ` · ${won(w)}`, n && ` · 카드 ${n}장 · ${n} card${n > 1 ? "s" : ""}`, g && ` · 장비 ${g} · ${g} gear`].filter(Boolean).join(""));
+  SFX.pickup(); save(); return open.length;
+}
+function drawMailAll() {
+  const open = S.mail.filter(m => hasAttach(m) && !m.taken).length;
+  $("mlTakeAll").textContent = `📎 모두 받기 · take all (${open})`; $("mlTakeAll").disabled = !open;
+  if (!$("mlDelAll").dataset.sure) $("mlDelAll").textContent = `🗑 모두 지우기 · delete all (${S.mail.length})`; $("mlDelAll").disabled = !S.mail.length;
+}
+$("mlTakeAll").onclick = () => { takeAllMail(); drawMail(); };
+$("mlDelAll").onclick = () => {
+  const b = $("mlDelAll");
+  if (!b.dataset.sure) { b.dataset.sure = "1"; b.textContent = "정말 다 지울까요? · really delete all? (받지 않은 선물은 먼저 받아요 · gifts are taken first)"; clearTimeout(b.t); b.t = setTimeout(() => { delete b.dataset.sure; drawMailAll(); }, 4000); return; }
+  delete b.dataset.sure; takeAllMail(); const n = S.mail.length; S.mail = []; mailSel = null; save(); toast(`🗑 편지 ${n}통을 지웠어요 · deleted ${n} letters`); drawMail();
+};
 function openMail() { paused = true; showScreen("mailView"); if (!mailSel && S.mail.length) mailSel = S.mail[S.mail.length - 1].id; drawMail(); }
 function drawMail() {
   const list = S.mail.slice().reverse();
   $("mlList").innerHTML = list.length ? list.map(m => `<button class="mlItem${m.id === mailSel ? " sel" : ""}${m.read ? "" : " unread"}" data-id="${m.id}"><b>${esc(m.from)}</b><span>${esc(m.ko.split(/[.!?]/)[0])}…</span>${hasAttach(m) && !m.taken ? "<i>📎</i>" : ""}</button>`).join("") : `<p class="fine">편지가 없어요 · no mail</p>`;
   $("mlList").querySelectorAll(".mlItem").forEach(b => b.onclick = () => { mailSel = b.dataset.id; drawMail(); });
+  drawMailAll();
   const m = S.mail.find(x => x.id === mailSel);
   if (!m) { $("mlRead").innerHTML = ""; return; }
   m.read = true;
@@ -2125,12 +2150,7 @@ function drawMail() {
     + (hasAttach(m) ? `<div class="mlAtt">📎 ${attachText(m.attach)} <button id="mlTake" ${m.taken ? "disabled" : ""}>${m.taken ? "받았어요 · taken" : "받기 · take"}</button></div>` : "")
     + `<button id="mlDel" class="mlDel">지우기 · delete</button>`;
   $("mlEnToggle").checked ? $("mlRead").classList.remove("noen") : $("mlRead").classList.add("noen");
-  const take = $("mlTake"); if (take) take.onclick = () => {
-    const a = m.attach; if (a.won) S.money += a.won;
-    for (const g of a.gear || []) addItem(g);
-    for (const c of a.cards || []) S.cards.push({ uid: newUid(), id: c.id, rar: c.rar, mod: c.mod || rollMod(c.rar) });
-    m.taken = true; SFX.pickup(); save(); drawMail();
-  };
+  const take = $("mlTake"); if (take) take.onclick = () => { takeMail(m); SFX.pickup(); save(); drawMail(); };
   $("mlDel").onclick = () => { if (hasAttach(m) && !m.taken) { toast("먼저 받으세요 · take the attachment first"); return; } S.mail = S.mail.filter(x => x !== m); mailSel = null; save(); drawMail(); };
   save();
 }
