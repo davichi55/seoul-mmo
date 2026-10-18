@@ -1,6 +1,12 @@
 // Every spoken line in the game. key -> { ko, en, say? }  (say = what Piper reads, when it differs from ko)
 // After editing: node tools/gen-lines.js  (makes audio/lines/<key>.wav for new keys)
 export const LINES = {
+  // quiz duels with the seven (2026-10-18)
+  dc_hi: { ko: "안녕하세요! 오늘은 뭐 할까요?", en: "Hi! What shall we do today?" },
+  dc_win: { ko: "와, 정말 잘했어요! 다음에 또 해요.", en: "Wow, you did really well! Let's do it again next time." },
+  dc_lose: { ko: "조금 더 연습하세요. 다음에 또 해요!", en: "Practise a little more. Let's do it again next time!" },
+  dc_comp: { ko: "좋아요! 이제 같이 다녀요.", en: "Great! Let's travel together now." },
+  qm_start: { ko: "준비됐어요? 삼, 이, 일, 시작!", en: "Ready? Three, two, one, go!" },
   // money sinks (2026-10-17): buff food, the hidden auctioneer in the fish market
   p_samgye: { ko: "삼계탕 한 그릇 주세요.", en: "One bowl of samgyetang, please." },
   p_hongsam: { ko: "홍삼 한 병 주세요.", en: "One bottle of red ginseng, please." },

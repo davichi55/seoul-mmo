@@ -493,3 +493,20 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .examBtn{margin-top:6px;width:100%;padding:7px 10px;border:1px solid #ffd23d;border-radius:8px;background:linear-gradient(135deg,rgba(255,210,61,.25),rgba(255,140,60,.15));color:#ffe08a;font:700 14px var(--display);cursor:pointer;animation:examPulse 1.4s ease-in-out infinite;pointer-events:auto}
 @keyframes examPulse{50%{box-shadow:0 0 14px rgba(255,210,61,.7)}}
 @media (prefers-reduced-motion:reduce){.examBtn{animation:none}}
+
+/* quiz duel (Danny 2026-10-18): the stage stays visible, the question floats on top */
+#duel{position:fixed;left:50%;top:14px;transform:translateX(-50%);width:min(760px,94vw);z-index:6;display:grid;gap:10px;text-align:center;pointer-events:auto}
+#duel[hidden]{display:none}
+.duHead{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.duSide{background:rgba(20,16,26,.82);border:2px solid var(--line);border-radius:12px;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;font:700 18px var(--display)}
+.duSide.me{border-color:#ffd23d}.duSide.her{border-color:#c08aff}
+.duSide i{font-style:normal;font-size:26px}
+.duQn{font:700 16px var(--display);color:#ffe08a;text-shadow:0 2px 4px #000}
+.duPrompt{background:rgba(20,16,26,.88);border:1px solid var(--line);border-radius:14px;padding:12px;display:grid;gap:2px}
+.duPrompt .qzKo{font:700 34px var(--display)}.duPrompt .qzEn{font-size:14px;opacity:.75}
+.duOpts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.duOpts .rcard{min-height:62px;font:700 17px var(--display)}
+.duOpts .rcard.her{border-color:#c08aff!important;background:rgba(192,138,255,.3);box-shadow:0 0 16px rgba(192,138,255,.7)}
+.duMsg{font:700 22px var(--display);color:#fff;text-shadow:0 2px 6px #000;min-height:30px}
+.relB{color:#ff9ec4;font-weight:700}
+@media (max-width:640px){.duOpts{grid-template-columns:repeat(2,minmax(0,1fr))}}

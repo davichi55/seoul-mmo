@@ -380,12 +380,12 @@ function pickWeighted(ids, n) {
 }
 function drawExamBtn() { const b = $("examBtn"); if (b) b.hidden = !examPending || !!exam; }
 function levelExamTick(dt) {
-  if (!examPending || exam || quiz || ritual || dialog || paused || player.dead || clock < examSnooze) { calmT = 0; return; }
+  if (!examPending || exam || quiz || ritual || dialog || paused || duel || player.dead || clock < examSnooze) { calmT = 0; return; }
   if (monsters.some(m => !m.dead && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 25)) { calmT = 0; return; }
   if ((calmT += dt) > 2) startExam();
 }
 function startExam() {
-  if (exam || !examPending) return;
+  if (exam || !examPending || duel) return;
   const pool = ownedWords();
   if (pool.length < 4) { examPending = false; levelUp(); drawExamBtn(); return; }   // nothing to test yet
   const need = Math.min(EXAM_N, pool.length);
@@ -806,7 +806,11 @@ function placeNPCs() {
 }
 function colliders_street_push(p) { world.colliders.street.push({ x: p.x, z: p.z, r: .6 }); }
 // 지유 only shows up once Minsu has asked you to find her, and leaves when you've found her
-function syncQuestNpcs() { const j = npcs.find(n => n.kind === "jieun"); if (j) { const home = S.quests.sister?.st === "done"; j.model.root.visible = home || (S.quests.sister?.st === "active" && !S.quests.sister.found); if (home) { j.pos.set(-36.2, 0, -26.2); j.model.root.position.copy(j.pos); j.zone = "street"; } }   /* after the reunion 지유 stays with her brother 민수, so you can still talk to her */ const su = npcs.find(n => n.kind === "sua"); if (su) su.model.root.visible = S.companion !== "gumiho"; }
+function syncQuestNpcs() { const j = npcs.find(n => n.kind === "jieun"); if (j) { const home = S.quests.sister?.st === "done"; j.model.root.visible = home || (S.quests.sister?.st === "active" && !S.quests.sister.found); if (home) { j.pos.set(-36.2, 0, -26.2); j.model.root.position.copy(j.pos); j.zone = "street"; } }   /* after the reunion 지유 stays with her brother 민수, so you can still talk to her */ const su = npcs.find(n => n.kind === "sua"); if (su) su.model.root.visible = S.companion !== "gumiho";
+  for (const n of npcs) if (DREAM_TEAM.includes(n.kind) && n.kind !== "sua" && n.kind !== "jieun") n.model.root.visible = S.compKey !== n.kind;
+  if (j && S.compKey === "jieun") j.model.root.visible = false;
+  if (su) { if (!su.home) su.home = { x: su.pos.x, z: su.pos.z, zone: su.zone }; const m = S.compKey && S.companion === "gumiho" ? npcs.find(n => n.kind === S.compKey) : null; const at = m ? { x: m.pos.x + 1.2, z: m.pos.z + .6, zone: m.zone } : su.home; su.pos.set(at.x, 0, at.z); su.model.root.position.copy(su.pos); su.zone = at.zone; su.model.root.visible = S.companion !== "gumiho" || !!S.compKey; }
+}
 // Korean particle 와/과: 과 after a final consonant (받침)
 const wa = w => { const c = w.trim().slice(-1).charCodeAt(0) - 0xAC00; return c >= 0 && c < 11172 && c % 28 ? "과" : "와"; };
 function subsFor(key) { if (transNow) return true; if (LINES[key]?.hard) return false; if (S.subs === "always") return true; if (S.subs === "never") return false; return (S.heard[key] || 0) < 3; }
@@ -849,8 +853,9 @@ function talkTo(n) {
     teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), dealer: () => dealerTalk(n), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
     minsu: () => endWith(n, "m_hello"), jieun: () => endWith(n, S.quests.sister?.st === "done" ? "j_home" : "j_hello"), gyeongbi: () => endWith(n, S.hasMapApt ? "b_hello" : "b_map"),
   }[n.kind];
-  if (questTalk(n, normal)) return;
-  normal();
+  const dc = DREAM_TEAM.includes(n.kind) ? () => dcMenu(n, normal) : normal;
+  if (questTalk(n, dc)) return;
+  dc();
 }
 // 홍대 할머니 식당 (decision 5, design page dialogue)
 function restaurant(n) {
@@ -890,7 +895,8 @@ function shop(n) {
   };
   showLine(n, "s_welcome", opts);
 }
-function nearestInteract() {
+function nearestInteract() { return nearestInteract0() || (comp && !player.dead && comp.zone === player.zone && dist2(comp.pos, player.pos) < 2.6 && (S.compKey || S.companion === "gumiho") ? { t: "comp", label: `${keyName(SET.keys.interact)} · ${dcName(S.compKey || "sua")}와 이야기하기` } : null); }
+function nearestInteract0() {
   if (player.dead) return null;
   const E = keyName(SET.keys.interact);
   for (const r of remotes.values()) if (r.dead && r.zone === player.zone && dist2(r.pos, player.pos) < 2.8) return { t: "revive", r, label: `${E} · ${r.nm} 살리기 · revive (word challenge)` };
@@ -957,6 +963,7 @@ function interact() {
   else if (it.t === "up") fade(player.zone === "dungeon" ? toStation : toStreet);
   else if (it.t === "tunnel") talkTo(npcs.find(n => n.kind === "driver"));
   else if (it.t === "mural") muralQuiz(it.i);
+  else if (it.t === "comp") compTalk();
   else if (it.t === "revive") startRevive(it.r);
   else if (it.t === "bench") sleepBench();
   else if (it.t === "map") takeMap(it.area);
@@ -1319,7 +1326,7 @@ function openCharView() {
 $("cvClose").onclick = () => { showScreen(null); paused = false; };
 $("actChar").onclick = () => openCharView();
 function onEscape() {
-  if (!started) return;
+  if (!started || duel) return;
   if (!$("reroll").hidden) { closeReroll(); return; }
   if (memo) { endMemory(true); return; }
   if (exam) { postponeExam(); return; }
@@ -1423,7 +1430,7 @@ function drawPlates() {
     tmpV.project(camera);
     if (far || tmpV.z > 1) { el.style.display = "none"; continue; }
     el.style.display = ""; el.style.left = (tmpV.x * .5 + .5) * innerWidth + "px"; el.style.top = (-tmpV.y * .5 + .5) * innerHeight + "px";
-    if (e.isNpc) { const mk = npcMarker(e), html = (mk ? `<span class="qmk${mk === "…" ? " dim" : ""}">${mk}</span>` : "") + e.name; if (el.innerHTML !== html) el.innerHTML = html; }
+    if (e.isNpc) { const mk = npcMarker(e), html = (mk ? `<span class="qmk${mk === "…" ? " dim" : ""}">${mk}</span>` : "") + e.name + relBadge(e.kind); if (el.innerHTML !== html) el.innerHTML = html; }
     if (e.isMonster) { el.className = "plate" + (e === target ? " tgt" : e.state === "chase" ? " aggro" : ""); el.querySelector("i").style.width = Math.max(0, e.hp / e.maxHp * 100) + "%"; const lv = el.querySelector(".lv"), lc = "lv " + gapClass(e.lvl); if (lv && lv.className !== lc) lv.className = lc; }
   }
 }
@@ -1745,6 +1752,8 @@ const ACH = [
   { id: "dealer", ko: "수상한 거래", en: "A shady deal", desc: "Buy a card from someone who isn't on any map", prog: () => [S.dealerBuys ? 1 : 0, 1], reward: { xp: 150 } },
   // Danny 2026-10-18: talk to every Dreamcatcher-named character once (수아 and 지유 also count through their quests)
   { id: "dreamteam", ko: "드림팀", en: "The Dream Team", desc: "Talk to 지유, 시연, 수아, 가현, 유현, 다미 and 한동", prog: () => [DREAM_TEAM.filter(k => S.talked?.[k] || (k === "sua" && (S.sua?.step || 0) >= 1) || (k === "jieun" && (S.quests.sister?.found || S.quests.sister?.st === "done"))).length, DREAM_TEAM.length], reward: { won: 50000, xp: 300 } },
+  { id: "duel1", ko: "첫 대결", en: "First duel", desc: "Win a quiz duel against one of the seven (6+ goblins)", prog: () => [Object.values(S.rel || {}).some(r => r.xp > 0) ? 1 : 0, 1], reward: { xp: 100 } },
+  { id: "bestie", ko: "단짝", en: "Best friends", desc: "Reach ♥ Lv 5 with one of the seven", prog: () => [Math.max(0, ...Object.values(S.rel || {}).map(r => r.lvl)), 5], reward: { won: 60000, xp: 400 } },
   { id: "lvl5", ko: "생존자", en: "Survivor", desc: "Reach level 5", prog: () => [S.level, 5], reward: { won: 10000 } },
   { id: "epic", ko: "보물 사냥꾼", en: "Treasure hunter", desc: "Own an epic or legendary card", prog: () => [S.cards.some(c => c.rar >= 2) ? 1 : 0, 1], reward: { xp: 50 } },
   { id: "geared", ko: "완전 무장", en: "Fully equipped", desc: "Wear a better weapon, armour and a trinket", prog: () => [(weaponTier() >= 1) + (itemBy(S.equip.armor)?.g !== "a0" && !!S.equip.armor) + !!S.equip.trinket, 3], reward: { won: 8000 } },
@@ -2502,7 +2511,7 @@ function suaTalk(n) {
 const HEARTS = [20, 50, 90, 140, 200];
 const heartLvl = () => HEARTS.filter(h => (S.suaHeart || 0) >= h).length;
 const petName = () => S.petName || "깨비";
-function compLabel() { return S.companion === "gumiho" ? `💗 수아 ${"♥".repeat(heartLvl())}${"♡".repeat(5 - heartLvl())}` : `🐾 ${esc(petName())}`; }
+function compLabel() { return S.compKey ? `💞 ${dcName(S.compKey)} ♥${relOf(S.compKey).lvl}` : S.companion === "gumiho" ? `💗 수아 ${"♥".repeat(heartLvl())}${"♡".repeat(5 - heartLvl())}` : `🐾 ${esc(petName())}`; }
 function addHeart(n) {
   if (S.companion !== "gumiho") return;
   const before = heartLvl(); S.suaHeart = (S.suaHeart || 0) + n;
@@ -2518,9 +2527,10 @@ function askPetName(then) {
 let comp = null;
 function spawnCompanion() {
   if (comp) { scene.remove(comp.model.root); comp.plate.remove(); comp = null; }
-  if (!S.companion || !player.model) return;
+  if (!(S.companion || S.compKey) || !player.model) return;
   let model;
-  if (S.companion === "gumiho") {
+  if (S.compKey) { model = npcWoman(S.compKey) || makeNPC("sitter"); }
+  else if (S.companion === "gumiho") {
     model = npcWoman("sua") || (kayReady() ? makeKay("sua") : makeNPC("sitter"));
     if (!womenReady()) {   /* the old KayKit 수아 gets her tails here; the new model has its own */
     const tailM = toon("#f6efe6"), tipM = toon("#e8a33a");
@@ -2544,8 +2554,8 @@ function companionTick(dt) {
   comp.model.root.position.set(comp.pos.x, 0, comp.pos.z); comp.model.root.rotation.y = comp.yaw; comp.model.anim(dt, { moving });
   const fight = !player.dead && player.zone !== "station" && monsters.some(m => !m.dead && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 20);
   if (!fight) return;
-  if (S.companion === "gumiho" && (comp.healT -= dt) <= 0) { comp.healT = 16;   /* Danny 2026-10-17: was 8 s, too strong */ if (player.hp < player.maxHp) { const h = player.maxHp * (.05 + .01 * heartLvl()); player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "💗 +" + Math.round(h), "#ff9ec4", true, 2.4); } }
-  if (S.companion === "pet" && NET.role !== "guest" && (comp.tauntT -= dt) <= 0) {
+  if ((S.compKey || S.companion === "gumiho") && (comp.healT -= dt) <= 0) { comp.healT = 16;   /* Danny 2026-10-17: was 8 s, too strong */ if (player.hp < player.maxHp) { const h = player.maxHp * (.05 + .01 * heartLvl()); player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "💗 +" + Math.round(h), "#ff9ec4", true, 2.4); } }
+  if (!S.compKey && S.companion === "pet" && NET.role !== "guest" && (comp.tauntT -= dt) <= 0) {
     comp.tauntT = 15;
     const ms = monsters.filter(m => !m.dead && !m.def.boss && m.zone === player.zone && m.state === "chase" && dist2(m.pos, player.pos) < 20);
     const m = ms.length ? pick(ms) : null;
@@ -2560,8 +2570,8 @@ function companionTick(dt) {
 // 구미호: +5% damage while she's close to you; 깨비: monsters near it take 8% more damage
 function companionDamageMul(t) {
   if (!comp || comp.zone !== player.zone) return 1;
-  if (S.companion === "gumiho" && dist2(comp.pos, player.pos) < 10) return 1.05;
-  if (S.companion === "pet" && dist2(comp.pos, t.pos) < 6) return 1.08;
+  if ((S.compKey || S.companion === "gumiho") && dist2(comp.pos, player.pos) < 10) return 1.05;
+  if (!S.compKey && S.companion === "pet" && dist2(comp.pos, t.pos) < 6) return 1.08;
   return 1;
 }
 function drawCompanionPlate() {
@@ -3604,6 +3614,168 @@ function handongShop(n) {
 $("rwOk").onclick = closeReward;
 $("examBtn").onclick = () => { examSnooze = 0; startExam(); };
 
+// ---- quiz duels + relationship levels with the Dreamcatcher-named women (Danny 2026-10-18) ----
+// A 1-on-1 race on a stage: 10 questions from "her" chapter (also words you haven't learned yet). No visible timer: after 10 s
+// (minus 1 s per relationship level, 5 s at Lv 5) she answers; a wrong click locks you out and she answers a second later.
+// Danny (same day): "it should be a battle who kills the most goblins": ten goblins stand in front of the stage; whoever answers right
+// blasts the goblin that stepped forward with lightning, a fireball or an ice shard, and it explodes. The score is goblins.
+// 6+ right = relationship XP (10/10 the most); 5 or less = "practise more". Each new level gives a card; at Lv 5 she can travel with you.
+const DC_CH = { trader: 0, jieun: 1, teacher: 2, sua: 3, gayoung: 4, gangsa: 5, handong: 6 };   // the order you meet them = 1과, 2과, …
+const REL_XP = [0, 50, 130, 240, 380, 560], REL_CARD = [0, 0, 1, 1, 2, 3], DUEL_XP = [0, 0, 0, 0, 0, 0, 20, 30, 40, 55, 75];
+const relOf = kind => (S.rel = S.rel || {})[kind] || (S.rel[kind] = { xp: 0, lvl: 0 });
+const dcName = kind => NPC_DEF[kind].split(" · ")[0];
+const relBadge = kind => DREAM_TEAM.includes(kind) && relOf(kind).lvl > 0 ? ` <span class="relB">♥${relOf(kind).lvl}</span>` : "";
+function dcChapter(kind) { const chs = bookChapters(); return chs[Math.min(DC_CH[kind] ?? 0, chs.length - 1)]; }
+// the talk menu: duel / companion / her usual business
+function dcMenu(n, base) {
+  const kind = n.kind, r = relOf(kind), ch = dcChapter(kind), compNow = kind === "sua" ? !S.compKey && S.companion === "gumiho" : S.compKey === kind;
+  const opts = [{ ko: `⚔ 시험 대결 · quiz duel`, en: `${ch.title}${ch.theme ? " " + ch.theme : ""} · ♥ Lv ${r.lvl}${r.lvl < 5 ? ` (${r.xp - REL_XP[r.lvl]} / ${REL_XP[r.lvl + 1] - REL_XP[r.lvl]})` : " MAX"}`, act: () => { closeDialog(); fade(() => startDuel(kind)); } }];
+  if (!compNow && (r.lvl >= 5 || (kind === "sua" && S.companion === "gumiho"))) opts.push({ ko: "💞 같이 다녀요 · travel with me", en: kind === "sua" ? "수아 comes back as your companion" : `${dcName(kind)} becomes your companion (수아 waits here)`, act: () => setCompanion(kind, n) });
+  if (base) opts.push({ ko: "(다른 이야기 · something else)", en: "", act: base });
+  opts.push({ ko: "(대화 끝내기)", en: "leave", act: closeDialog });
+  showLine(n, "dc_hi", opts);
+}
+function setCompanion(kind, n) {
+  S.compKey = kind === "sua" ? null : kind; save();
+  endWith(n, "dc_comp"); spawnCompanion(); syncQuestNpcs(); SFX.pickup();
+  toast(kind === "sua" ? "💗 수아가 다시 함께해요 · Sua travels with you again" : `💞 ${dcName(kind)}와 함께해요 · ${dcName(kind)} travels with you (heals, +5% damage); 수아 waits at her spot`);
+}
+// talking to your companion opens the same menu
+function compTalk() { const kind = S.compKey || "sua"; dcMenu({ kind, name: NPC_DEF[kind], model: comp.model, pos: comp.pos }, null); }
+// ---- the arena: a stage far away; the world is paused while you duel ----
+const ARENA = { x: 12000, z: 0 };
+let arena = null, duel = null;
+function buildArena() {
+  if (arena) return arena;
+  const g = new THREE.Group(); g.position.set(ARENA.x, 0, ARENA.z); scene.add(g);
+  const add = (geo, mat, x, y, z) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); g.add(m); return m; };
+  const glowM = c => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: .1, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+  add(new THREE.PlaneGeometry(240, 240), toon("#121016"), 0, -.02, 0).rotation.x = -Math.PI / 2;
+  add(new THREE.CylinderGeometry(13, 14, .3, 40), toon("#2a2430"), 0, -.15, 0);
+  add(new THREE.TorusGeometry(13.2, .12, 6, 60), new THREE.MeshBasicMaterial({ color: "#ff3a6a", toneMapped: false }), 0, .02, 0).rotation.x = Math.PI / 2;
+  for (const [x, c] of [[-4, "#ffd23d"], [4, "#c08aff"]]) {
+    add(new THREE.CylinderGeometry(1.5, 1.7, .06, 24), new THREE.MeshBasicMaterial({ color: c, toneMapped: false }), x, .03, 0);
+    add(new THREE.ConeGeometry(2.4, 12, 24, 1, true), glowM(c), x, 6, 0);
+  }
+  const c = document.createElement("canvas"); c.width = 1024; c.height = 256; const x = c.getContext("2d");
+  const gr = x.createLinearGradient(0, 0, 1024, 0); gr.addColorStop(0, "#3a0a2a"); gr.addColorStop(1, "#1a0a3a"); x.fillStyle = gr; x.fillRect(0, 0, 1024, 256);
+  x.strokeStyle = "#ff3a6a"; x.lineWidth = 10; x.strokeRect(8, 8, 1008, 240); x.fillStyle = "#fff"; x.font = '700 110px "Noto Sans KR", sans-serif'; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("⚔ 시험 대결", 512, 132);
+  const tx = new THREE.CanvasTexture(c); tx.colorSpace = THREE.SRGBColorSpace;
+  add(new THREE.PlaneGeometry(14, 3.5), new THREE.MeshBasicMaterial({ map: tx, toneMapped: false }), 0, 6.4, -9);
+  for (let i = 0; i < 9; i++) { const a = -1.1 + i * .275; add(new THREE.BoxGeometry(.4, rand(6, 10), .4), toon("#3a3442"), Math.sin(a) * 15, 4, -Math.cos(a) * 12); }
+  const qm = kayReady() ? makeKay("qm") : makeNPC("guard"); qm.root.position.set(ARENA.x, 0, ARENA.z - 4.5); g.parent.add(qm.root);
+  arena = { g, qm }; return arena;
+}
+function startDuel(kind) {
+  if (duel || quiz || exam) return;
+  const ch = dcChapter(kind), pool = bookWords().filter(w => w.ch === ch.id), all = pool.length >= 4 ? pool : bookWords();
+  const qs = shuffle(all.slice()).slice(0, 10);
+  const A = buildArena(), back = { zone: player.zone, x: player.pos.x, z: player.pos.z, yaw: player.yaw };
+  const her = womenReady() ? makeWoman(WOMAN_OF[kind]) : makeNPC("sitter"); her.root.position.set(ARENA.x + 4, 0, ARENA.z); her.root.rotation.y = Math.PI; scene.add(her.root);
+  cancelRitual(); setTarget(null); if (comp) comp.model.root.visible = false;
+  player.zone = "arena"; player.pos.set(ARENA.x - 4, 0, ARENA.z); player.yaw = Math.PI;
+  const gobs = qs.map((_, i) => { const g = makeMonster("dokkaebi"); g.root.scale.setScalar(.75); g.root.rotation.y = Math.PI; g.root.position.set(ARENA.x - 6.3 + i * 1.4, 0, ARENA.z - 7.5); scene.add(g.root); return { m: g, to: g.root.position.clone() }; });
+  duel = { kind, ch, qs, i: -1, me: 0, her: 0, back, model: her, timer: null, open: false, lvl: relOf(kind).lvl, gobs, shots: [] };
+  paused = true; $("hud").hidden = true;
+  $("duName").textContent = dcName(kind); $("duMy").textContent = "0"; $("duHer").textContent = "0"; $("duOpts").innerHTML = ""; $("duPrompt").innerHTML = ""; $("duel").hidden = false;
+  speak("qm_start"); SFX.charge();
+  let n = 3; $("duMsg").textContent = `${ch.title}${ch.theme ? " " + ch.theme : ""} · 준비… · get ready`;
+  const tick = () => { if (!duel) return; if (n > 0) { $("duMsg").textContent = String(n); snd("bell", .4, 1 + (3 - n) * .15); n--; setTimeout(tick, 800); } else { $("duMsg").textContent = "시작! · go!"; snd("bell", .6, 1.6); setTimeout(duelNext, 600); } };
+  setTimeout(tick, 900);
+}
+function duelNext() {
+  if (!duel) return;
+  duel.i++;
+  if (duel.i >= duel.qs.length) { duelEnd(); return; }
+  const w = duel.qs[duel.i], koToEn = duel.i % 2 === 0, pool = duel.qs.filter(x => x !== w).concat(bookWords().filter(x => x.ch === duel.ch.id && x !== w));
+  const others = shuffle([...new Set(pool)]).filter(x => x !== w).slice(0, 3), opts = shuffle([w, ...others]);
+  duel.cur = { w, opts, koToEn }; duel.open = true; stat(w.id).s++;
+  const gb = duel.gobs[duel.i]; if (gb) gb.to.set(ARENA.x, 0, ARENA.z + 1.6);   /* the next goblin steps up */
+  $("duQn").textContent = `${duel.i + 1} / ${duel.qs.length}`; $("duMsg").textContent = "";
+  $("duPrompt").innerHTML = koToEn ? `<span class="qzKo">${esc(w.kr)}</span><span class="qzEn">무슨 뜻이에요? · what does it mean?</span>` : `<span class="qzKo">${esc(w.en)}</span><span class="qzEn">이 뜻의 단어는? · which word means this?</span>`;
+  $("duOpts").innerHTML = opts.map((o, i) => `<button class="rcard" data-i="${i}"><kbd>${i + 1}</kbd>${esc(koToEn ? o.en : o.kr)}</button>`).join("");
+  $("duOpts").querySelectorAll("button").forEach(b => b.onclick = () => duelPick(+b.dataset.i));
+  duel.timer = setTimeout(() => duelHer(), (10 - Math.min(5, duel.lvl)) * 1000);
+}
+function duelPick(i) {
+  if (!duel || !duel.open) return;
+  const { w, opts } = duel.cur, ok = opts[i] === w, btns = $("duOpts").children;
+  duel.open = false; clearTimeout(duel.timer);
+  if (ok) {
+    btns[i].classList.add("ok"); duel.me++; $("duMy").textContent = duel.me; stat(w.id).c++;
+    if (mastery(w.id).k === "mastered" && !S.mastered.includes(w.id)) { S.mastered.push(w.id); toast(`마스터! ${w.kr} · +${MASTER_XP} XP`); gainXp(MASTER_XP); }
+    say([wordClip(w.id)], { interrupt: true }); snd("bell", .5, 1.3); player.model.trigger?.("attack"); blastGoblin("me"); FX.burst(player.pos, { n: 24, color: ["#ffd23d", "#fff2a8"], speed: 5, size: .16, life: .8, shape: "star", grav: 2, y: 2 });
+    $("duMsg").textContent = "정답! · you got it!"; setTimeout(duelNext, 1100);
+  } else { btns[i].classList.add("no"); stat(w.id).w++; SFX.resist(); $("duMsg").textContent = "앗! · oops…"; setTimeout(() => duelHer(), 1000); }
+}
+function duelHer() {   // she picks the right answer
+  if (!duel) return;
+  duel.open = false; clearTimeout(duel.timer);
+  const { w, opts } = duel.cur, i = opts.indexOf(w), b = $("duOpts").children[i];
+  if (b) b.classList.add("her");
+  duel.her++; $("duHer").textContent = duel.her; duel.model.trigger?.("attack"); snd("punchM", .4, 1.4); blastGoblin("her");
+  FX.burst({ x: ARENA.x + 4, z: ARENA.z }, { n: 24, color: ["#c08aff", "#ffffff"], speed: 5, size: .16, life: .8, shape: "star", grav: 2, y: 2 });
+  $("duMsg").textContent = `${dcName(duel.kind)}: 정답! · she got it`; say([wordClip(w.id)], { interrupt: true });
+  setTimeout(duelNext, 1500);
+}
+function duelEnd() {
+  const d = duel, r = relOf(d.kind), gain = DUEL_XP[d.me] || 0, rows = [];
+  rows.push({ big: true, icon: d.me >= 6 ? "🏆" : "📚", ko: `👹 ${d.me} : ${d.her}`, en: `goblins: you ${d.me}, ${dcName(d.kind)} ${d.her}`, note: d.me >= 6 ? "" : "도깨비 6마리 이상 잡으면 친해져요 · blast 6 or more goblins to grow closer" });
+  if (gain) {
+    r.xp += gain; rows.push({ icon: "💞", ko: `${dcName(d.kind)} ♥ +${gain}`, en: "relationship XP" });
+    while (r.lvl < 5 && r.xp >= REL_XP[r.lvl + 1]) {
+      r.lvl++;
+      const pool = bookWords().filter(w => w.ch === d.ch.id), wd = pick(pool.length ? pool : bookWords()), card = newCard(wd.id, REL_CARD[r.lvl]); S.cards.push(card);
+      rows.push({ icon: "💗", ko: `${dcName(d.kind)} ♥ Lv ${r.lvl}!`, en: "your relationship grew" });
+      rows.push({ icon: "🃏", ko: `[${RARITY[card.rar].ko}] ${wd.kr}`, en: `${RARITY[card.rar].en} card · ${wd.en} · ${modText(card)}`, color: RARITY[card.rar].c });
+      if (r.lvl === 5) rows.push({ icon: "💞", ko: `${dcName(d.kind)}와 같이 다닐 수 있어요!`, en: "she can now travel with you as your companion (talk to her)" });
+    }
+  }
+  save(); $("duel").hidden = true;
+  showLine({ name: NPC_DEF[d.kind] }, d.me >= 6 ? "dc_win" : "dc_lose", [{ ko: "(계속 · continue)", en: "", act: () => { closeDialog(); showReward(d.me >= 6 ? `⚔ ${dcName(d.kind)}와 시험 대결 · you won!` : `⚔ ${dcName(d.kind)}와 시험 대결`, rows, () => fade(duelLeave)); } }]);
+}
+function duelLeave() {
+  const d = duel; if (!d) return; duel = null;
+  scene.remove(d.model.root); for (const g of d.gobs) scene.remove(g.m.root); for (const sh of d.shots) scene.remove(sh.mesh);
+  player.zone = d.back.zone; player.pos.set(d.back.x, 0, d.back.z); player.yaw = d.back.yaw; paused = false; $("hud").hidden = false;
+  if (comp) { comp.model.root.visible = true; comp.zone = player.zone; comp.pos.copy(player.pos).add(new THREE.Vector3(1.5, 0, 1.5)); }
+}
+// a spell from the winner of the question to the goblin in front: lightning strikes at once, fireballs and ice shards fly
+const SPELLS = { bolt: ["#9fd8ff", "#ffffff", "#5ab4ff"], fire: FX.EL_COL.fire, ice: ["#bfe8ff", "#ffffff", "#7ac8ff"] };
+function blastGoblin(who) {
+  const g = duel.gobs[duel.i]; if (!g || g.dead) return; g.dead = true;
+  const type = pick(["bolt", "fire", "ice"]), cols = SPELLS[type], from = new THREE.Vector3(ARENA.x + (who === "me" ? -4 : 4), 1.7, ARENA.z);
+  if (type === "bolt") { FX.glow({ x: g.m.root.position.x, z: g.m.root.position.z }, { color: "#bfe8ff", pillar: true, r: .7, h: 18, life: .35, opacity: .9 }); snd("laserL", .5, 1.6); setTimeout(() => popGoblin(g, cols), 120); return; }
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(type === "fire" ? .45 : .3, 12, 10), new THREE.MeshBasicMaterial({ color: cols[0], toneMapped: false }));
+  if (type === "ice") mesh.scale.set(1, 1, 2.6);
+  mesh.position.copy(from); scene.add(mesh); snd(type === "fire" ? "laserL" : "laserS", .45, type === "fire" ? .7 : 1.5);
+  duel.shots.push({ mesh, g, cols, t: 0 });
+}
+function popGoblin(g, cols) {
+  const at = g.m.root.position.clone();
+  FX.explosion(at, cols, 1.3);
+  FX.burst(at, { n: 30, color: ["#d4553f", "#e8a33a", "#f3e3b0"], speed: 10, up: 1.2, size: .22, life: 1.1, grav: 14, additive: false, y: 1 });
+  FX.burst(at, { n: 18, color: cols, speed: 8, size: .18, life: .8, shape: "star", grav: 2, y: 1.2 });
+  snd("boom", .7, 1.1); scene.remove(g.m.root);
+}
+function duelRender(dt) {
+  if (!duel) return;
+  duel.model.anim(dt, {}); if (arena?.qm) arena.qm.anim(dt, {});
+  for (const g of duel.gobs) if (!g.dead) { const p = g.m.root.position, d = g.to.distanceTo(p); if (d > .05) { p.lerp(g.to, Math.min(1, dt * 4)); } g.m.anim(dt, { moving: d > .3 }); }
+  for (let i = duel.shots.length - 1; i >= 0; i--) {
+    const s = duel.shots[i], to = s.g.m.root.position.clone().setY(1.1); s.t += dt;
+    const step = to.clone().sub(s.mesh.position), dist = step.length();
+    FX.burst(s.mesh.position, { n: 3, color: s.cols, speed: .8, size: .14, life: .35, grav: 0, y: 0 });
+    if (dist < .5 || s.t > 1.2) { scene.remove(s.mesh); duel.shots.splice(i, 1); popGoblin(s.g, s.cols); continue; }
+    s.mesh.position.addScaledVector(step.normalize(), Math.min(dist, dt * 22)); s.mesh.lookAt(to);
+  }
+  camera.position.set(ARENA.x + FX.shakeState.x, 3.6 + FX.shakeState.y, ARENA.z + 12.5 + FX.shakeState.z); camera.lookAt(ARENA.x, 2, ARENA.z + 1.5);
+}
+addEventListener("keydown", e => {
+  if (!duel || !duel.open) return;
+  const k = +e.key; if (k >= 1 && k <= 4) { e.preventDefault(); e.stopImmediatePropagation(); duelPick(k - 1); }
+}, true);
+
 // ---- main loop ------------------------------------------------------------------------------------------
 let last = performance.now(), saveT = 0;
 // ---- area guidance (Danny 2026-10-17) -------------------------------------------------------------------
@@ -3722,6 +3894,7 @@ function render(dt) {
     else if (player.zone === "station") { camera.position.x = Math.min(STATION.x + 17, Math.max(STATION.x - 17, camera.position.x)); camera.position.z = Math.min(STATION.z + 9.4, Math.max(STATION.z - 9.4, camera.position.z)); camera.position.y = Math.min(4.6, camera.position.y); }
     camera.lookAt(p.x, 1.6, p.z);
     camera.position.x += FX.shakeState.x; camera.position.y += FX.shakeState.y; camera.position.z += FX.shakeState.z;
+    duelRender(dt);
     if (player.zone === "street") world.occlude(camera.position, p);
     // pillars between the camera and you turn see-through
     for (const o of world.npcSpots.occluders) {
@@ -3785,7 +3958,7 @@ window.__seoul = {
   tp(x, z) { player.pos.set(x, 0, z); },
   spawn(kind, lvl, x, z, zone = "street") { spawnMonster({ kind, lvl, x, z, mon: null, zone }); return monsters[monsters.length - 1]; },
   wordCounts: () => wordCounts(), drawFriends: () => drawFriends(),
-  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, startExam: () => startExam(), get exam() { return exam; }, get examPending() { return examPending; }, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
+  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, startDuel: k => startDuel(k), get duel() { return duel; }, duelPick: i => duelPick(i), relOf: k => relOf(k), setCompanion: k => setCompanion(k, { name: "test" }), dcMenu: k => dcMenu(npcs.find(n => n.kind === k), null), startExam: () => startExam(), get exam() { return exam; }, get examPending() { return examPending; }, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
   get memo() { return memo; }, heart: n => addHeart(n), get comp() { return comp; }, get fishing() { return fishing; }, flip: i => flipStone(i), upgrade: () => upgradeMenu(npcs.find(n => n.kind === "smith")),
   talk: kind => talkTo(npcs.find(n => n.kind === kind)), get dialog() { return dialog; }, opt(i) { $("dOpts").children[i]?.click(); }, get quiz() { return quiz; }, quizAnswer(right = true) { if (quiz) answerQuiz(right ? quiz.opts.indexOf(quiz.answer) : (quiz.opts.indexOf(quiz.answer) + 1) % quiz.opts.length); },
 };
