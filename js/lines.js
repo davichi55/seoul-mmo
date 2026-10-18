@@ -1,6 +1,11 @@
 // Every spoken line in the game. key -> { ko, en, say? }  (say = what Piper reads, when it differs from ko)
 // After editing: node tools/gen-lines.js  (makes audio/lines/<key>.wav for new keys)
 export const LINES = {
+  // the student card battlers (2026-10-18)
+  cb_hi: { ko: "단어 카드 배틀 할래요? 제 카드가 더 세요!", en: "Want a word card battle? My cards are stronger!" },
+  cb_again: { ko: "또 해요? 이번에는 안 질 거예요!", en: "Again? I won't lose this time!" },
+  cb_win: { ko: "와, 정말 잘하네요! 이 카드 가져가요.", en: "Wow, you're really good! Take this card." },
+  cb_lose: { ko: "제가 이겼어요! 다시 도전하세요.", en: "I won! Challenge me again." },
   // quiz duels with the seven (2026-10-18)
   dc_hi: { ko: "안녕하세요! 오늘은 뭐 할까요?", en: "Hi! What shall we do today?" },
   dc_win: { ko: "와, 정말 잘했어요! 다음에 또 해요.", en: "Wow, you did really well! Let's do it again next time." },

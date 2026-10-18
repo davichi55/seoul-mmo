@@ -510,3 +510,35 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .duMsg{font:700 22px var(--display);color:#fff;text-shadow:0 2px 6px #000;min-height:30px}
 .relB{color:#ff9ec4;font-weight:700}
 @media (max-width:640px){.duOpts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* 단어 카드 배틀 (2026-10-18) */
+#cardb{position:fixed;inset:0;z-index:7;display:grid;place-items:center;background:rgba(8,6,14,.62)}
+#cardb[hidden]{display:none}
+.cbBox{width:min(640px,94vw);background:linear-gradient(160deg,#241c34,#141020);border:2px solid #7a5aff;border-radius:18px;padding:18px;display:grid;gap:14px;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+.cbTop{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center}
+.cbCard{border-radius:12px;padding:10px;display:grid;gap:2px;font:700 18px var(--display)}
+.cbCard.me{background:linear-gradient(135deg,#7a5410,#3a2a0a);border:2px solid #ffd23d}
+.cbCard.her{background:linear-gradient(135deg,#3a2a7a,#1a1040);border:2px solid #b47aff}
+.cbCard span{color:#ff6a8a;font-size:20px;letter-spacing:2px}
+.cbCard.hit{animation:cbHit .5s}
+@keyframes cbHit{0%{transform:scale(1)}20%{transform:scale(.9) rotate(-4deg);filter:brightness(2.4)}50%{transform:scale(1.05) rotate(3deg)}100%{transform:none}}
+.cbRound{font:700 16px var(--display);color:#ffe08a}
+.cbClue{background:rgba(255,255,255,.06);border-radius:12px;padding:12px}
+.cbClue span{font-size:12px;opacity:.7}.cbClue p{margin:6px 0 0;font:700 24px var(--display);line-height:1.4}
+.cbSlots,.cbTiles{display:flex;justify-content:center;gap:10px;flex-wrap:wrap}
+.cbSlot{width:68px;height:68px;border-radius:12px;border:2px dashed #8a7ab0;background:rgba(255,255,255,.04);font:700 34px var(--display);color:#fff}
+.cbSlot.full{border-style:solid;border-color:#ffd23d;background:rgba(255,210,61,.14)}
+.cbTile{position:relative;width:68px;height:68px;border-radius:12px;border:2px solid #b47aff;background:linear-gradient(160deg,#4a3a8a,#2a2050);font:700 34px var(--display);color:#fff;cursor:pointer}
+.cbTile kbd{position:absolute;left:5px;top:3px;font-size:11px;opacity:.7}
+.cbTile:disabled{opacity:.2;cursor:default}
+.cbMsg{font:700 20px var(--display);min-height:28px}.cbMsg.ok{color:#9be6a5}.cbMsg.no{color:#ff8a7a}
+.cbHelp{margin:0;font-size:12px;opacity:.6}
+/* Seoul cards (collection) */
+.sGrid{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0}
+.sCard{position:relative;width:104px;height:150px;border-radius:10px;padding:8px 6px;display:grid;justify-items:center;align-content:center;gap:2px;background:linear-gradient(160deg,var(--c1),var(--c2));border:2px solid rgba(255,255,255,.7);box-shadow:0 4px 12px rgba(0,0,0,.4);text-align:center;overflow:hidden}
+.sCard::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 30%,rgba(255,255,255,.35) 45%,transparent 60%);pointer-events:none}
+.sCard .sIc{font-size:38px}.sCard b{font:700 16px var(--display)}.sCard small{font-size:10px;opacity:.85}.sCard em{font-size:9px;font-style:normal;opacity:.8}
+.sCard .sNo{position:absolute;top:4px;right:6px;font-size:9px;opacity:.8}.sCard .sTag{position:absolute;bottom:4px;font-size:8px;letter-spacing:2px;opacity:.8}
+.sCard.locked{background:#2a2830;border:2px dashed #5a5664;color:#8a8694}
+.rwRow .sCard{width:84px;height:120px}.rwRow .sCard .sIc{font-size:28px}
+.rwRow{grid-template-columns:auto minmax(0,1fr) auto}.rwRow .ic{min-width:44px;display:grid;place-items:center}

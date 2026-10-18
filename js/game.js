@@ -760,7 +760,7 @@ function eatGimbap() {
 }
 
 // ---- NPCs + dialogue ----------------------------------------------------------------------------------------
-const NPC_DEF = { driver: "기관사 아저씨", teacher: "시연 · 부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지유", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "다미 · 카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가현 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "유현 선생님 · 학원 강사", cupbap: "컵밥 아줌마", dealer: "수상한 경매사", handong: "한동 · 박물관 카페" };
+const NPC_DEF = { driver: "기관사 아저씨", teacher: "시연 · 부적 선생님", gyeongbi: "경비 아저씨", minsu: "민수 · 생존자", jieun: "지유", grandma: "사장님 · 할머니 식당", smith: "무기점 아저씨", stranger: "낯선 사람", guard: "역무원", trader: "다미 · 카드 상인 · card trader", sitter: "생존자", sua: "수아", clerk: "편의점 알바", gayoung: "가현 · 생존자", mike: "Mike · 여행자", granny: "기억하는 할머니", gangsa: "유현 선생님 · 학원 강사", cupbap: "컵밥 아줌마", cb1: "민준 · 카드 배틀러", cb2: "서연 · 카드 배틀러", cb3: "지호 · 카드 배틀러", cb4: "하은 · 카드 배틀러", cb5: "도윤 · 카드 배틀러", cb6: "수빈 · 카드 배틀러", dealer: "수상한 경매사", handong: "한동 · 박물관 카페" };
 // the Dreamcatcher-named women (Danny 2026-10-18: their group stage style, their own hair) replace the KayKit stand-ins
 const DREAM_TEAM = ["jieun", "teacher", "sua", "gayoung", "gangsa", "trader", "handong"];
 const WOMAN_OF = { jieun: "jiyu", teacher: "siyeon", sua: "sua", gayoung: "gahyeon", gangsa: "yoohyeon", trader: "dami", handong: "handong" };
@@ -791,6 +791,12 @@ function placeNPCs() {
     model.root.position.copy(n.pos); model.root.rotation.y = Math.PI; model.root.userData.ent = n; scene.add(model.root);
     n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
     npcs.push(n); world.colliders.yeouido.push({ x: at.x, z: at.z, r: .6 });
+  }
+  for (const [kind, c] of Object.entries(CB)) {
+    const model = (c.woman && womenReady() ? makeWoman(c.woman) : null) || (kayReady() ? makeKay(c.model || "stuA") : makeNPC("sitter")), n = { isNpc: true, kind, zone: c.at.zone, model, pos: new THREE.Vector3(c.at.x, 0, c.at.z), name: NPC_DEF[kind] };
+    model.root.position.copy(n.pos); model.root.rotation.y = Math.PI * .75; model.root.userData.ent = n; scene.add(model.root);
+    n.plate = document.createElement("div"); n.plate.className = "plate npc"; $("plates").appendChild(n.plate);
+    npcs.push(n); if (c.at.zone === "street") colliders_street_push(n.pos); else world.colliders.yeouido.push({ x: c.at.x, z: c.at.z, r: .6 });
   }
   for (const [kind, at, zone, mdl] of [["mike", MIKE_SPOTS[0], MIKE_SPOTS[0].zone, () => kayReady() ? makeKay("mike") : makeNPC("sitter")], ["granny", { x: 5, z: 121 }, "street", () => makeNPC("grandma")]]) {
     const model = mdl(), n = { isNpc: true, kind, zone, model, pos: new THREE.Vector3(at.x, 0, at.z), name: NPC_DEF[kind] };
@@ -850,7 +856,7 @@ function talkTo(n) {
     stranger: () => (S.hasMirror && !S.metMirror) ? (S.metMirror = true, save(), revealTalk(n)) : (S.towerClears && S.sawPoster && !S.metHaneul) ? (S.metHaneul = true, save(), showLine(n, "x_haneul", [{ plr: "p_haneul", act: () => endWith(n, "x_haneul2") }])) : (S.sawList && !S.metList) ? (S.metList = true, save(), endWith(n, "x_list")) : (S.dunClears && !S.metAgain) ? (S.metAgain = true, save(), endWith(n, "x_return")) : showLine(n, "x_again", [{ plr: "p_yes", act: () => { closeDialog(); openDeckPicker(false); } }, { plr: "p_who", act: () => endWith(n, "x_who") }, { plr: "p_no", act: () => endWith(n, "x_bye") }]),
     guard: () => showLine(n, S.hasMap ? "g_hello" : "g_map", [{ plr: "p_yes", act: () => endWith(n, "g_sleep") }]),
     driver: () => showLine(n, S.spells?.sleep || S.dunClears ? "d_hello" : "d_hint", [{ plr: "p_enter", act: () => { closeDialog(); fade(toDungeon); } }, { plr: "p_later", act: closeDialog }]),
-    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), dealer: () => dealerTalk(n), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
+    teacher: () => teacherTalk(n), gayoung: () => campTalk(n), mike: () => mikeTalk(n), granny: () => grannyTalk(n), gangsa: () => teacher2Talk(n), cupbap: () => cupbapTalk(n), handong: () => handongShop(n), dealer: () => dealerTalk(n), ...Object.fromEntries(Object.keys(CB).map(k => [k, () => cbTalk(n)])), sua: () => suaTalk(n), clerk: () => kioskTalk(n),
     minsu: () => endWith(n, "m_hello"), jieun: () => endWith(n, S.quests.sister?.st === "done" ? "j_home" : "j_hello"), gyeongbi: () => endWith(n, S.hasMapApt ? "b_hello" : "b_map"),
   }[n.kind];
   const dc = DREAM_TEAM.includes(n.kind) ? () => dcMenu(n, normal) : normal;
@@ -1259,6 +1265,7 @@ function drawInventory() {
       + (fishes.length ? `<div class="ivItem"><span class="sl">물고기 · fish</span><b>${fishes.map(([k, c]) => k + " ×" + c).join(", ")}</b><span>편의점에서 팔아요 · sell at the 편의점 (${won(fishValue())})</span></div>` : "")
       + `<div class="ivItem"><span class="sl">📜 번역 두루마리 · translation scrolls</span><b>×${S.scrolls || 0}</b><span>대화 중에 📜 버튼: 그 대화 전체를 영어로 · in a conversation press 📜 to translate all of it (Mike sells them)</span></div>`
       + `<div class="ivItem"><span class="sl">🔮 다시 굴리기 돌 · reroll stones</span><b>×${S.rerollStones || 0}</b><span>63빌딩의 외계인 사령관만 떨어뜨려요. 카드 탭의 🔮: 보너스 1개, 희귀도 3개 · only the 63 commander drops them; use 🔮 on a card (bonus 1 stone, rarity 3)</span></div>`
+      + `<div class="ivItem sCards"><span class="sl">🃏 서울 카드 · Seoul cards (${Object.keys(S.seoulCards || {}).length} / 6)</span><div class="sGrid">${Object.keys(SEOUL_CARDS).map(k => seoulCardHTML(k, !!S.seoulCards?.[k])).join("")}</div><span>각 동네의 학생 카드 배틀러를 이기면 받아요 · beat the student card battler in each area</span></div>`
       + `<div class="ivItem"><span class="sl">재료 · materials</span><b>${mats.length ? mats.map(([k, c]) => MATS[k].ko + " ×" + c).join(", ") : "없음 · none"}</b><span>무기점 아저씨가 장비를 강화해 줘요 · the smith uses 3 to upgrade gear</span></div>`;
   } else {
     const where = {}; for (const k of skillKeys()) for (const u of S.skillDecks[k] || []) where[u] = skillDef(k).ko;
@@ -1327,6 +1334,7 @@ $("cvClose").onclick = () => { showScreen(null); paused = false; };
 $("actChar").onclick = () => openCharView();
 function onEscape() {
   if (!started || duel) return;
+  if (cb) { $("cardb").hidden = true; cb = null; paused = false; toast("배틀 포기 · you left the card battle"); return; }
   if (!$("reroll").hidden) { closeReroll(); return; }
   if (memo) { endMemory(true); return; }
   if (exam) { postponeExam(); return; }
@@ -1530,6 +1538,7 @@ function onKillForQuests(m) {
 }
 // quest marker over an NPC: "!" = new quest, "?" gold = hand in, "…" = you're on it
 function npcMarker(n) {
+  if (CB[n.kind]) return S.seoulCards?.[CB[n.kind].area] ? "" : "🃏";
   if (n.kind === "sua") return suaMarker();
   for (const id in QUESTS) { const q = QUESTS[id]; if (qReady(id) && qTurnInNpc(q) === n.kind) return "?"; }
   for (const id in QUESTS) if (QUESTS[id].giver === n.kind && qAvailable(id)) return "!";
@@ -1754,6 +1763,8 @@ const ACH = [
   { id: "dreamteam", ko: "드림팀", en: "The Dream Team", desc: "Talk to 지유, 시연, 수아, 가현, 유현, 다미 and 한동", prog: () => [DREAM_TEAM.filter(k => S.talked?.[k] || (k === "sua" && (S.sua?.step || 0) >= 1) || (k === "jieun" && (S.quests.sister?.found || S.quests.sister?.st === "done"))).length, DREAM_TEAM.length], reward: { won: 50000, xp: 300 } },
   { id: "duel1", ko: "첫 대결", en: "First duel", desc: "Win a quiz duel against one of the seven (6+ goblins)", prog: () => [Object.values(S.rel || {}).some(r => r.xp > 0) ? 1 : 0, 1], reward: { xp: 100 } },
   { id: "bestie", ko: "단짝", en: "Best friends", desc: "Reach ♥ Lv 5 with one of the seven", prog: () => [Math.max(0, ...Object.values(S.rel || {}).map(r => r.lvl)), 5], reward: { won: 60000, xp: 400 } },
+  { id: "seoul6", ko: "서울 카드 컬렉터", en: "Seoul card collector", desc: "Collect all 6 Seoul cards from the student card battlers", prog: () => [Object.keys(S.seoulCards || {}).length, 6], reward: { won: 80000, xp: 500 } },
+  { id: "cb1st", ko: "첫 카드 배틀", en: "First card battle", desc: "Beat a student in a word card battle", prog: () => [Object.keys(S.seoulCards || {}).length ? 1 : 0, 1], reward: { xp: 80 } },
   { id: "lvl5", ko: "생존자", en: "Survivor", desc: "Reach level 5", prog: () => [S.level, 5], reward: { won: 10000 } },
   { id: "epic", ko: "보물 사냥꾼", en: "Treasure hunter", desc: "Own an epic or legendary card", prog: () => [S.cards.some(c => c.rar >= 2) ? 1 : 0, 1], reward: { xp: 50 } },
   { id: "geared", ko: "완전 무장", en: "Fully equipped", desc: "Wear a better weapon, armour and a trinket", prog: () => [(weaponTier() >= 1) + (itemBy(S.equip.armor)?.g !== "a0" && !!S.equip.armor) + !!S.equip.trinket, 3], reward: { won: 8000 } },
@@ -3776,6 +3787,105 @@ addEventListener("keydown", e => {
   const k = +e.key; if (k >= 1 && k <= 4) { e.preventDefault(); e.stopImmediatePropagation(); duelPick(k - 1); }
 }, true);
 
+// ---- 단어 카드 배틀 (Danny 2026-10-18): the card game every student in Seoul plays ----
+// Lore: a noun card game that's all the rage among students. One challenger per area; a battle = 4 rounds: a Korean description of a
+// noun, □ boxes for its syllables, the syllables scrambled underneath; put them in order. 3 of 4 right wins. The first win in an area
+// gives that area's Seoul card (6 to collect); rematches are practice (a little XP).
+const CB = {
+  cb1: { name: "민준", area: "hongdae", ch: 0, at: { x: -36.4, z: 34.2, zone: "street" }, model: "stuA" },
+  cb2: { name: "서연", area: "apt", ch: 1, at: { x: 124, z: -22.5, zone: "street" }, woman: "stu_seoyeon" },
+  cb3: { name: "지호", area: "river", ch: 2, at: { x: 34.5, z: 124.6, zone: "street" }, model: "stuB" },
+  cb4: { name: "하은", area: "yeouido", ch: 3, at: { x: YD.x - 14, z: YD.z + 145, zone: "yeouido" }, woman: "stu_haeun" },
+  cb5: { name: "도윤", area: "noryangjin", ch: 4, at: { x: YD.x - 39.5, z: YD.z + 424.5, zone: "yeouido" }, model: "stuC" },
+  cb6: { name: "수빈", area: "yongsan", ch: 5, at: { x: YD.x + 189.5, z: YD.z + 100.5, zone: "yeouido" }, woman: "stu_subin" },
+};
+const SEOUL_CARDS = {
+  hongdae: { ko: "홍대", en: "Hongdae", icon: "🎸", c: ["#ff3a8a", "#7a1a4a"], sub: "버스킹의 거리 · street of buskers" },
+  apt: { ko: "서교 아파트", en: "Seogyo Apartments", icon: "🏢", c: ["#5aa8ff", "#1a3a7a"], sub: "경비실의 지도 · the guard's map" },
+  river: { ko: "한강공원", en: "Hangang Park", icon: "🌉", c: ["#3ac8b0", "#0f4a4a"], sub: "부서진 다리 · the broken bridge" },
+  yeouido: { ko: "여의도", en: "Yeouido", icon: "🌸", c: ["#ff9ec4", "#7a2a5a"], sub: "벚꽃과 63빌딩 · cherry trees, the 63 Building" },
+  noryangjin: { ko: "노량진", en: "Noryangjin", icon: "🐟", c: ["#7a9aff", "#1a2a6a"], sub: "시험과 수산시장 · exams and the fish market" },
+  yongsan: { ko: "용산", en: "Yongsan", icon: "🏛️", c: ["#e0b43a", "#5a3a0a"], sub: "박물관의 밤 · night at the museum" },
+};
+const seoulCardHTML = (k, owned = true, n = 0) => { const c = SEOUL_CARDS[k]; return owned
+  ? `<div class="sCard" style="--c1:${c.c[0]};--c2:${c.c[1]}"><span class="sNo">${String(Object.keys(SEOUL_CARDS).indexOf(k) + 1).padStart(2, "0")} / 06</span><span class="sIc">${c.icon}</span><b>${c.ko}</b><small>${c.en}</small><em>${c.sub}</em><span class="sTag">SEOUL CARD</span></div>`
+  : `<div class="sCard locked"><span class="sNo">${String(Object.keys(SEOUL_CARDS).indexOf(k) + 1).padStart(2, "0")} / 06</span><span class="sIc">?</span><b>???</b><small>${c.en}의 학생을 이기세요 · beat the student</small></div>`; };
+const syl = s => [...s.replace(/\s/g, "")];
+const cbWords = kind => {
+  const chs = bookChapters(), ch = chs[Math.min(CB[kind].ch, chs.length - 1)];
+  const ok = w => w.pos === "noun" && (window.DEFS || {})[w.id] && syl(w.kb || w.kr).length >= 2 && syl(w.kb || w.kr).length <= 4;
+  const pool = bookWords().filter(w => w.ch === ch.id && ok(w));
+  return pool.length >= 4 ? pool : bookWords().filter(ok);
+};
+function cbTalk(n) {
+  const won = S.seoulCards?.[CB[n.kind].area];
+  showLine(n, won ? "cb_again" : "cb_hi", [
+    { ko: "🃏 카드 배틀! · card battle", en: won ? "rematch (practice)" : `win the ${SEOUL_CARDS[CB[n.kind].area].ko} Seoul card`, act: () => { closeDialog(); startCardBattle(n.kind); } },
+    { ko: "(대화 끝내기)", en: "leave", act: closeDialog }]);
+}
+let cb = null;
+function startCardBattle(kind) {
+  if (cb || duel || quiz || exam) return;
+  const words = shuffle(cbWords(kind).slice()).slice(0, 4);
+  if (words.length < 4) { toast("카드가 아직 없어요 · no cards for this chapter yet"); return; }
+  cb = { kind, words, i: -1, me: 0, her: 0 }; cancelRitual(); paused = true;
+  $("cbName").textContent = CB[kind].name; $("cardb").hidden = false; SFX.open(); cbNext();
+}
+function cbHearts() { $("cbMeHp").textContent = "♥".repeat(Math.max(0, 4 - cb.her)) + "♡".repeat(Math.min(4, cb.her)); $("cbHerHp").textContent = "♥".repeat(Math.max(0, 4 - cb.me)) + "♡".repeat(Math.min(4, cb.me)); }
+function cbNext() {
+  cb.i++; cbHearts();
+  if (cb.i >= cb.words.length) { cbEnd(); return; }
+  const w = cb.words[cb.i], s = syl(w.kb || w.kr);
+  let tiles = shuffle(s.map((t, j) => ({ t, j }))); for (let k = 0; k < 6 && tiles.every((x, j) => x.j === j); k++) tiles = shuffle(tiles);
+  cb.cur = { w, s, tiles, picked: [] }; cb.open = true; stat(w.id).s++;
+  $("cbRound").textContent = `${cb.i + 1} / 4`; $("cbMsg").textContent = ""; $("cbMsg").className = "cbMsg";
+  $("cbClue").textContent = window.DEFS[w.id];
+  cbDraw();
+}
+function cbDraw() {
+  const c = cb.cur;
+  $("cbSlots").innerHTML = c.s.map((_, j) => { const p = c.picked[j]; return `<button class="cbSlot${p !== undefined ? " full" : ""}" data-j="${j}">${p !== undefined ? esc(c.tiles[p].t) : ""}</button>`; }).join("");
+  $("cbTiles").innerHTML = c.tiles.map((x, k) => `<button class="cbTile" data-k="${k}" ${c.picked.includes(k) ? "disabled" : ""}><kbd>${k + 1}</kbd>${esc(x.t)}</button>`).join("");
+  $("cbTiles").querySelectorAll(".cbTile").forEach(b => b.onclick = () => cbPick(+b.dataset.k));
+  $("cbSlots").querySelectorAll(".cbSlot").forEach(b => b.onclick = () => cbUndo(+b.dataset.j));
+}
+function cbPick(k) {
+  const c = cb?.cur; if (!cb?.open || c.picked.includes(k) || c.picked.length >= c.s.length) return;
+  c.picked.push(k); snd("wood", .35, 1.4); cbDraw();
+  if (c.picked.length === c.s.length) cbCheck();
+}
+function cbUndo(j) { const c = cb?.cur; if (!cb?.open || j >= c.picked.length) return; c.picked.length = j; SFX.select(); cbDraw(); }
+function cbCheck() {
+  const c = cb.cur, word = c.picked.map(k => c.tiles[k].t).join(""), ok = word === c.s.join(""); cb.open = false;
+  const w = c.w;
+  if (ok) {
+    cb.me++; stat(w.id).c++; if (mastery(w.id).k === "mastered" && !S.mastered.includes(w.id)) { S.mastered.push(w.id); toast(`마스터! ${w.kr} · +${MASTER_XP} XP`); gainXp(MASTER_XP); }
+    say([wordClip(w.id)], { interrupt: true }); snd("boom", .5, 1.3); snd("bell", .5, 1.2);
+    $("cbMsg").textContent = `정답! ${w.kb || w.kr} · ${w.en}`; $("cbMsg").className = "cbMsg ok"; $("cbHerCard").classList.remove("hit"); void $("cbHerCard").offsetWidth; $("cbHerCard").classList.add("hit");
+  } else {
+    cb.her++; stat(w.id).w++; SFX.resist(); snd("punchH", .5, 1.1);
+    $("cbMsg").textContent = `정답은 ${w.kb || w.kr} · ${w.en}`; $("cbMsg").className = "cbMsg no"; $("cbMeCard").classList.remove("hit"); void $("cbMeCard").offsetWidth; $("cbMeCard").classList.add("hit");
+    c.picked = c.s.map((_, j) => c.tiles.findIndex(x => x.j === j)); cbDraw();   /* show the right order */
+  }
+  cbHearts(); setTimeout(cbNext, ok ? 1500 : 2600);
+}
+function cbEnd() {
+  const d = cb, win = d.me >= 3, area = CB[d.kind].area, first = win && !S.seoulCards?.[area];
+  $("cardb").hidden = true; cb = null; paused = false;
+  const rows = [{ big: true, icon: win ? "🏆" : "🃏", ko: `${d.me} : ${d.her}`, en: win ? `you beat ${CB[d.kind].name}` : `${CB[d.kind].name} won · 3 of 4 wins` }];
+  if (first) { (S.seoulCards = S.seoulCards || {})[area] = Date.now(); rows.push({ iconHtml: seoulCardHTML(area), ko: `서울 카드 · ${SEOUL_CARDS[area].ko}`, en: `Seoul card ${Object.keys(S.seoulCards).length} / 6 (inventory → 서울 카드)` }); }
+  else if (win) { rows.push({ icon: "✨", ko: "+60 XP", en: "rematch practice" }); setTimeout(() => gainXp(60), 400); }
+  save();
+  const n = npcs.find(x => x.kind === d.kind);
+  showLine(n || { name: CB[d.kind].name }, win ? "cb_win" : "cb_lose", [{ ko: "(계속 · continue)", en: "", act: () => { closeDialog(); if (win) showReward(first ? "🃏 서울 카드 획득! · new Seoul card" : "🃏 카드 배틀 승리 · you won", rows); } }]);
+}
+addEventListener("keydown", e => {
+  if (!cb || !cb.open) return;
+  const k = +e.key;
+  if (k >= 1 && k <= cb.cur.tiles.length) { e.preventDefault(); e.stopImmediatePropagation(); cbPick(k - 1); }
+  else if (e.key === "Backspace") { e.preventDefault(); e.stopImmediatePropagation(); cbUndo(cb.cur.picked.length - 1); }
+}, true);
+
 // ---- main loop ------------------------------------------------------------------------------------------
 let last = performance.now(), saveT = 0;
 // ---- area guidance (Danny 2026-10-17) -------------------------------------------------------------------
@@ -3958,7 +4068,7 @@ window.__seoul = {
   tp(x, z) { player.pos.set(x, 0, z); },
   spawn(kind, lvl, x, z, zone = "street") { spawnMonster({ kind, lvl, x, z, mon: null, zone }); return monsters[monsters.length - 1]; },
   wordCounts: () => wordCounts(), drawFriends: () => drawFriends(),
-  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, startDuel: k => startDuel(k), get duel() { return duel; }, duelPick: i => duelPick(i), relOf: k => relOf(k), setCompanion: k => setCompanion(k, { name: "test" }), dcMenu: k => dcMenu(npcs.find(n => n.kind === k), null), startExam: () => startExam(), get exam() { return exam; }, get examPending() { return examPending; }, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
+  toYeouido: () => toYeouido(), toTower: () => toTower(), towerToYd: () => towerToYd(), toStreetBridge: () => toStreetBridge(), get tw() { return tw; }, get order() { return order; }, orderPick: k => orderPick(k), get rubble() { return rubble; }, rackUse: () => rackUse(), FX, startCardBattle: k => startCardBattle(k), get cb() { return cb; }, cbPick: k => cbPick(k), CB, startDuel: k => startDuel(k), get duel() { return duel; }, duelPick: i => duelPick(i), relOf: k => relOf(k), setCompanion: k => setCompanion(k, { name: "test" }), dcMenu: k => dcMenu(npcs.find(n => n.kind === k), null), startExam: () => startExam(), get exam() { return exam; }, get examPending() { return examPending; }, toMuseum: () => toMuseum(), museumToYd: () => museumToYd(), get mu() { return mu; }, scrollQuiz: i => scrollQuiz(i), clearReward: (k, t) => clearReward(k, t), grantMissedSets: () => grantMissedSets(), autoCreditBossQuests: () => autoCreditBossQuests(), MUSEUM, SETS, openFriends: () => openFriends(), sendChat: t => sendChat(t), invite: i => invite(S.friends[i]), refreshFriends: () => refreshFriends(), probeFriend: c => probeFriend(c), get NET() { return NET; }, toMarket: () => toMarket(), marketToYd: () => marketToYd(), get mk() { return mk; }, boardQuiz: i => boardQuiz(i), particleQuestion: () => particleQuestion(), MARKET, get lines() { return lines; }, openBook: () => openBook(), learnSkills: () => learnSkills(true), useBar: i => useBar(i), EXTRA, get cds() { return cds; }, campTalk: () => campTalk(npcs.find(n => n.kind === "gayoung")), syncMike: () => { mikeDay = -1; syncMike(); }, CAMP, toggleBike: () => toggleBike(), openReroll: uid => openReroll(uid), upsertRemote: (id, st) => upsertRemote(id, st), remotes, interact: () => interact(), YEOUIDO, TOWER,
   get memo() { return memo; }, heart: n => addHeart(n), get comp() { return comp; }, get fishing() { return fishing; }, flip: i => flipStone(i), upgrade: () => upgradeMenu(npcs.find(n => n.kind === "smith")),
   talk: kind => talkTo(npcs.find(n => n.kind === kind)), get dialog() { return dialog; }, opt(i) { $("dOpts").children[i]?.click(); }, get quiz() { return quiz; }, quizAnswer(right = true) { if (quiz) answerQuiz(right ? quiz.opts.indexOf(quiz.answer) : (quiz.opts.indexOf(quiz.answer) + 1) % quiz.opts.length); },
 };

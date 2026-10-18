@@ -189,6 +189,17 @@
   <div class="duMsg" id="duMsg"></div>
 </div>
 
+<div id="cardb" hidden>
+  <div class="cbBox">
+    <div class="cbTop"><div class="cbCard me" id="cbMeCard"><b>나</b><span id="cbMeHp"></span></div><div class="cbRound" id="cbRound"></div><div class="cbCard her" id="cbHerCard"><b id="cbName"></b><span id="cbHerHp"></span></div></div>
+    <div class="cbClue"><span>🃏 단어 카드 배틀 · 설명 · description</span><p id="cbClue"></p></div>
+    <div class="cbSlots" id="cbSlots"></div>
+    <div class="cbTiles" id="cbTiles"></div>
+    <div class="cbMsg" id="cbMsg"></div>
+    <p class="cbHelp">음절을 순서대로 누르세요 (1–4) · 칸을 누르면 지워요 (Backspace) · Esc 포기 · click the syllables in order, click a box to undo</p>
+  </div>
+</div>
+
 <div id="rewardView" class="screen" hidden>
   <div class="panel rwv">
     <div class="eyebrow">보상 · rewards</div><h2 id="rwTitle"></h2>
@@ -297,6 +308,7 @@
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/jsm/" } }</script>
 <script src="data/words.js"></script>
+<script src="data/defs.js"></script>
 <script type="module" src="js/game.js"></script>
 </body>
 </html>

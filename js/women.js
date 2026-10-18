@@ -24,6 +24,10 @@ export const CHARS = {
     hair: { mat: ["Head/Hair_Brown"], color: "#3a2418", len: .66, locks: true } },
   dami: { base: "Casual", ko: "다미", col: { White: BLACK, Orange: "#2a2830", Grey: "#ecebe6", Brown: "#3b2620", Hair_Brown: "#121014" },
     hair: { mat: ["Head/Hair_Blond"], color: "#121014", len: 0, bangs: "side" } },
+  // the student card battlers (2026-10-18): school uniforms
+  stu_seoyeon: { base: "Suit", ko: "서연", col: { Black: "#1f2a4a", White: "#f4f2ec", "Legs/Black": "#3a3048", Brown: "#3b2620", Hair_Brown: "#1a1210" }, hair: { mat: ["Head/Hair_Blond"], color: "#1a1416", len: .42, bangs: "full" } },
+  stu_haeun: { base: "Casual", ko: "하은", col: { White: "#f4f2ec", Orange: "#2a3352", Grey: "#f0efe8", Brown: "#3b2620", Hair_Brown: "#4a2e1e" }, hair: { mat: ["Head/Hair_Blond"], color: "#5a3a22", len: 0, bangs: "side" } },
+  stu_subin: { base: "Formal", ko: "수빈", col: { "Body/LimeGreen": "#1f2a4a", "Legs/LimeGreen": "#6a2a3a", Gold: "#c8402f", "Feet/Red": "#1a1a1e", Brown: "#3b2620" }, hair: { mat: ["Head/Red"], color: "#2a1a14", len: .5, locks: true } },
   handong: { base: "Witch", ko: "한동", col: { Purple: "#2a1430", Brown2: BLACK, Gold: GOLD, "Legs/Brown": BLACK, Brown: "#3b2620" },
     hair: { mat: ["Head/Hair_Black"], hide: ["Head/Purple", "Head/Gold"], cap: true, color: "#d9b46a", len: .6, bangs: "full", locks: true } },
 };
