@@ -1,7 +1,7 @@
 // Characters and monsters, built from simple shapes in the same toon style as the world.
 // Every model: { root, anim(dt, state) }  where state = { moving, speed, attack (0..1 swing), hurt, dead }
 import * as THREE from "three";
-import { toon, outline } from "./world.js?v=mvdsf10v";
+import { toon, outline } from "./world.js?v=mvdsi0ht";
 
 const SKIN = "#f0c7a0";
 function part(geo, mat, x, y, z, parent, ol = .025) {

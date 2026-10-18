@@ -6,14 +6,14 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdsf10v";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdsf10v";
-import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdsf10v";
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdsf10v";
-import * as FX from "./fx.js?v=mvdsf10v";
-import { LINES } from "./lines.js?v=mvdsf10v";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdsf10v";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdsf10v";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvdsi0ht";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvdsi0ht";
+import { loadKayKit, kayReady, makeKay } from "./kaykit.js?v=mvdsi0ht";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvdsi0ht";
+import * as FX from "./fx.js?v=mvdsi0ht";
+import { LINES } from "./lines.js?v=mvdsi0ht";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvdsi0ht";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvdsi0ht";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -4367,18 +4367,22 @@ const QZ_N = 10, QZ_MAX = 30, QZ_STEAL = 5, QZ_T = ["noun", "verb", "adjective",
 function cgQuizStart() {
   const r = cg.round; cg.phase = "quiz"; cg.rmMine = cg.rmOpp = null;
   const words = shuffle([...new Set(cg.myOrder.map(c => c.id))]).slice(0, QZ_N);
-  cg.qz = { r, words, i: 0, c: 0, t0: performance.now(), done: false, lock: false };
-  if (cg.npc) {   /* the student's run: more right and faster at higher ranks, a little luck */
-    const acc = Math.min(.97, Math.max(.45, (.66 + cg.rank * .035) / Math.sqrt(cg.luck))); let c = 0, t = 0; const at = [];
-    for (let k = 0; k < QZ_N; k++) { if (Math.random() < acc) c++; t += Math.max(.45, rand(.6, 1.4) - cg.rank * .05); at.push(t); }
+  cg.qz = { r, words, i: 0, c: 0, t0: performance.now() + 1e9, done: false, lock: false, go: false };
+  if (cg.npc) {   /* the student's run (Danny 2026-10-18: always winnable): about 4 + rank/2 right, ±1, at most 9; ~2.5–3 s a word */
+    const c = Math.max(3, Math.min(9, 4 + Math.floor(cg.rank / 2) + Math.round(rand(-1.4, 1.4)))); let t = 0; const at = [];
+    for (let k = 0; k < QZ_N; k++) { t += Math.max(1.6, rand(2.2, 3.2) - cg.rank * .08); at.push(t); }
     cg.qzOpp = { r, c, t: +t.toFixed(2), at };
-    setTimeout(cgQzTry, t * 1000 + 40);   /* when the student finishes (also when no frames are drawn) */
   } else cg.qzOpp = cg.qzOppEarly?.[r] || null;
   const box = $("cgQz"); box.hidden = false; box.className = "cgQz";
-  $("cgQzHead").innerHTML = `<b>⚡ 스피드 퀴즈 · speed quiz</b><span>무슨 단어예요? 10개 다 빨리 맞히면 상대 카드 1장을 없앨 수 있어요 · what kind of word? most right (then fastest) removes one of their cards</span>`;
+  $("cgQzHead").innerHTML = `<b>⚡ 스피드 퀴즈 · speed quiz</b><span>무슨 단어예요? 더 많이 맞히면 (같으면 더 빨리) 상대 카드 1장을 없앨 수 있어요 · what kind of word? most right (then fastest) removes one of their cards</span>`;
   $("cgQzOpts").innerHTML = QZ_T.map((t, k) => `<button data-k="${k}"><kbd>${k + 1}</kbd>${CG_TYPE[t].ko}<small>${CG_TYPE[t].en}</small></button>`).join("");
   $("cgQzOpts").querySelectorAll("button").forEach(b => b.onclick = () => cgQzAnswer(+b.dataset.k));
-  snd("bell", .5, 1.5); cgQzDraw();
+  let n = 3; const qq = cg.qz, tick = () => {
+    if (!cg || cg.qz !== qq || cg.phase !== "quiz") return;
+    if (n > 0) { $("cgQzWord").textContent = String(n); $("cgQzOpts").querySelectorAll("button").forEach(b => b.disabled = true); snd("bell", .4, 1 + (3 - n) * .15); n--; setTimeout(tick, 700); return; }
+    cg.qz.go = true; cg.qz.t0 = performance.now(); snd("bell", .6, 1.6); cgQzDraw();
+  };
+  $("cgQzMe").textContent = "준비… · get ready"; tick();
 }
 function cgQzDraw() {
   const q = cg.qz, id = q.words[q.i];
@@ -4387,7 +4391,7 @@ function cgQzDraw() {
   $("cgQzOpts").querySelectorAll("button").forEach(b => { b.className = ""; b.disabled = q.done; });
 }
 function cgQzAnswer(k) {
-  const q = cg?.qz; if (!q || cg.phase !== "quiz" || q.done || q.lock || k < 0 || k > 3) return;
+  const q = cg?.qz; if (!q || !q.go || cg.phase !== "quiz" || q.done || q.lock || k < 0 || k > 3) return;
   const id = q.words[q.i], right = cgPos(id), ok = QZ_T[k] === right, btns = $("cgQzOpts").children;
   q.lock = true; if (ok) q.c++;
   btns[k].className = ok ? "ok" : "no"; if (!ok && QZ_T.indexOf(right) >= 0) btns[QZ_T.indexOf(right)].className = "ok";
@@ -4404,7 +4408,6 @@ function cgQzTry() {
   const el = (performance.now() - q.t0) / 1000;
   if (!q.done && o.c >= QZ_N && el > o.t) { q.i = QZ_N; cgQzDone(); return; }   /* they got all 10 before you could: no need to go on */
   if (!q.done) return;
-  if (cg.npc && el < o.t && !(q.c > o.c || (q.c === o.c && q.t < o.t))) return;   /* the student is still answering and could still win */
   cg.phase = "steal";
   const me = q.c > o.c || (q.c === o.c && (q.t < o.t || (q.t === o.t && !cg.challenger))), none = !q.c && !o.c;
   $("cgQzOpp").textContent = `${cg.oppName} ${o.c} ✓ · ${o.t}s`; $("cgQzMe").textContent = `나 · you ${q.c} ✓ · ${q.t}s`;
