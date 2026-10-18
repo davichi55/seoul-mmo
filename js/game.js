@@ -166,7 +166,7 @@ function load() {
 }
 // 2026-10-18: seven headings of the 5B review notes had slipped into the word list as cards (b044 b045 b324–b328, e.g. "인용의 출처 밝히기");
 // a card of one becomes a real word of the same chapter (one you don't have yet if possible, same rarity) and every other trace goes
-const GONE_WORDS = { b044: "5b-1", b045: "5b-1", b324: "5b-4", b325: "5b-4", b326: "5b-4", b327: "5b-4", b328: "5b-4" };
+const GONE_WORDS = { b012: "5b-1", b282: "5b-4", b157: "5b-2", b300: "5b-4", b376: "5b-5", b459: "5b-6", b044: "5b-1", b045: "5b-1", b324: "5b-4", b325: "5b-4", b326: "5b-4", b327: "5b-4", b328: "5b-4" };
 function fixGoneWords() {
   const swap = id => { const own = new Set(S.cards.map(c => c.id)), pool = DATA.words.filter(w => w.ch === GONE_WORDS[id]); return (shuffle(pool.filter(w => !own.has(w.id)))[0] || pick(pool)).id; };
   for (const c of S.cards || []) if (GONE_WORDS[c.id]) c.id = swap(c.id);
@@ -4194,16 +4194,18 @@ const CG_GLOW = [null, "#5aa8ff", "#b47aff", "#ffb03a"], CG_SIZE = [.55, .66, .8
 const CARENA = { x: 13000, z: 0 };
 const cgPos = id => CG_TYPE[WORD[id]?.pos] ? WORD[id].pos : "other";
 const bestRar = id => S.cards.reduce((m, c) => c.id === id && c.rar > m ? c.rar : m, -1);
-const battleDeck = () => [...new Set(S.battleDeck || [])].filter(id => WORD[id] && bestRar(id) >= 0);
+// Danny 2026-10-18: words with no clear category (기타: grammar patterns, expressions) stay out of card battles
+const cgOk = id => WORD[id] && cgPos(id) !== "other";
+const battleDeck = () => [...new Set(S.battleDeck || [])].filter(id => cgOk(id) && bestRar(id) >= 0);
 const myName = () => S.name || classDef().ko;
-function autoBattleDeck() { S.battleDeck = shuffle([...new Set(S.cards.map(c => c.id))].filter(id => WORD[id])).sort((a, b) => bestRar(b) - bestRar(a)).slice(0, CG_DECK); save(); }
+function autoBattleDeck() { S.battleDeck = shuffle([...new Set(S.cards.map(c => c.id))].filter(cgOk)).sort((a, b) => bestRar(b) - bestRar(a)).slice(0, CG_DECK); save(); }
 let bdFilter = "all";
 function drawBattleDeck() {
-  const deck = new Set(battleDeck()), ids = [...new Set(S.cards.map(c => c.id))].filter(id => WORD[id]).sort((a, b) => bestRar(b) - bestRar(a) || (WORD[a].kb || WORD[a].kr).localeCompare(WORD[b].kb || WORD[b].kr));
+  const deck = new Set(battleDeck()), all = [...new Set(S.cards.map(c => c.id))].filter(id => WORD[id]), ids = all.filter(cgOk).sort((a, b) => bestRar(b) - bestRar(a) || (WORD[a].kb || WORD[a].kr).localeCompare(WORD[b].kb || WORD[b].kr));
   const shown = ids.filter(id => bdFilter === "all" || deck.has(id)), pts = [...deck].reduce((a, id) => a + CG_PTS[bestRar(id)], 0);
   $("dvColl").innerHTML = `<div class="clHead"><div><b>⚔ 배틀 덱 · battle deck</b> · ${deck.size} / ${CG_DECK} 단어 · words · 점수 · points ${pts} ${deck.size < CG_DECK ? `· <span class="warn">카드 배틀에는 ${CG_DECK}개가 필요해요 · card battles need ${CG_DECK}</span>` : `· <span class="okc">준비됨 · ready</span>`}</div>
     <div class="bar xp clBar"><i style="width:${deck.size / CG_DECK * 100}%"></i></div>
-    <span class="fine">단어마다 가장 좋은 카드로 싸워요 · each word plays as your best copy of it: 일반 +1, 희귀 +2, 영웅 +3, 전설 +4 · 스킬 덱의 단어도 넣을 수 있어요 · words from your skill decks can be here too</span></div>
+    <span class="fine">단어마다 가장 좋은 카드로 싸워요 · each word plays as your best copy of it: 일반 +1, 희귀 +2, 영웅 +3, 전설 +4 · 스킬 덱의 단어도 넣을 수 있어요 · words from your skill decks can be here too · 명사·동사·형용사·부사만 · only nouns, verbs, adjectives and adverbs (기타 · grammar and expressions: ${all.length - ids.length} of yours stay out)</span></div>
     <div class="clFilt"><button class="chip" data-bf="all" aria-pressed="${bdFilter === "all"}">전체 · all (${ids.length})</button><button class="chip" data-bf="in" aria-pressed="${bdFilter === "in"}">덱 · in the deck</button><button class="chip" id="bdAuto">✨ 자동 · best ${CG_DECK}</button><button class="chip" id="bdClear">비우기 · clear</button></div>
     <div class="clGrid">${shown.map(id => { const w = WORD[id], r = bestRar(id); return `<button class="clTile bd ${deck.has(id) ? "own" : "miss"}" data-id="${id}" style="--rc:${RARITY[r].c}"><b>${esc(w.kb || w.kr)}</b><span>${esc(w.en)}</span><small>${POSKO[w.pos] || "기타"} · ${RARITY[r].ko} +${CG_PTS[r]}${deck.has(id) ? " · ✓ 덱" : ""}</small></button>`; }).join("") || '<p class="fine">카드가 없어요 · no cards yet</p>'}</div>`;
   if ($("dvBattleTab")) $("dvBattleTab").textContent = `⚔ 배틀 덱 · battle deck (${deck.size}/${CG_DECK})`;
@@ -4217,8 +4219,8 @@ function drawBattleDeck() {
   });
 }
 function cgNeedDeck() {
-  const n = battleDeck().length, own = new Set(S.cards.map(c => c.id)).size;
-  toast(`⚔ 배틀 덱에 단어 ${CG_DECK}개가 필요해요 (지금 ${n}개) · your battle deck needs ${CG_DECK} words (now ${n})` + (own < CG_DECK ? ` — 카드를 더 모으세요 · collect more cards (${own})` : ""));
+  const n = battleDeck().length, own = new Set(S.cards.map(c => c.id).filter(cgOk)).size;
+  toast(`⚔ 배틀 덱에 단어 ${CG_DECK}개가 필요해요 (지금 ${n}개) · your battle deck needs ${CG_DECK} words (now ${n})` + (own < CG_DECK ? ` — 명사·동사·형용사·부사 카드를 더 모으세요 · collect more nouns, verbs, adjectives, adverbs (${own})` : ""));
   if (own >= CG_DECK) { dvTab = "battle"; openDeckView(); }
 }
 // the rule of a round: 1–3 word types, 3–5 cards in all
@@ -4241,7 +4243,7 @@ function cgScore(cards, rule) {
 // a student's deck and play: their chapter's words, better cards at higher ranks; they slip more at low ranks, when they lead, on bad days
 function cgNpcDeck(kind) {
   const c = CB[kind], ch = cbChapter(kind), rank = c.rank || Math.min(8, c.ch + 1 + (S.cbWins?.[kind] || 0));
-  let pool = bookWords().filter(w => w.ch === ch.id); if (pool.length < CG_DECK) pool = pool.concat(shuffle(bookWords().filter(w => w.ch !== ch.id)).slice(0, CG_DECK - pool.length));
+  let pool = bookWords().filter(w => w.ch === ch.id && cgOk(w.id)); if (pool.length < CG_DECK) pool = pool.concat(shuffle(bookWords().filter(w => w.ch !== ch.id && cgOk(w.id))).slice(0, CG_DECK - pool.length));
   const odds = [Math.max(.25, .8 - rank * .07), .17 + rank * .03, .03 + rank * .025, rank * .008], sum = odds.reduce((a, b) => a + b, 0);
   const roll = () => { let r = Math.random() * sum; for (let i = 0; i < 4; i++) if ((r -= odds[i]) < 0) return i; return 0; };
   return { rank, cards: shuffle(pool).slice(0, CG_DECK).map(w => ({ id: w.id, rar: roll() })) };
