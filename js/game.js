@@ -6,18 +6,18 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvez8lat";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvez8lat";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvez8lat";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvez8lat";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvezdqng";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvezdqng";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvezdqng";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvezdqng";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvez8lat";
-import * as FX from "./fx.js?v=mvez8lat";
-import { LINES } from "./lines.js?v=mvez8lat";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvez8lat";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvez8lat";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvezdqng";
+import * as FX from "./fx.js?v=mvezdqng";
+import { LINES } from "./lines.js?v=mvezdqng";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvezdqng";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvezdqng";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -1356,11 +1356,14 @@ function dropChapters() {
   const order = bookChapters().map(c => c.id).filter(id => ch.includes(id));
   return Math.random() < .7 ? order.slice(-1) : order.slice(0, -1);
 }
+// the words an active card quest still needs loose in the bag
+function questWantWords() { const loose = new Set(bagCards().map(c => c.id)), out = []; for (const [id, st] of Object.entries(S.quests || {})) if (QUESTS[id]?.kind === "cards" && st?.st === "active") for (const w of st.words || []) if (WORD[w] && !loose.has(w)) out.push(w); return out; }
 function dropCard(m) {
   if (Math.random() >= (m.def?.alien || m.def?.boss ? 1 : .7)) return;   /* Danny 2026-10-18: 45% → 70% */
   const chs = dropChapters(), pool = bookWords().filter(w => chs.includes(w.ch)).map(w => w.id); if (!pool.length) return;
   const owned = new Set(S.cards.map(c => c.id)), unowned = pool.filter(id => !owned.has(id));
-  const id = unowned.length && Math.random() < .9 ? pick(unowned) : pick(pool);
+  const want = questWantWords();
+  const id = want.length && Math.random() < .35 ? pick(want) : unowned.length && Math.random() < .9 ? pick(unowned) : pick(pool);
   if (!id || !WORD[id]) return;
   // once you own every word of these chapters, duplicates come with better rarity
   let rar = m.def?.alien ? Math.max(rollRarity(), rollRarity()) : rollRarity(); if (!unowned.length) rar = Math.max(rar, rollRarity());
@@ -2083,7 +2086,7 @@ function openQuestLog() {
   const act = Object.keys(QUESTS).filter(id => S.quests[id]?.st === "active"), done = Object.keys(QUESTS).filter(id => S.quests[id]?.st === "done");
   const giverName = k => NPC_DEF[k] || k;
   $("qlActive").innerHTML = act.length ? act.map(id => { const q = QUESTS[id], st = S.quests[id];
-    const extra = q.kind === "cards" ? `<div class="qwords">${st.words.map(w => `<span class="${bagCards().some(c => c.id === w) ? "have" : ""}">${WORD[w].kr} · ${WORD[w].en}</span>`).join("")}</div>` : "";
+    const extra = q.kind === "cards" ? `<div class="qwords">${st.words.map(w => { const loose = bagCards().some(c => c.id === w), inDeck = !loose && skillKeys().some(k => deckIds(k).includes(w)); return `<span class="${loose ? "have" : ""}">${loose ? "✓ " : ""}${WORD[w].kr} · ${WORD[w].en}${loose ? "" : inDeck ? " · 📌 덱에 있어요, 빼면 돼요 · in a deck: take it out (K)" : " · 🎲 괴물이 자주 떨어뜨려요 · monsters drop it often now"}</span>`; }).join("")}</div>` : "";
     return `<div class="qItem${qReady(id) ? " ready" : ""}"><b>${q.ko}</b><span class="en">${q.en}</span><p>${q.desc}</p>${extra}<div class="qmeta"><span>${qProgress(id)}</span><span>${qReady(id) ? "✔ " : ""}돌아갈 곳 · hand in: ${giverName(qTurnInNpc(q))}</span><span>보상 · ${won(q.reward.won || 0)} · ${q.reward.xp} XP</span></div></div>`; }).join("")
     : `<p class="fine">진행 중인 퀘스트가 없어요. 머리 위에 ! 가 있는 사람과 이야기해 보세요. · No active quests: talk to people with a ! above their head.</p>`;
   $("qlDone").innerHTML = done.length ? done.map(id => `<span class="qdone">✔ ${QUESTS[id].ko}</span>`).join("") : `<span class="fine">아직 없음 · none yet</span>`;
