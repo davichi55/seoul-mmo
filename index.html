@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <title>서울의 수수께끼 존재 · The Mysterious Creature of Seoul</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<link rel="stylesheet" href="style.css?v=mvf5ogvn">
+<link rel="stylesheet" href="style.css?v=mvf625xk">
 </head>
 <body>
 <div id="game"></div>
@@ -35,9 +35,10 @@
     <button class="act" id="actAttack" data-tip="기본 공격 · basic attack (1)"><kbd>1</kbd><span>⚔</span><small>기본 공격</small><i class="cd" id="atkCd"></i></button>
     <button class="act" id="actSkill2"><kbd>2</kbd><span>✦</span><small id="s2Name"></small><i class="cd" id="s2Cd"></i></button>
     <button class="act" id="actSkill3"><kbd>3</kbd><span>✧</span><small id="s3Name"></small><i class="cd" id="s3Cd"></i></button>
-    <button class="act" id="actSkill4"><kbd>4</kbd><span>💤</span><small id="s4Name"></small><i class="cd" id="s4Cd"></i></button>
-    <button class="act" id="actSkill5"><kbd>5</kbd><span>🤐</span><small id="s5Name"></small><i class="cd" id="s5Cd"></i></button>
     <button class="act empty" id="actB0"></button><button class="act empty" id="actB1"></button><button class="act empty" id="actB2"></button><button class="act empty" id="actB3"></button><button class="act empty" id="actB4"></button>
+    <span class="barGap"></span>
+    <button class="act" id="actSkill4"><kbd>Z</kbd><span>💤</span><small id="s4Name"></small><i class="cd" id="s4Cd"></i></button>
+    <button class="act" id="actSkill5"><kbd>X</kbd><span>🤐</span><small id="s5Name"></small><i class="cd" id="s5Cd"></i></button>
     <span class="barGap"></span>
     <button class="act" id="actFood" data-tip="김밥 먹기 · eat gimbap (F)"><kbd>F</kbd><span>🍙</span><small id="gimbapN">김밥 0</small></button>
     <button class="act" id="actBike" hidden data-tip="따릉이 타기 / 내리기 · bike on / off (R)"><kbd>R</kbd><span>🚲</span><small>따릉이</small></button>
@@ -334,9 +335,9 @@
 <div id="deathScreen" class="screen dark" hidden><div class="panel center"><h2>정신을 잃었어요…</h2><p>You passed out. Someone carries you to the station. Nothing is lost.</p></div></div>
 
 <script type="importmap">{ "imports": { "three": "./vendor/three.module.js", "three/addons/": "./vendor/jsm/" } }</script>
-<script src="data/words.js?v=mvf5ogvn"></script>
-<script src="data/defs.js?v=mvf5ogvn"></script>
-<script src="data/order_alts.js?v=mvf5ogvn"></script>
-<script type="module" src="js/game.js?v=mvf5ogvn"></script>
+<script src="data/words.js?v=mvf625xk"></script>
+<script src="data/defs.js?v=mvf625xk"></script>
+<script src="data/order_alts.js?v=mvf625xk"></script>
+<script type="module" src="js/game.js?v=mvf625xk"></script>
 </body>
 </html>
