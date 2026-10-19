@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { toon, outline } from "./world.js?v=mvezj8p6";
+import { toon, outline } from "./world.js?v=mvf0u2n5";
 
 const BLACK = "#16141a", INK = "#232028", WINE = "#6a1a2a", GOLD = "#c9a43a", SILVER = "#c8ccd6";
 // hair: what the original hair material is (recoloured) or hides (hats, hoods, the mohawk: then `cap` builds a new crown);
@@ -146,6 +146,14 @@ function addWeapon(scene, kind, H, ol, hang, wp, src) {
     add(new THREE.CylinderGeometry(H * .01, H * .012, H * .16, 8), "#7a1f2b", 0, 0, 0);                       // the handle
     for (let i = 0; i < 7; i++) { const a = i / 7 * Math.PI * 2, r = i ? H * .028 : 0; add(new THREE.SphereGeometry(H * .018, 10, 8), "#d8b040", Math.cos(a) * r, H * (.1 + (i ? 0 : .02)) + (i % 2) * H * .02, Math.sin(a) * r); }
     ["#c8402f", "#2f6db3", "#e0b020", "#f2efe6", "#2f8a4a"].forEach((c, i) => { const r = add(new THREE.BoxGeometry(H * .012, H * .16, H * .002), c, (i - 2) * H * .01, -H * .15, 0, false); r.rotation.z = (i - 2) * .12; });   // 오방색 ribbons
+  } else if (kind === "whistle") {   // the zookeeper's whistle (호루라기) on a red cord, on his chest
+    const ch = wp("Chest"), nk = wp("Neck"), at = ch.clone().lerp(nk, .35).add(new THREE.Vector3(0, 0, H * .085));
+    add(new THREE.CylinderGeometry(H * .016, H * .016, H * .05, 10), "#d8dde4", 0, 0, 0).rotation.z = Math.PI / 2;
+    add(new THREE.BoxGeometry(H * .022, H * .012, H * .02), "#d8dde4", H * .03, H * .006, 0);
+    for (const s of [-1, 1]) { const c = add(new THREE.BoxGeometry(H * .006, H * .16, H * .006), "#c8402f", s * H * .045, H * .075, -H * .02, false); c.rotation.z = -s * .55; }
+    g.position.copy(at); hang(g, "Chest", false);
+    mixer.stopAllAction(); mixer.uncacheRoot(scene); for (const [o, p, q, sc] of saved) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(sc); } scene.updateMatrixWorld(true);
+    return;
   }
   g.position.copy(grip); g.quaternion.setFromUnitVectors(Y, axis); hang(g, "Wrist" + side, false);
   mixer.stopAllAction(); mixer.uncacheRoot(scene); for (const [o, p, q, sc] of saved) { o.position.copy(p); o.quaternion.copy(q); o.scale.copy(sc); } scene.updateMatrixWorld(true);

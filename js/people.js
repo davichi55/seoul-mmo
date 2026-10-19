@@ -3,7 +3,7 @@
 // builds them). Every class has three looks (the character screen switches them); every man in town gets a body and colours for his
 // job. Colours name the model's own materials ("Hair", "Suit", ...; "Head/Red" = only on the head). Sitting people stay KayKit
 // (this pack has no sitting animation).
-import { loadBase, makePerson } from "./women.js?v=mvezj8p6";
+import { loadBase, makePerson } from "./women.js?v=mvf0u2n5";
 
 const INK = "#16141a", NAVY = "#1f2a44", WINE = "#7a1f2b", GOLD = "#c9a43a", HAIR = "#1d1612", WHITE = "#f2efe6";
 
@@ -11,7 +11,14 @@ const INK = "#16141a", NAVY = "#1f2a44", WINE = "#7a1f2b", GOLD = "#c9a43a", HAI
 const SWORD = { weapon: "sword", anims: { idle: "Idle_Sword", attack: "Sword_Slash", cast: "Idle_Sword" } };
 const BOW = { weapon: "bow", anims: { idle: "Idle", attack: "Gun_Shoot", cast: "Idle_Gun_Pointing" } };
 const BELL = { weapon: "bell", anims: { idle: "Idle", attack: "Punch_Right", cast: "Wave" } };
+const WHISTLE = { weapon: "whistle", anims: { idle: "Idle", attack: "Interact", cast: "Idle" } };
 export const LOOKS = {
+  // the zookeeper (2026-10-19): a whistle on a cord; safari first (Danny's pick), then overalls and the keeper's vest
+  zoo: [
+    { ko: "사파리", en: "safari", base: "men/Adventurer", ...WHISTLE, col: { Green: "#b8a878", LightGreen: "#c8b888", Brown2: "#6a5a3a", Brown: "#5a4026", Gold: GOLD, Hair: "#2a1c14" } },
+    { ko: "멜빵", en: "overalls", base: "men/Farmer", ...WHISTLE, col: { LightBlue: "#4a6a3a", Brown: "#5a4026", Beige: "#e8dcb0", Red: "#3a8f4c", Brown2: "#3b2a1a" } },
+    { ko: "조끼", en: "keeper's vest", base: "men/Worker", ...WHISTLE, col: { Worker_Yellow: "#3a7a3a", Worker_Vest: "#2f6a3a", LightBrown: "#d8c8a0", Brown: "#5a4026", Brown2: "#3b2a1a", Moustache: "#2a1c14" } },
+  ],
   geomgaek: [
     { ko: "여행자", en: "traveller", base: "men/Adventurer", ...SWORD, hideNodes: ["Backpack"], col: { Green: NAVY, LightGreen: "#2a3658", Brown2: INK, Brown: "#3b2620", Black: INK, Gold: GOLD, Hair: HAIR } },
     { ko: "검은 갑옷", en: "dark armour", base: "men/Swat", ...SWORD, col: { Swat: "#3a3f4a", Swat_Black: INK, Visor: WINE } },

@@ -6,18 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvezj8p6";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvezj8p6";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvezj8p6";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvezj8p6";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf0u2n5";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf0u2n5";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf0u2n5";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf0u2n5";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf0u2n5";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
-const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvezj8p6";
-import * as FX from "./fx.js?v=mvezj8p6";
-import { LINES } from "./lines.js?v=mvezj8p6";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvezj8p6";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvezj8p6";
+const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf0u2n5";
+import * as FX from "./fx.js?v=mvf0u2n5";
+import { LINES } from "./lines.js?v=mvf0u2n5";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf0u2n5";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf0u2n5";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -46,6 +47,8 @@ const CLASSES = {
               pass: "Each correct card heals you 3% of your health.", weapons: ["방울", "신령 방울", "천신 방울"] },
   geomgaek: { ko: "검객", en: "Swordsman", hp: 130, dmg: 1.3, range: 3.4, mitig: .2, unbreak: true, cleave: { r: 3, mult: .5 }, solo: "가장 어려움 · hardest solo",
               pass: "Takes 20% less damage. 베기 (cleave): every hit also does half damage to other monsters within 3 m. 불굴 (unbreakable): at full health one hit can never kill you, you always keep 1 HP. No healing.", weapons: ["목검", "강철 검", "환도"] },
+  zoo:      { ko: "사육사", en: "Zookeeper", hp: 110, dmg: 1.0, range: 15, solo: "보통 · medium",
+              pass: "Fights only with animals he calls: each attacks every 2 s, at most 5 times, and has a share of your health; 5 of each kind at once. Call them before a fight, then walk in with your pack. Monsters attack them too.", weapons: ["호루라기", "은 호루라기", "황금 호루라기"] },
   gungsu:   { ko: "궁수", en: "Archer", hp: 90, dmg: 1.2, range: 20, solo: "보통 · medium",
               pass: "Long range (20 m): you can finish a ritual before a monster reaches you.", weapons: ["나무 활", "각궁", "명궁의 활"] },
 };
@@ -143,10 +146,13 @@ const SKILL2 = {
             B: { ko: "치유 부적", en: "healing talisman", mult: 1, heal: .25, cd: 12, info: "2 cards · heals 25% health + 1× damage" } },
   geomgaek: { A: { ko: "돌진 베기", en: "charging slash", mult: 2, range: 10, info: "2 cards · dash to a target up to 10 m away, 2× damage" },
               B: { ko: "철벽", en: "iron wall", mult: 1.6, guard: { red: .5, dur: 6 }, cd: 12, info: "2 cards · 1.6× damage, then take 50% less damage for 6 s" } },
+  zoo: { A: { ko: "먹이 주기", en: "feeding", mult: 0, self: true, feed: { heal: .5, hits: 2 }, cd: 12, info: "2 cards · every animal of yours heals 50% and gets 2 more attacks" },
+         B: { ko: "시바견 부르기", en: "call a Shiba Inu", mult: 0, self: true, summon: "shiba", cd: 4, info: "2 cards · a Shiba Inu: 5 bites of 0.45×, 25% of your health" } },
   gungsu: { A: { ko: "관통 사격", en: "piercing shot", mult: 2.4, range: 24, info: "2 cards · 2.4× damage, range 24 m" },
             B: { ko: "덫 화살", en: "snare arrow", mult: 1.6, slow: { f: .5, dur: 5 }, cd: 10, info: "2 cards · 1.6× damage, target 50% slower for 5 s" } },
 };
-function skillDef(k) { const x = extraDef(k); if (x) return { ...x, key: barKeyLabel(k) }; return k === "basic" ? SKILLS.basic : Object.assign({}, SKILLS[k], SKILL2[S.cls][SKILLS[k].opt]); }
+const ZOO_BASIC = { ...SKILLS.basic, ko: "양 부르기", en: "call a sheep", cd: 2, self: true, summon: "sheep", info: "1 card · a sheep: 5 attacks of 0.3× every 2 s, 20% of your health" };
+function skillDef(k) { const x = extraDef(k); if (x) return { ...x, key: barKeyLabel(k) }; if (k === "basic" && S.cls === "zoo") return ZOO_BASIC; return k === "basic" ? SKILLS.basic : Object.assign({}, SKILLS[k], SKILL2[S.cls][SKILLS[k].opt]); }
 
 // ---- save -----------------------------------------------------------------------------------------
 const SAVE_KEY = "seoulmmo_v1";
@@ -590,6 +596,8 @@ function startRitual(k = "basic") {
   if (player.zone === "station") { toast("역 안은 안전해요 · no fighting in the station"); return; }
   const block = skillBlock(k); if (block) { toast(block); return; }
   const skP = skillDef(k);
+  if (skP.summon && zoo.filter(a => a.k === k && !a.dead).length >= ZOO_MAX) { toast(`${ANIMALS[skP.summon].icon} 이미 ${ZOO_MAX}마리예요 · you already have ${ZOO_MAX} out (they leave after their 5 attacks)`); return; }
+  if (skP.summon && !zooReady()) { loadZoo(); toast("동물을 데려오는 중… · the animals are on their way, try again in a moment"); return; }
   if (!skP.self && (!target || target.dead)) { cycleTarget(); if (!target) return; }
   if (clock < (cds[k] || 0)) { toast(`아직 준비 중 · not ready (${Math.ceil(cds[k] - clock)} s)`); return; }
   const sk = skillDef(k), range = (sk.range || classDef().range) + (k === "basic" && player.hawkUntil > clock ? 5 : 0);
@@ -657,6 +665,7 @@ function castRitual() {
   const b = bonus();
   cds[r.k] = clock + sk.cd * (perk("gangsa") ? .9 : 1) * Math.max(.5, 1 - sumMod("cd") - b.cd) * (r.k === "basic" && player.hawkUntil > clock ? .5 : 1);
   if (!correct.length) { cds[r.k] = clock + Math.min(sk.cd, 3); toast("주문 실패! · the attack fizzled"); SFX.empty(); floater(player.pos, "실패", "#aaa", true, 2.8); return; }
+  if (sk.summon || sk.feed || sk.rally) { player.model.trigger?.("attack"); zooCast(sk, r.k, correct.length / sk.cards); return; }
   const t = r.target, range = (sk.range || classDef().range) + (r.k === "basic" && player.hawkUntil > clock ? 5 : 0);
   if (t.dead || dist2(t.pos, player.pos) > range + 4) { toast("빗나갔어요 · it got away"); return; }
   if (sk.silence) { if (!t.def.alien) toast("외계인에게만 통해요 · it only works on aliens"); else applySilence(t, sk.silence * correct.length / sk.cards); return; }
@@ -1237,7 +1246,7 @@ function drawDeckView() {
   if (dvTab === "coll") { drawCollection(); return; }
   if (dvTab === "battle") { drawBattleDeck(); return; }
   const sk = skillDef(dvTab), block = skillBlock(dvTab);
-  $("dvInfo").innerHTML = `<b>${sk.ko}</b> · ${sk.en} — ${dvTab === "basic" ? "1 card · 1× damage" : sk.info}, cooldown ${sk.cd} s` + (block ? ` · <span class="warn">${block}</span>` : " · <span class=\"okc\">준비됨 · ready</span>");
+  $("dvInfo").innerHTML = `<b>${sk.ko}</b> · ${sk.en} — ${dvTab === "basic" ? (skillDef("basic").info || "1 card · 1× damage") : sk.info}, cooldown ${sk.cd} s` + (block ? ` · <span class="warn">${block}</span>` : " · <span class=\"okc\">준비됨 · ready</span>");
   const deck = deckCards(dvTab);
   let html = deck.map(c => cardHTML(c, c.uid === dvSel ? "sel" : "")).join("");
   for (let i = deck.length; i < deckSize(dvTab); i++) html += `<div class="dvCard empty">빈 칸 · empty</div>`;
@@ -1610,7 +1619,7 @@ function setPlayerModel() { if (player.model) scene.remove(player.model.root); p
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
   ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); syncDealer(); setTimeout(grantMissedSets, 3000); if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) { examPending = true; drawExamBtn(); } setTimeout(autoCreditBossQuests, 3500); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
-  setPlayerModel(); syncCamp(); setTimeout(() => growBasic(true), 2500);   /* syncCamp: the camp was only drawn before the save loaded (Danny 2026-10-19: it looked like level 1 again) */   /* saves from before the growing deck get their extra words too */
+  setPlayerModel(); syncCamp(); if (S.cls === "zoo") loadZoo(); setTimeout(() => growBasic(true), 2500);   /* syncCamp: the camp was only drawn before the save loaded (Danny 2026-10-19: it looked like level 1 again) */   /* saves from before the growing deck get their extra words too */
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
 }
@@ -1646,6 +1655,7 @@ function drawHUD() {
   { const sn = Object.values(S.snacks || {}).reduce((a, b) => a + b, 0); $("gimbapN").textContent = "김밥 " + S.gimbap + (sn ? ` +${sn}` : ""); $("actFood").classList.toggle("off", !S.gimbap && !sn); }
   $("actAttack").dataset.tip = tipSkill("basic");
   $("atkCd").style.height = (Math.max(0, cds.basic - clock) / SKILLS.basic.cd * 100) + "%";
+  { const el = $("actAttack"), sm = el.querySelector("small"), ic = el.querySelector("span"), b = skillDef("basic"), icon = S.cls === "zoo" ? "🐑" : "⚔"; if (sm.textContent !== b.ko) sm.textContent = b.ko; if (ic.textContent !== icon) ic.textContent = icon; }   /* the zookeeper calls a sheep */
   for (const [k, n] of [["s2", 2], ["s3", 3], ["sleep", 4], ["silence", 5]]) { const sk = skillDef(k), blk = skillBlock(k); $(`s${n}Name`).textContent = sk.ko; $(`actSkill${n}`).classList.toggle("off", !!blk); $(`actSkill${n}`).dataset.tip = tipSkill(k);
     $(`s${n}Cd`).style.height = (blk ? 0 : Math.max(0, cds[k] - clock) / sk.cd * 100) + "%"; }
   if (target) { $("tFill").style.width = Math.max(0, target.hp / target.maxHp * 100) + "%"; $("tTxt").textContent = `${Math.max(0, Math.ceil(target.hp))} / ${target.maxHp}`;
@@ -2149,7 +2159,7 @@ function tipGear(g) {
 }
 function tipSkill(k) {
   const sk = skillDef(k), blk = skillBlock(k), n = deckCards(k).length;
-  return `<b class="tk">${sk.ko}</b> <span class="tr">${sk.en} · key ${SET.keys[k] ? keyName(SET.keys[k]) : barKeyLabel(k)}</span><div class="tm">${k === "basic" ? "1 card · 1× damage" : sk.info}</div><div class="ts">재사용 ${sk.cd} s · 덱 ${n}/${deckSize(k)} · Lv ${sk.lvl}${blk ? " · " + blk : " · 준비됨 ready"}</div>`;
+  return `<b class="tk">${sk.ko}</b> <span class="tr">${sk.en} · key ${SET.keys[k] ? keyName(SET.keys[k]) : barKeyLabel(k)}</span><div class="tm">${k === "basic" ? (skillDef("basic").info || "1 card · 1× damage") : sk.info}</div><div class="ts">재사용 ${sk.cd} s · 덱 ${n}/${deckSize(k)} · Lv ${sk.lvl}${blk ? " · " + blk : " · 준비됨 ready"}</div>`;
 }
 const tipEl = document.createElement("div"); tipEl.id = "tip"; tipEl.hidden = true; document.body.appendChild(tipEl);
 let tipFor = null;
@@ -2356,6 +2366,7 @@ function liveTargets(zone = "street") {
   const t = [];
   if (!player.dead && player.zone === zone && !(player.quizUntil > clock) && !((S.camp || 0) >= 3 && inCamp(player.pos))) t.push({ id: myId(), pos: player.pos });
   for (const r of remotes.values()) if (!r.dead && r.zone === zone && !(r.quizUntil > clock)) t.push({ id: r.id, pos: r.pos });
+  for (const a of zoo) if (!a.dead && a.zone === zone) t.push({ id: "zoo:" + a.id, pos: a.pos });
   return t;
 }
 function nearestTarget(m, list) { let best = null, bd = 1e9; for (const t of list) { const d = dist2(m.pos, t.pos); if (d < bd) { bd = d; best = t; } } return best ? { t: best, d: bd } : { t: null, d: 999 }; }
@@ -2439,6 +2450,7 @@ function monsterAttack(m, tg) {
   if (m.def.ranged) { setTimeout(() => { if (!m.dead) shootThorn(m, tg.pos); }, 250); return; }
   setTimeout(() => {
     if (m.dead || dist2(m.pos, tg.pos) > rangeOf(m) + 1) return;
+    if (String(tg.id).startsWith("zoo:")) { const a = zoo.find(x => "zoo:" + x.id === tg.id); if (a) hurtAnimal(a, mdmg(m)); return; }
     if (tg.id === myId()) { if (!player.dead && player.zone === m.zone) hurt(mdmg(m), m); }
     else netSend({ t: "hurt", to: tg.id, dmg: mdmg(m), lv: m.lvl, root: !!(m.def.root && Math.random() < m.def.root.chance) });
   }, 260);
@@ -3024,6 +3036,73 @@ function spawnCompanion() {
   const plate = document.createElement("div"); plate.className = "plate npc"; plate.innerHTML = compLabel(); $("plates").appendChild(plate);
   comp = { model, plate, pos: player.pos.clone().add(new THREE.Vector3(1.5, 0, 1.5)), yaw: 0, healT: 4, tauntT: 6, fleeUntil: 0, flee: null, zone: player.zone };
 }
+// ---- the zookeeper's animals ----
+// hit = damage per attack (× the attack base and your bonuses), hp = share of your max health, every = seconds between attacks
+const ZOO_STAT = { sheep: { hit: .3, hp: .2, every: 2 }, shiba: { hit: .45, hp: .25, every: 2 }, fox: { hit: .5, hp: .22, every: 1.6 }, wolf: { hit: .6, hp: .3, every: 2 },
+  zebra: { hit: .7, hp: .35, every: 2.2 }, deer: { hit: .75, hp: .35, every: 2 }, alpaca: { hit: .7, hp: .45, every: 2, range: 7 }, stag: { hit: .95, hp: .45, every: 2.2 }, bull: { hit: 1.2, hp: .6, every: 2.4 } };
+const ZOO_MAX = 5, ZOO_HITS = 5;
+const zoo = []; let zooN = 0, zooRallyUntil = 0;
+function zooCast(sk, k, share) {
+  if (sk.feed) {
+    const mine = zoo.filter(a => !a.dead); if (!mine.length) { toast("먹이를 줄 동물이 없어요 · no animals to feed"); return; }
+    for (const a of mine) { a.hp = Math.min(a.maxHp, a.hp + a.maxHp * sk.feed.heal * share); a.hits += Math.round(sk.feed.hits * share); floater(a.pos, "🥕", "#9be6a5", false, a.model.height); }
+    SFX.heal(); toast(`🥕 ${mine.length}마리에게 먹이를 줬어요 · fed ${mine.length}: healed and +${Math.round(sk.feed.hits * share)} attacks each`); return;
+  }
+  if (sk.rally) { zooRallyUntil = clock + sk.rally.dur * share; SFX.charge(); FX.pillarFx(player.pos, "#ffd23d"); toast("📯 총공격! · all-out: your animals attack twice as fast"); return; }
+  const kind = sk.summon, st = ZOO_STAT[kind], b = bonus();
+  const dmg = BASE_ATTACK * st.hit * weaponMult() * lvlDmg() * gradMul() * (1 + b.dmg + gearStat("dmg")) * (.5 + .5 * share);
+  const maxHp = Math.round(player.maxHp * st.hp * (.5 + .5 * share)), model = makeAnimal(kind);
+  const ang = Math.random() * Math.PI * 2, pos = new THREE.Vector3(player.pos.x + Math.cos(ang) * 1.6, 0, player.pos.z + Math.sin(ang) * 1.6); collide(pos, .35);
+  const a = { id: ++zooN, k, kind, model, pos, yaw: player.yaw, zone: player.zone, hp: maxHp, maxHp, dmg, hits: ZOO_HITS, every: st.every, range: st.range || 1.7, cd: .6, tgt: null, dead: false, deadT: 0, slot: Math.random() * Math.PI * 2 };
+  scene.add(model.root); model.root.position.copy(pos); zoo.push(a);
+  FX.burst(pos, { n: 16, color: ["#9be6a5", "#ffffff"], speed: 2.5, up: 2, size: .14, life: .8, grav: -1, shape: "star" }); SFX.pickup();
+  floater(pos, `${ANIMALS[kind].icon} ${ANIMALS[kind].ko}`, "#9be6a5", false, model.height);
+}
+function hurtAnimal(a, dmg) {
+  if (a.dead) return;
+  a.hp -= dmg; a.model.trigger("hit"); floater(a.pos, "-" + Math.round(dmg), "#ff8a7a", true, a.model.height);
+  if (a.hp <= 0) { a.dead = true; floater(a.pos, `${ANIMALS[a.kind].icon} 쓰러졌어요 · down`, "#c8b8b0", true, a.model.height + .3); }
+}
+function zooGone(a) { scene.remove(a.model.root); zoo.splice(zoo.indexOf(a), 1); }
+function zooTick(dt) {
+  const rally = zooRallyUntil > clock;
+  for (const a of zoo.slice()) {
+    if (a.dead || a.hits <= 0) {   // down, or done: lie down / fade, then go
+      a.deadT += dt; a.model.anim(dt, { dead: a.dead });
+      if (!a.dead) a.model.root.scale.setScalar(Math.max(.01, 1 - a.deadT * 1.5));
+      if (a.deadT > (a.dead ? 2 : .7)) zooGone(a);
+      if (!a.dead && a.deadT < dt * 1.5) FX.burst(a.pos, { n: 10, color: ["#ffffff", "#9be6a5"], speed: 1.8, up: 1.5, size: .12, life: .6, grav: -1 });
+      continue;
+    }
+    if (a.zone !== player.zone || dist2(a.pos, player.pos) > 40) { a.zone = player.zone; a.pos.set(player.pos.x + Math.cos(a.slot) * 2, 0, player.pos.z + Math.sin(a.slot) * 2); a.tgt = null; }
+    // a target: yours if you have one nearby, otherwise whatever is fighting you or your animals
+    if (a.tgt && (a.tgt.dead || a.tgt.zone !== a.zone || a.tgt.caged)) a.tgt = null;
+    if (!a.tgt) {
+      if (target && !target.dead && target.zone === a.zone && dist2(target.pos, player.pos) < 25) a.tgt = target;
+      else { let best = null, bd = 14; for (const m of monsters) if (!m.dead && !m.caged && m.zone === a.zone && m.state === "chase") { const d = Math.min(dist2(m.pos, a.pos), dist2(m.pos, player.pos)); if (d < bd) { bd = d; best = m; } } a.tgt = best; }
+    }
+    let want, moving = false;
+    if (a.tgt) { const d = dist2(a.pos, a.tgt.pos); if (d > a.range) want = a.tgt.pos; a.yaw = Math.atan2(-(a.tgt.pos.x - a.pos.x), -(a.tgt.pos.z - a.pos.z)); }
+    else { a.slot += dt * .05; want = new THREE.Vector3(player.pos.x + Math.cos(a.slot) * 2.4, 0, player.pos.z + Math.sin(a.slot) * 2.4); if (dist2(a.pos, want) < .6) want = null; }
+    if (want) {
+      const d = dist2(a.pos, want), sp = Math.min(d, 6.8 * dt * (d > 6 ? 1.5 : 1));
+      if (d > .05) { a.pos.x += (want.x - a.pos.x) / d * sp; a.pos.z += (want.z - a.pos.z) / d * sp; if (!a.tgt) a.yaw = Math.atan2(-(want.x - a.pos.x), -(want.z - a.pos.z)); moving = true; }
+      collide(a.pos, .35);
+    }
+    a.cd -= dt * (rally ? 2 : 1);
+    if (a.tgt && dist2(a.pos, a.tgt.pos) <= a.range + .3 && a.cd <= 0) {
+      a.cd = a.every; a.hits--; a.model.trigger("attack");
+      const m = a.tgt, dmg = Math.max(1, Math.round(a.dmg * rand(.9, 1.1)));
+      setTimeout(() => {
+        if (m.dead) return;
+        if (a.range > 3) FX.burst(m.pos, { n: 6, color: ["#ffffff", "#d8e4f0"], speed: 1.5, up: 1, size: .1, life: .4, grav: 0, y: 1.2 });   /* the alpaca spits */
+        if (dealDamage(m, dmg) !== false) { dmgNum(m, dmg, false, false, .7); if (!(m.tauntUntil > clock)) m.tgtId = "zoo:" + a.id; }
+      }, 280);
+    }
+    a.model.root.position.set(a.pos.x, 0, a.pos.z); a.model.root.rotation.y = a.yaw;
+    a.model.anim(dt, { moving });
+  }
+}
 function companionTick(dt) {
   if (!comp) return;
   if (comp.zone !== player.zone || dist2(comp.pos, player.pos) > 40) { comp.zone = player.zone; comp.pos.copy(player.pos).add(new THREE.Vector3(1.5, 0, 1.5)); }
@@ -3459,6 +3538,16 @@ const EXTRA = {
     { id: "a17", lvl: 17, ko: "화살비", en: "rain of arrows", icon: "🌧", cards: 3, cd: 25, mult: .9, fx: "rain", r: 6, waves: 4, info: "3 cards · a 6 m circle around the target: 4 waves of 0.9× over 4 s" },
     { id: "a19", lvl: 19, ko: "신궁의 한 발", en: "the divine shot", icon: "✴", cards: 4, cd: 45, mult: 6, range: 30, pierce: true, info: "4 cards · 6× damage from up to 30 m; ignores immunity" },
   ],
+  zoo: [
+    { id: "z5", lvl: 5, ko: "여우 부르기", en: "call a fox", icon: "🦊", cards: 2, cd: 4, mult: 0, self: true, summon: "fox", info: "2 cards · a fox: quick, 5 bites of 0.5× every 1.6 s" },
+    { id: "z7", lvl: 7, ko: "늑대 부르기", en: "call a wolf", icon: "🐺", cards: 2, cd: 5, mult: 0, self: true, summon: "wolf", info: "2 cards · a wolf: 5 bites of 0.6×, 30% of your health" },
+    { id: "z9", lvl: 9, ko: "얼룩말 부르기", en: "call a zebra", icon: "🦓", cards: 2, cd: 5, mult: 0, self: true, summon: "zebra", info: "2 cards · a zebra: 5 kicks of 0.7×, 35% of your health" },
+    { id: "z11", lvl: 11, ko: "사슴 부르기", en: "call a deer", icon: "🦌", cards: 3, cd: 6, mult: 0, self: true, summon: "deer", info: "3 cards · a deer: 5 headbutts of 0.75×, 35% of your health" },
+    { id: "z13", lvl: 13, ko: "알파카 부르기", en: "call an alpaca", icon: "🦙", cards: 3, cd: 6, mult: 0, self: true, summon: "alpaca", info: "3 cards · an alpaca: spits from 7 m, 5 times 0.7×, 45% of your health" },
+    { id: "z15", lvl: 15, ko: "수사슴 부르기", en: "call a stag", icon: "🦌", cards: 3, cd: 7, mult: 0, self: true, summon: "stag", info: "3 cards · a stag: 5 headbutts of 0.95×, 45% of your health" },
+    { id: "z17", lvl: 17, ko: "황소 부르기", en: "call a bull", icon: "🐂", cards: 3, cd: 8, mult: 0, self: true, summon: "bull", info: "3 cards · a bull: 5 charges of 1.2×, 60% of your health" },
+    { id: "z19", lvl: 19, ko: "총공격", en: "all-out whistle", icon: "📯", cards: 3, cd: 40, mult: 0, self: true, rally: { dur: 10 }, info: "3 cards · for 10 s every animal of yours attacks twice as fast" },
+  ],
 };
 const extraDef = k => (EXTRA[S.cls] || []).find(s => s.id === k);
 const BASE_KEYS = ["basic", "s2", "s3"];
@@ -3571,7 +3660,7 @@ function drawBook() {
   $("bkList").innerHTML = rows.map(({ k, s, fixed }) => {
     const locked = S.level < s.lvl, blk = skillBlock(k), n = deckCards(k).length;
     return `<div class="bkRow${locked ? " locked" : ""}${bookSel === k ? " sel" : ""}" data-k="${k}"${fixed ? ' data-fixed="1"' : ""}><span class="ic">${s.icon || (k === "basic" ? "⚔" : k === "s2" ? "✦" : "✧")}</span>`
-      + `<div class="tx"><b>${s.ko}</b> <span class="en">${s.en}</span><p>${k === "basic" ? "1 card · 1× damage" : s.info}</p></div>`
+      + `<div class="tx"><b>${s.ko}</b> <span class="en">${s.en}</span><p>${k === "basic" ? (skillDef("basic").info || "1 card · 1× damage") : s.info}</p></div>`
       + `<div class="st"><span>Lv ${s.lvl}</span><span>${locked ? "🔒" : blk ? `카드 ${n}/${deckSize(k)}` : "준비됨 · ready"}</span><span>⌨ ${fixed ? keyName(SET.keys[k]) : barKeyLabel(k)}</span>${locked ? "" : `<button data-deck="${k}">덱 · deck</button>`}</div></div>`;
   }).join("");
   $("bkBar").querySelectorAll(".bkSlot").forEach(b => b.onclick = () => {
@@ -4900,7 +4989,7 @@ function step(dt) {
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * rate * dt);
   }
   player.attackAnim = Math.max(0, player.attackAnim - dt * 3);
-  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); sqTick(dt); companionTick(dt); rubbleTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt); caveTick(dt);
+  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); sqTick(dt); companionTick(dt); zooTick(dt); rubbleTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt); caveTick(dt);
   if (target && target.dead) setTarget(null);
   saveT += dt; if (saveT > 10) { saveT = 0; S.hp = player.hp; save(); }
 }
@@ -5014,7 +5103,7 @@ boot();
 window.__seoul = {
   get S() { return S; }, get world() { return world; }, player, monsters, renderer, scene, camera, cam, get target() { return target; }, get ritual() { return ritual; },
   setHour(h) { S.time = Math.floor(S.time / 1440) * 1440 + h * 60; },
-  give(n) { S.money += n; }, growBasic: a => growBasic(a), campVis: () => campParts.map(g => g.visible), newestChapter: () => newestChapter(), ritualWeight: id => ritualWeight(id),
+  give(n) { S.money += n; }, growBasic: a => growBasic(a), campVis: () => campParts.map(g => g.visible), get zoo() { return zoo; }, newestChapter: () => newestChapter(), ritualWeight: id => ritualWeight(id),
   step(sec) { for (let t = 0; t < sec; t += 1 / 30) step(1 / 30); render(1 / 30); },
   answer(right = true) { if (!ritual) return; const id = ritual.words[ritual.idx]; const i = ritual.opts.indexOf(id); pickCard(right ? i : (i + 1) % CHOICES); },
   attack: (k = "basic") => startRitual(k),
