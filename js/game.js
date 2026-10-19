@@ -6,18 +6,18 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvewonhp";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvewonhp";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvewonhp";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvewonhp";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvexizex";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvexizex";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvexizex";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvexizex";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvewonhp";
-import * as FX from "./fx.js?v=mvewonhp";
-import { LINES } from "./lines.js?v=mvewonhp";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvewonhp";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvewonhp";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvexizex";
+import * as FX from "./fx.js?v=mvexizex";
+import { LINES } from "./lines.js?v=mvexizex";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvexizex";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvexizex";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -1603,7 +1603,7 @@ function setPlayerModel() { if (player.model) scene.remove(player.model.root); p
 function spawnPlayer() {
   if (player.model) scene.remove(player.model.root);
   ensureGear(); ensureFriendCode(); learnSkills(false); syncStory(false); syncDealer(); setTimeout(grantMissedSets, 3000); if (S.level < MAX_LEVEL && S.xp >= xpNeed(S.level)) { examPending = true; drawExamBtn(); } setTimeout(autoCreditBossQuests, 3500); if (S.level >= 4 && !S.visitedApt && S.aptHintLvl === undefined) S.visitedApt = true;   /* old saves: no nagging past Lv 4 */ syncQuestNpcs(); for (const a in mapItems) mapItems[a].visible = !S[MAP_ITEMS[a].flag];
-  setPlayerModel(); setTimeout(() => growBasic(true), 2500);   /* saves from before the growing deck get their extra words too */
+  setPlayerModel(); syncCamp(); setTimeout(() => growBasic(true), 2500);   /* syncCamp: the camp was only drawn before the save loaded (Danny 2026-10-19: it looked like level 1 again) */   /* saves from before the growing deck get their extra words too */
   player.maxHp = classDef().hp; player.hp = S.hp ?? player.maxHp; recalcMax(); spawnCompanion();
   if (S.hp == null) player.hp = player.maxHp;
 }
@@ -5002,7 +5002,7 @@ boot();
 window.__seoul = {
   get S() { return S; }, get world() { return world; }, player, monsters, renderer, scene, camera, cam, get target() { return target; }, get ritual() { return ritual; },
   setHour(h) { S.time = Math.floor(S.time / 1440) * 1440 + h * 60; },
-  give(n) { S.money += n; }, growBasic: a => growBasic(a), newestChapter: () => newestChapter(), ritualWeight: id => ritualWeight(id),
+  give(n) { S.money += n; }, growBasic: a => growBasic(a), campVis: () => campParts.map(g => g.visible), newestChapter: () => newestChapter(), ritualWeight: id => ritualWeight(id),
   step(sec) { for (let t = 0; t < sec; t += 1 / 30) step(1 / 30); render(1 / 30); },
   answer(right = true) { if (!ritual) return; const id = ritual.words[ritual.idx]; const i = ritual.opts.indexOf(id); pickCard(right ? i : (i + 1) % CHOICES); },
   attack: (k = "basic") => startRitual(k),
