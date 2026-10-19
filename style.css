@@ -691,3 +691,8 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .gradCard h3{margin:0 0 8px;color:#ffd23d;font-size:18px}.gradCard .gr{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;font-size:13px;padding:4px 0;border-bottom:1px solid #4a3f22}
 .gradCard .gr b{font-size:15px;display:block}.gradCard .o{opacity:.75}.gradCard .ar{color:#ffd23d}.gradCard .bon{margin-top:8px;font-weight:700;color:#ffe08a;font-size:14px}
 .gradCard{top:270px}
+/* stats tables: fixed columns so a long word or label can't spill into the next table (Danny 2026-10-19) */
+.stBox{min-width:0;overflow:hidden}.stTable{table-layout:fixed}
+.stTable td:nth-child(1){width:29%;white-space:normal;overflow-wrap:anywhere}.stTable td:nth-child(2){width:29%}
+.stTable td:nth-child(3),.stTable td:nth-child(4){width:11%}.stTable td:nth-child(5){width:9%}.stTable td:nth-child(6){width:11%;white-space:normal;font-size:12px}
+.stTable td:nth-child(1){width:26%}.stTable td:nth-child(2){width:26%}.stTable td:nth-child(3){width:11%}.stTable td:nth-child(4){width:10%}.stTable td:nth-child(5){width:10%}.stTable td:nth-child(6){width:17%;white-space:nowrap}

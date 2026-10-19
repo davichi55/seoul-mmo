@@ -4,7 +4,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import { toon } from "./world.js?v=mveyiwdb";
+import { toon } from "./world.js?v=mvez8lat";
 
 const FILES = { knight: "Knight", mage: "Mage", rogue: "Rogue", hooded: "Rogue_Hooded", barbarian: "Barbarian" };
 const lib = {};
