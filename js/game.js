@@ -6,18 +6,18 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvezdqng";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvezdqng";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvezdqng";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvezdqng";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvezj8p6";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvezj8p6";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvezj8p6";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvezj8p6";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvezdqng";
-import * as FX from "./fx.js?v=mvezdqng";
-import { LINES } from "./lines.js?v=mvezdqng";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvezdqng";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvezdqng";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvezj8p6";
+import * as FX from "./fx.js?v=mvezj8p6";
+import { LINES } from "./lines.js?v=mvezj8p6";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvezj8p6";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvezj8p6";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -3452,9 +3452,9 @@ const EXTRA = {
   gungsu: [
     { id: "a5", lvl: 5, ko: "연사", en: "multi-shot", icon: "🏹", cards: 2, cd: 8, mult: 1.3, fx: "multi", n: 2, r: 6, info: "2 cards · hits the target and up to 2 monsters near it for 1.3× each" },
     { id: "a7", lvl: 7, ko: "치유의 화살", en: "healing arrow", icon: "💚", cards: 2, cd: 12, mult: 0, self: true, fx: "healArrow", v: .25, vSelf: .15, r: 20, info: "2 cards · heals the most hurt teammate within 20 m for 25%, or yourself for 15% when alone" },
-    { id: "a9", lvl: 9, ko: "후퇴 사격", en: "disengage shot", icon: "↩", cards: 2, cd: 15, mult: 1.2, leap: 8, info: "2 cards · leap 8 m back and shoot (1.2×)" },
+    { id: "a9", lvl: 9, ko: "후퇴 사격", en: "disengage shot", icon: "↩", cards: 2, cd: 12, mult: 2.5, leap: 8, stun: 1.5, info: "2 cards · leap 8 m back and shoot for 2.5×; the target is stunned for 1.5 s, so it can't follow" },   /* Danny 2026-10-19: was 1.2× / 15 s, no better than a basic attack */
     { id: "a11", lvl: 11, ko: "불화살", en: "fire arrow", icon: "🔥", cards: 2, cd: 10, mult: 1.2, fire: true, burn: { mult: 1.2, dur: 6 }, info: "2 cards · 1.2× now plus a 6 s burn, counts as 불" },
-    { id: "a13", lvl: 13, ko: "그물 화살", en: "net arrow", icon: "🕸", cards: 3, cd: 25, mult: 0, fx: "root", dur: 5, info: "3 cards · roots the target for 5 s (bosses are only slowed)" },
+    { id: "a13", lvl: 13, ko: "그물 화살", en: "net arrow", icon: "🕸", cards: 3, cd: 18, mult: 2.5, fx: "root", dur: 4, r: 5, info: "3 cards · 2.5× damage, and the net roots the target and every monster within 5 m for 4 s (bosses are only slowed)" },   /* Danny 2026-10-19: was 5 s root, no damage, 25 s */
     { id: "a15", lvl: 15, ko: "매의 눈", en: "hawk eye", icon: "🦅", cards: 3, cd: 60, mult: 0, self: true, fx: "hawk", dur: 10, info: "3 cards · for 10 s your basic attack is ready twice as fast and reaches 5 m further" },
     { id: "a17", lvl: 17, ko: "화살비", en: "rain of arrows", icon: "🌧", cards: 3, cd: 25, mult: .9, fx: "rain", r: 6, waves: 4, info: "3 cards · a 6 m circle around the target: 4 waves of 0.9× over 4 s" },
     { id: "a19", lvl: 19, ko: "신궁의 한 발", en: "the divine shot", icon: "✴", cards: 4, cd: 45, mult: 6, range: 30, pierce: true, info: "4 cards · 6× damage from up to 30 m; ignores immunity" },
@@ -3540,7 +3540,12 @@ function extraFx(sk, t, calc, share) {
       return true;
     }
     case "healArrow": { const a = hurtAlly(sk.r); if (a) { sendAlly(a.id, "heal", sk.v * share); toast(`💚 → ${a.nm}`); } else applyAlly({ fx: "heal", v: sk.vSelf * share }); return true; }
-    case "root": { face(); shootSpell(t, () => applyCC(t, "root", sk.dur * share)); return true; }
+    case "root": { face(); shootSpell(t, () => {
+      if (sk.mult) { const { dmg, weak } = calc(t, sk.mult); if (dealDamage(t, dmg) !== false) dmgNum(t, dmg, weak, false, 1.2); }
+      const hit = sk.r ? near(t.pos, sk.r) : [t]; if (!hit.includes(t)) hit.push(t);
+      for (const m of hit) applyCC(m, "root", sk.dur * share);
+      if (sk.r) FX.ring?.(t.pos, { color: "#c8b48a", r: sk.r, life: .6 });
+    }); return true; }
     case "hawk": { player.hawkUntil = clock + sk.dur; floater(player.pos, "🦅 매의 눈 · hawk eye", "#ffd23d", false, 3.2); return true; }
     case "rain": { face(); const at = t.pos.clone(); makeRing(at, sk.r, .5, "#ffd23d"); rains.push({ at, waves: sk.waves, next: .6, calc, r: sk.r }); SFX.shot(); return true; }
   }
