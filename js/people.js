@@ -3,7 +3,7 @@
 // builds them). Every class has three looks (the character screen switches them); every man in town gets a body and colours for his
 // job. Colours name the model's own materials ("Hair", "Suit", ...; "Head/Red" = only on the head). Sitting people stay KayKit
 // (this pack has no sitting animation).
-import { loadBase, makePerson } from "./women.js?v=mvf1kuj0";
+import { loadBase, makePerson } from "./women.js?v=mvf2hxjz";
 
 const INK = "#16141a", NAVY = "#1f2a44", WINE = "#7a1f2b", GOLD = "#c9a43a", HAIR = "#1d1612", WHITE = "#f2efe6";
 

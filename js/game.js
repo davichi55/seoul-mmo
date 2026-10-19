@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf1kuj0";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf1kuj0";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf1kuj0";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf1kuj0";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf1kuj0";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf2hxjz";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf2hxjz";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf2hxjz";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf2hxjz";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf2hxjz";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf1kuj0";
-import * as FX from "./fx.js?v=mvf1kuj0";
-import { LINES } from "./lines.js?v=mvf1kuj0";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf1kuj0";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf1kuj0";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf2hxjz";
+import * as FX from "./fx.js?v=mvf2hxjz";
+import { LINES } from "./lines.js?v=mvf2hxjz";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf2hxjz";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf2hxjz";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -146,7 +146,7 @@ const SKILL2 = {
             B: { ko: "치유 부적", en: "healing talisman", mult: 1, heal: .25, cd: 12, info: "2 cards · heals 25% health + 1× damage" } },
   geomgaek: { A: { ko: "돌진 베기", en: "charging slash", mult: 2, range: 10, info: "2 cards · dash to a target up to 10 m away, 2× damage" },
               B: { ko: "철벽", en: "iron wall", mult: 1.6, guard: { red: .5, dur: 6 }, cd: 12, info: "2 cards · 1.6× damage, then take 50% less damage for 6 s" } },
-  zoo: { A: { ko: "먹이 주기", en: "feeding", mult: 0, self: true, feed: { heal: .5, hits: 2 }, cd: 12, info: "2 cards · every animal of yours heals 50% and gets 2 more attacks" },
+  zoo: { A: { ko: "먹이 주기", en: "feeding", mult: 0, self: true, feed: { heal: .5, hits: 2 }, cd: 12, info: "2 cards · every animal of yours heals 50%; each animal gets 2 more attacks the first time it is fed" },
          B: { ko: "시바견 부르기", en: "call a Shiba Inu", mult: 0, self: true, summon: "shiba", cd: 4, info: "2 cards · a Shiba Inu: 5 bites of 0.45×, 25% of your health" } },
   gungsu: { A: { ko: "관통 사격", en: "piercing shot", mult: 2.4, range: 24, info: "2 cards · 2.4× damage, range 24 m" },
             B: { ko: "덫 화살", en: "snare arrow", mult: 1.6, slow: { f: .5, dur: 5 }, cd: 10, info: "2 cards · 1.6× damage, target 50% slower for 5 s" } },
@@ -3067,8 +3067,9 @@ const zoo = []; let zooN = 0, zooRallyUntil = 0;
 function zooCast(sk, k, share) {
   if (sk.feed) {
     const mine = zoo.filter(a => !a.dead); if (!mine.length) { toast("먹이를 줄 동물이 없어요 · no animals to feed"); return; }
-    for (const a of mine) { a.hp = Math.min(a.maxHp, a.hp + a.maxHp * sk.feed.heal * share); a.hits += Math.round(sk.feed.hits * share); floater(a.pos, "🥕", "#9be6a5", false, a.model.height); }
-    SFX.heal(); toast(`🥕 ${mine.length}마리에게 먹이를 줬어요 · fed ${mine.length}: healed and +${Math.round(sk.feed.hits * share)} attacks each`); return;
+    let extra = 0;
+    for (const a of mine) { a.hp = Math.min(a.maxHp, a.hp + a.maxHp * sk.feed.heal * share); if (!a.fed) { a.fed = true; a.hits += Math.round(sk.feed.hits * share); extra++; } floater(a.pos, "🥕", "#9be6a5", false, a.model.height); }
+    SFX.heal(); toast(`🥕 ${mine.length}마리에게 먹이를 줬어요 · fed ${mine.length}: healed` + (extra ? `, ${extra} of them +${Math.round(sk.feed.hits * share)} attacks (once per animal)` : " · 더 싸울 힘은 한 번만 · extra attacks only once per animal")); return;
   }
   if (sk.rally) { zooRallyUntil = clock + sk.rally.dur * share; SFX.charge(); FX.pillarFx(player.pos, "#ffd23d"); toast("📯 총공격! · all-out: your animals attack twice as fast"); return; }
   const kind = sk.summon, st = ZOO_STAT[kind], b = bonus();
