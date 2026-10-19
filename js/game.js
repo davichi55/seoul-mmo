@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf0u2n5";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf0u2n5";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf0u2n5";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf0u2n5";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf0u2n5";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf13etw";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf13etw";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf13etw";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf13etw";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf13etw";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf0u2n5";
-import * as FX from "./fx.js?v=mvf0u2n5";
-import { LINES } from "./lines.js?v=mvf0u2n5";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf0u2n5";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf0u2n5";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf13etw";
+import * as FX from "./fx.js?v=mvf13etw";
+import { LINES } from "./lines.js?v=mvf13etw";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf13etw";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf13etw";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -2547,7 +2547,9 @@ function netLeave(quiet) {
   if (!quiet) { netStatus("혼자 · solo"); drawCoop(); }
 }
 function netStatus(t) { NET.status = t; if (!$("menu").hidden) drawCoop(); }
-const myState = () => ({ nm: S.name || classDef().ko, cls: S.cls, lk: S.look || 0, lvl: S.level, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), yaw: +player.yaw.toFixed(2), mv: player.moving ? 1 : 0, zone: player.zone, hp: Math.round(player.hp), mx: player.maxHp, dead: player.dead ? 1 : 0 });
+const ZOO_KINDS = Object.keys(ANIMALS);
+const zooNet = () => zoo.filter(a => !a.dead && a.hits > 0).map(a => [a.id, ZOO_KINDS.indexOf(a.kind), +a.pos.x.toFixed(2), +a.pos.z.toFixed(2), +a.yaw.toFixed(2), a.mv ? 1 : 0, a.ak || 0]);
+const myState = () => ({ zo: zooNet(), nm: S.name || classDef().ko, cls: S.cls, lk: S.look || 0, lvl: S.level, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), yaw: +player.yaw.toFixed(2), mv: player.moving ? 1 : 0, zone: player.zone, hp: Math.round(player.hp), mx: player.maxHp, dead: player.dead ? 1 : 0 });
 function upsertRemote(id, st) {
   if (id === myId()) return;
   let r = remotes.get(id);
@@ -2558,10 +2560,11 @@ function upsertRemote(id, st) {
     remotes.set(id, r); logChat("system", `👋 ${st.nm} 님이 왔어요 · joined`);
   }
   if ((st.lk | 0) !== r.lk && st.cls) { scene.remove(r.model.root); r.model = classModel(st.cls, st.lk); scene.add(r.model.root); r.lk = st.lk | 0; }   // they changed their look
+  r.zo = st.zo || [];
   Object.assign(r, { nm: st.nm, cls: st.cls, lvl: st.lvl, moving: !!st.mv, zone: st.zone, hp: st.hp, mx: st.mx, dead: !!st.dead }); r.tpos.set(st.x, 0, st.z); r.tyaw = st.yaw;
   if (r.zone !== "street" && player.zone === "station") { /* both underground: positions are the station's */ }
 }
-function dropRemote(id) { const r = remotes.get(id); if (!r) return; scene.remove(r.model.root); r.plate.remove(); remotes.delete(id); logChat("system", `${r.nm} 님이 나갔어요 · left`); }
+function dropRemote(id) { const r = remotes.get(id); if (!r) return; scene.remove(r.model.root); for (const a of (r.zoo || new Map()).values()) scene.remove(a.model.root); r.plate.remove(); remotes.delete(id); logChat("system", `${r.nm} 님이 나갔어요 · left`); }
 function onNet(d, from) {
   switch (d.t) {
     case "hello": case "st": upsertRemote(from, d); break;
@@ -2610,7 +2613,7 @@ function netTick(dt) {
   if (NET.role === "guest") { netSend({ t: "st", ...myState() }); return; }
   if (!remotes.size) return;
   const ms = monsters.filter(m => !m.dead).map(m => [m.id, m.kind, m.lvl, +m.pos.x.toFixed(2), +m.pos.z.toFixed(2), +m.yaw.toFixed(2), Math.round(m.hp), m.maxHp, m.moving ? 1 : 0, m.atkN || 0, +(m.slamAnim || 0).toFixed(2), m.state === "chase" ? 1 : 0, ZONES.indexOf(m.zone), m.caged ? 1 : 0, m.sleepUntil > clock ? 1 : 0, m.sp.guard ?? -1, m.shieldUntil > clock ? 1 : 0, +(m.grow || 0).toFixed(2)]);
-  const ps = [["host", myState()], ...[...remotes.values()].map(r => [r.id, { nm: r.nm, cls: r.cls, lvl: r.lvl, x: +r.tpos.x.toFixed(2), z: +r.tpos.z.toFixed(2), yaw: r.tyaw, mv: r.moving ? 1 : 0, zone: r.zone, hp: r.hp, mx: r.mx, dead: r.dead ? 1 : 0 }])];
+  const ps = [["host", myState()], ...[...remotes.values()].map(r => [r.id, { zo: r.zo || [], lk: r.lk, nm: r.nm, cls: r.cls, lvl: r.lvl, x: +r.tpos.x.toFixed(2), z: +r.tpos.z.toFixed(2), yaw: r.tyaw, mv: r.moving ? 1 : 0, zone: r.zone, hp: r.hp, mx: r.mx, dead: r.dead ? 1 : 0 }])];
   netSend({ t: "w", ms, ps, tw: [tw.solved, tw.open ? 1 : 0], mk: mk.boards, dl: mk.dealer ? 1 : 0, mu: mu.scrolls, time: (timeT += .125) > 2 ? (timeT = 0, S.time) : undefined });
 }
 function applySnapshot(d) {
@@ -2645,8 +2648,27 @@ function updateRemoteMonsters(dt) {
     m.model.anim(dt, { moving: m.moving, attack: m.attackAnim, slam: m.slamAnim });
   }
 }
+function drawRemoteZoo(r, dt, vis) {
+  r.zoo = r.zoo || new Map();
+  if ((r.zo || []).length && !zooReady()) { loadZoo(); return; }
+  const seen = new Set();
+  for (const [id, ki, x, z, yaw, mv, ak] of r.zo || []) {
+    const kind = ZOO_KINDS[ki]; if (!kind) continue; seen.add(id);
+    let a = r.zoo.get(id);
+    if (!a) { const model = makeAnimal(kind); scene.add(model.root); a = { model, pos: new THREE.Vector3(x, 0, z), yaw, ak }; r.zoo.set(id, a); if (vis) FX.burst(a.pos, { n: 12, color: ["#9be6a5", "#ffffff"], speed: 2, up: 1.5, size: .12, life: .7, grav: -1, shape: "star" }); }
+    a.tpos = a.tpos || new THREE.Vector3(); a.tpos.set(x, 0, z); a.tyaw = yaw; a.mv = !!mv;
+    if (ak > a.ak) { a.ak = ak; if (vis) a.model.trigger("attack"); }
+  }
+  for (const [id, a] of r.zoo) if (!seen.has(id)) { if (vis) FX.burst(a.pos, { n: 10, color: ["#ffffff", "#9be6a5"], speed: 1.8, up: 1.5, size: .12, life: .6, grav: -1 }); scene.remove(a.model.root); r.zoo.delete(id); }
+  for (const a of r.zoo.values()) {
+    a.model.root.visible = vis; if (!vis) continue;
+    a.pos.lerp(a.tpos, Math.min(1, dt * 10)); let dy = (a.tyaw || 0) - (a.yaw || 0); dy = Math.atan2(Math.sin(dy), Math.cos(dy)); a.yaw = (a.yaw || 0) + dy * Math.min(1, dt * 10);
+    a.model.root.position.set(a.pos.x, 0, a.pos.z); a.model.root.rotation.y = a.yaw; a.model.anim(dt, { moving: a.mv });
+  }
+}
 function drawRemotes(dt) {
   for (const r of remotes.values()) {
+    drawRemoteZoo(r, dt, r.zone === player.zone);
     const vis = r.zone === player.zone; r.model.root.visible = vis;
     r.pos.lerp(r.tpos, Math.min(1, dt * 10)); let dy = (r.tyaw || 0) - (r.yaw || 0); dy = Math.atan2(Math.sin(dy), Math.cos(dy)); r.yaw = (r.yaw || 0) + dy * Math.min(1, dt * 10);
     r.model.root.position.set(r.pos.x, 0, r.pos.z); r.model.root.rotation.y = r.yaw;
@@ -3091,7 +3113,7 @@ function zooTick(dt) {
     }
     a.cd -= dt * (rally ? 2 : 1);
     if (a.tgt && dist2(a.pos, a.tgt.pos) <= a.range + .3 && a.cd <= 0) {
-      a.cd = a.every; a.hits--; a.model.trigger("attack");
+      a.cd = a.every; a.hits--; a.ak = (a.ak || 0) + 1; a.model.trigger("attack");
       const m = a.tgt, dmg = Math.max(1, Math.round(a.dmg * rand(.9, 1.1)));
       setTimeout(() => {
         if (m.dead) return;
@@ -3099,7 +3121,7 @@ function zooTick(dt) {
         if (dealDamage(m, dmg) !== false) { dmgNum(m, dmg, false, false, .7); if (!(m.tauntUntil > clock)) m.tgtId = "zoo:" + a.id; }
       }, 280);
     }
-    a.model.root.position.set(a.pos.x, 0, a.pos.z); a.model.root.rotation.y = a.yaw;
+    a.model.root.position.set(a.pos.x, 0, a.pos.z); a.model.root.rotation.y = a.yaw; a.mv = moving;
     a.model.anim(dt, { moving });
   }
 }
