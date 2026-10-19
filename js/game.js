@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf2nr74";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf2nr74";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf2nr74";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf2nr74";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf2nr74";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf2ypms";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf2ypms";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf2ypms";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf2ypms";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf2ypms";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf2nr74";
-import * as FX from "./fx.js?v=mvf2nr74";
-import { LINES } from "./lines.js?v=mvf2nr74";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf2nr74";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf2nr74";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf2ypms";
+import * as FX from "./fx.js?v=mvf2ypms";
+import { LINES } from "./lines.js?v=mvf2ypms";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf2ypms";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf2ypms";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -1237,7 +1237,7 @@ function drawDeckView() {
   $("dvTabs").innerHTML = "";
   { const b = document.createElement("button"); b.className = "chip coll"; b.setAttribute("aria-pressed", dvTab === "coll"); b.textContent = "📚 도감 · collection"; b.onclick = () => { dvTab = "coll"; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b); }
   { const b = document.createElement("button"); b.className = "chip coll"; b.id = "dvBattleTab"; b.setAttribute("aria-pressed", dvTab === "battle"); b.textContent = `⚔ 배틀 덱 · battle deck (${battleDeck().length}/${CG_DECK})`; b.onclick = () => { dvTab = "battle"; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b); }
-  const coll = dvTab === "coll" || dvTab === "battle"; $("dvColl").hidden = !coll; $("dvInfo").hidden = coll; $("dvAuto").hidden = coll; $("dvGrad").hidden = coll; document.querySelector(".dvCols").hidden = coll; document.querySelector(".dvFoot").hidden = coll;
+  const coll = dvTab === "coll" || dvTab === "battle"; $("dvColl").hidden = !coll; $("dvInfo").hidden = coll; $("dvAuto").hidden = coll; $("dvGrad").hidden = coll; $("dvAutoGrad").hidden = coll; document.querySelector(".dvCols").hidden = coll; document.querySelector(".dvFoot").hidden = coll;
   for (const k of skillKeys()) {
     const sk = skillDef(k), b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", k === dvTab);
     b.textContent = `${sk.key} · ${sk.ko}` + (S.level < sk.lvl ? ` 🔒 Lv ${sk.lvl}` : ` (${deckCards(k).length}/${deckSize(k)})`);
@@ -1256,6 +1256,7 @@ function drawDeckView() {
   $("dvBag").innerHTML = bag.length ? bag.map(c => cardHTML(c, inDeck.has(c.id) && c.id !== selWord ? "dim" : "")).join("") : `<p class="fine">가방이 비었어요. 괴물을 잡거나 (about half of them drop a card, aliens always) 역의 카드 상인에게 사세요. · Empty: monsters drop cards, and the card trader in the station sells them.</p>`;
   $("dvBonus").textContent = `출신 보너스 · origin bonus: ${bonus().txt} · 카드를 누르고 가방 카드를 누르면 바뀌어요 (click a deck card, then a bag card, to swap; click a selected card again to put it back in the bag). 선물 카드 (gift, from the stranger) only fit the basic attack, and go back to him when you swap them out.`;
   $("dvPick").hidden = dvTab !== "basic";
+  { const on = S.autoGrad !== false; $("dvAutoGrad").textContent = on ? "🎓 자동 졸업 · auto-graduate: 켜짐 on" : "🎓 자동 졸업 · auto-graduate: 꺼짐 off"; $("dvAutoGrad").setAttribute("aria-pressed", on); $("dvGrad").style.display = on ? "none" : ""; }
   { const g = gradPlan().length; $("dvGrad").disabled = !g; $("dvGrad").textContent = g ? `🎓 졸업 · graduate mastered cards (${g}) · +0.5% damage each` : "🎓 졸업 · no mastered cards in your decks yet"; }
   { const better = autoFillPlan(dvTab); $("dvAuto").disabled = !better.changes; $("dvAuto").textContent = better.changes ? `⚡ 자동 채우기 · auto-fill with your best cards (${better.changes} ${better.changes === 1 ? "change" : "changes"})` : "⚡ 자동 채우기 · auto-fill: no better cards in your bag"; }
   $("dvGrid").querySelectorAll(".dvCard[data-uid]").forEach(el => el.onclick = () => deckClick(el.dataset.uid));
@@ -1311,6 +1312,12 @@ function gradPlan() {
   }
   return plan;
 }
+let gradT = 2;
+function autoGradTick(dt) {
+  if ((gradT -= dt) > 0) return; gradT = 2;
+  if (S.autoGrad === false || !S.cls || player.dead || ritual || exam || quiz || memo || fishing || order || cb || cg || duel || dialog) return;
+  if (gradPlan().length) graduate();
+}
 function graduate() {
   const plan = gradPlan(); if (!plan.length) return;
   const fresh = [];
@@ -1341,6 +1348,7 @@ function autoFillPlan(k) {
 }
 function autoFill(k) { const p = autoFillPlan(k); if (!p.changes) return 0; S.skillDecks[k === "sleep" || k === "silence" ? "basic" : k] = p.uids; dropGifts(); return p.changes; }
 $("dvGrad").onclick = () => graduate();
+$("dvAutoGrad").onclick = () => { S.autoGrad = S.autoGrad === false; save(); SFX.select(); toast(S.autoGrad ? "🎓 자동 졸업 켜짐 · mastered cards graduate by themselves" : "🎓 자동 졸업 꺼짐 · graduate with the 🎓 button"); drawDeckView(); };
 $("dvAuto").onclick = () => { if (dvTab === "coll" || dvTab === "battle") return; const n = autoFill(dvTab); dvSel = null; recalcMax(); save(); SFX.open(); toast(`⚡ ${n}장 바꿨어요 · ${n} ${n === 1 ? "card" : "cards"} in, the weakest went back to the bag`); drawDeckView(); };
 
 // ---- card drops (1 in 3 kills): half a copy of a word you own, half from this monster's own word list ----
@@ -5012,7 +5020,7 @@ function step(dt) {
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * rate * dt);
   }
   player.attackAnim = Math.max(0, player.attackAnim - dt * 3);
-  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); sqTick(dt); companionTick(dt); zooTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt); caveTick(dt);
+  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); sqTick(dt); companionTick(dt); zooTick(dt); autoGradTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt); caveTick(dt);
   if (target && target.dead) setTarget(null);
   saveT += dt; if (saveT > 10) { saveT = 0; S.hp = player.hp; save(); }
 }
