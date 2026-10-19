@@ -682,3 +682,12 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .stBtn{margin-left:auto}
 @media (max-width:640px){.stCh{grid-template-columns:1fr}}
 .stTable td{white-space:nowrap}.stTable td.en{white-space:normal}
+
+/* graduation (2026-10-19) */
+.dvBtns{display:flex;flex-wrap:wrap;gap:8px;margin:2px 0 8px}.dvBtns #dvAuto{margin:0}
+#dvGrad{font-weight:700;background:#2a2410;border:1px solid #ffd23d;color:#ffe08a}#dvGrad:disabled{opacity:.55;border-color:#666;color:#bbb;background:#2a2620}
+.gradCard{position:fixed;right:18px;top:120px;z-index:60;width:min(380px,90vw);background:linear-gradient(160deg,#3a2f10,#1d1812);border:2px solid #ffd23d;border-radius:12px;padding:12px 14px;box-shadow:0 8px 30px #0008;cursor:pointer}
+.gradCard.on{animation:gradIn .45s ease-out}@keyframes gradIn{from{transform:translateX(120%);opacity:0}to{transform:none;opacity:1}}
+.gradCard h3{margin:0 0 8px;color:#ffd23d;font-size:18px}.gradCard .gr{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;font-size:13px;padding:4px 0;border-bottom:1px solid #4a3f22}
+.gradCard .gr b{font-size:15px;display:block}.gradCard .o{opacity:.75}.gradCard .ar{color:#ffd23d}.gradCard .bon{margin-top:8px;font-weight:700;color:#ffe08a;font-size:14px}
+.gradCard{top:270px}

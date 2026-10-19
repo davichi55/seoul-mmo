@@ -6,18 +6,18 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mve2dc0u";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mve2dc0u";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mve2dc0u";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mve2dc0u";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mveoj8iu";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mveoj8iu";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mveoj8iu";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mveoj8iu";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mve2dc0u";
-import * as FX from "./fx.js?v=mve2dc0u";
-import { LINES } from "./lines.js?v=mve2dc0u";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mve2dc0u";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mve2dc0u";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mveoj8iu";
+import * as FX from "./fx.js?v=mveoj8iu";
+import { LINES } from "./lines.js?v=mveoj8iu";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mveoj8iu";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mveoj8iu";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -629,7 +629,7 @@ function pickCard(i) {
   const slot = $("rSlots").children[r.idx];
   if (ok) {
     stat(id).c++; slot.className = "rslot ok"; slot.textContent = WORD[id].kr;
-    if (mastery(id).k === "mastered" && !S.mastered.includes(id)) { S.mastered.push(id); toast(`마스터! ${WORD[id].kr} · +${MASTER_XP} XP`); gainXp(MASTER_XP); }
+    if (mastery(id).k === "mastered" && !S.mastered.includes(id)) { S.mastered.push(id); toast(`마스터! ${WORD[id].kr} · +${MASTER_XP} XP` + (skillKeys().some(k => deckIds(k).includes(id)) && !(S.grad || []).includes(id) ? " · 🎓 졸업시킬 수 있어요 · ready to graduate (K): +0.5% damage" : "")); gainXp(MASTER_XP); }
     say([wordClip(id)], { interrupt: true }); SFX.select();
     if (classDef().heal) { const h = player.maxHp * classDef().heal; player.hp = Math.min(player.maxHp, player.hp + h); floater(player.pos, "+" + Math.round(h), "#9be6a5", true, 2.2); }
   } else {
@@ -665,7 +665,7 @@ function castRitual() {
   const nc = newestChapter();
   const calc = (tt, mult = sk.mult) => {
     let total = 0, weak = false, imm = false;
-    const per = BASE_ATTACK * mult / sk.cards * classDef().dmg * weaponMult() * lvlDmg() * companionDamageMul(tt);
+    const per = BASE_ATTACK * mult / sk.cards * classDef().dmg * weaponMult() * lvlDmg() * gradMul() * companionDamageMul(tt);
     for (const c of cards) {
       let part = per * (WORD[c.id].ch === nc ? NEW_CH_BONUS : 1);
       if (c.mod.t === "el" && c.mod.el === tt.def.weak) { part *= EL_MULT[c.rar]; weak = true; }
@@ -1224,7 +1224,7 @@ function drawDeckView() {
   $("dvTabs").innerHTML = "";
   { const b = document.createElement("button"); b.className = "chip coll"; b.setAttribute("aria-pressed", dvTab === "coll"); b.textContent = "📚 도감 · collection"; b.onclick = () => { dvTab = "coll"; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b); }
   { const b = document.createElement("button"); b.className = "chip coll"; b.id = "dvBattleTab"; b.setAttribute("aria-pressed", dvTab === "battle"); b.textContent = `⚔ 배틀 덱 · battle deck (${battleDeck().length}/${CG_DECK})`; b.onclick = () => { dvTab = "battle"; dvSel = null; drawDeckView(); }; $("dvTabs").appendChild(b); }
-  const coll = dvTab === "coll" || dvTab === "battle"; $("dvColl").hidden = !coll; $("dvInfo").hidden = coll; $("dvAuto").hidden = coll; document.querySelector(".dvCols").hidden = coll; document.querySelector(".dvFoot").hidden = coll;
+  const coll = dvTab === "coll" || dvTab === "battle"; $("dvColl").hidden = !coll; $("dvInfo").hidden = coll; $("dvAuto").hidden = coll; $("dvGrad").hidden = coll; document.querySelector(".dvCols").hidden = coll; document.querySelector(".dvFoot").hidden = coll;
   for (const k of skillKeys()) {
     const sk = skillDef(k), b = document.createElement("button"); b.className = "chip"; b.setAttribute("aria-pressed", k === dvTab);
     b.textContent = `${sk.key} · ${sk.ko}` + (S.level < sk.lvl ? ` 🔒 Lv ${sk.lvl}` : ` (${deckCards(k).length}/${deckSize(k)})`);
@@ -1243,6 +1243,7 @@ function drawDeckView() {
   $("dvBag").innerHTML = bag.length ? bag.map(c => cardHTML(c, inDeck.has(c.id) && c.id !== selWord ? "dim" : "")).join("") : `<p class="fine">가방이 비었어요. 괴물을 잡거나 (about half of them drop a card, aliens always) 역의 카드 상인에게 사세요. · Empty: monsters drop cards, and the card trader in the station sells them.</p>`;
   $("dvBonus").textContent = `출신 보너스 · origin bonus: ${bonus().txt} · 카드를 누르고 가방 카드를 누르면 바뀌어요 (click a deck card, then a bag card, to swap; click a selected card again to put it back in the bag). 선물 카드 (gift, from the stranger) only fit the basic attack, and go back to him when you swap them out.`;
   $("dvPick").hidden = dvTab !== "basic";
+  { const g = gradPlan().length; $("dvGrad").disabled = !g; $("dvGrad").textContent = g ? `🎓 졸업 · graduate mastered cards (${g}) · +0.5% damage each` : "🎓 졸업 · no mastered cards in your decks yet"; }
   { const better = autoFillPlan(dvTab); $("dvAuto").disabled = !better.changes; $("dvAuto").textContent = better.changes ? `⚡ 자동 채우기 · auto-fill with your best cards (${better.changes} ${better.changes === 1 ? "change" : "changes"})` : "⚡ 자동 채우기 · auto-fill: no better cards in your bag"; }
   $("dvGrid").querySelectorAll(".dvCard[data-uid]").forEach(el => el.onclick = () => deckClick(el.dataset.uid));
   $("dvBag").querySelectorAll(".dvCard[data-uid]").forEach(el => el.onclick = () => bagClick(el.dataset.uid));
@@ -1276,6 +1277,48 @@ function deck20Topup() {
     while (d.length < deckSize(k) && pool.length) { const c = newCard(pool.pop().id, 0); c.gift = true; S.cards.push(c); d.push(c.uid); }
   }
 }
+// ---- graduation ----
+const GRAD_BONUS = .005;
+const gradMul = () => 1 + GRAD_BONUS * (S.grad || []).length;
+function gradPlan() {
+  const keys = [...new Set(skillKeys().map(k => k === "sleep" || k === "silence" ? "basic" : k))].filter(k => (S.skillDecks[k] || []).length);
+  const used = new Set(), plan = [], nc = newestChapter();
+  for (const k of keys) {
+    const deck = deckCards(k), ids = new Set(deck.map(c => c.id)), out = deck.filter(c => mastery(c.id).k === "mastered");
+    if (!out.length) continue;
+    const bag = bagCards().filter(c => mastery(c.id).k !== "mastered" && inPlay(WORD[c.id]) && (k === "basic" || !c.gift)).sort((a, b) => (WORD[b.id].ch === nc) - (WORD[a.id].ch === nc) || b.rar - a.rar);
+    for (const c of out) {
+      const r = bag.find(x => !used.has(x.uid) && !ids.has(x.id));
+      if (r) { used.add(r.uid); ids.add(r.id); plan.push({ k, out: c, inn: r }); continue; }
+      if (k !== "basic") continue;   // the other skills only swap when there is a card for the slot, so they never drop below 20
+      const order = [nc, ...[...S.chapters].reverse().filter(x => x !== nc)];
+      let w = null; for (const ch of order) { w = shuffle(bookWords().filter(x => x.ch === ch && !ids.has(x.id) && mastery(x.id).k !== "mastered"))[0]; if (w) break; }
+      if (w) { ids.add(w.id); plan.push({ k, out: c, gift: w }); }
+    }
+  }
+  return plan;
+}
+function graduate() {
+  const plan = gradPlan(); if (!plan.length) return;
+  const fresh = [];
+  for (const p of plan) {
+    const d = S.skillDecks[p.k], i = d.indexOf(p.out.uid); if (i < 0) continue;
+    let uid; if (p.inn) uid = p.inn.uid; else { const c = newCard(p.gift.id, 0); c.gift = true; S.cards.push(c); uid = c.uid; p.inn = c; }
+    d.splice(i, 1, uid);
+    S.grad = S.grad || []; if (!S.grad.includes(p.out.id)) { S.grad.push(p.out.id); fresh.push(p.out.id); }
+  }
+  dropGifts(); recalcMax(); save(); drawDeckView();
+  // the ceremony: light, a chime, and a card at the side that goes away by itself (never a popup you must close)
+  FX.pillarFx(player.pos, "#ffd23d"); floater(player.pos, "🎓 졸업!", "#ffd23d", false, 3.4);
+  const seen = new Set(), rows = plan.filter(p => !seen.has(p.out.id + p.inn.id) && seen.add(p.out.id + p.inn.id));
+  say([wordClip(rows[0].out.id), wordClip(rows[0].inn.id)], { interrupt: true });
+  const card = $("gradCard");
+  card.innerHTML = `<h3>🎓 졸업! · graduated</h3>` + rows.slice(0, 6).map(p => `<div class="gr"><span class="o"><b>${esc(WORD[p.out.id].kr)}</b> ${esc(WORD[p.out.id].en)}</span><span class="ar">→</span><span class="n"><b>${esc(WORD[p.inn.id].kr)}</b> ${esc(WORD[p.inn.id].en)}</span></div>`).join("")
+    + (rows.length > 6 ? `<div class="fine">+ ${rows.length - 6} more</div>` : "")
+    + `<div class="bon">${fresh.length ? `+${(fresh.length * GRAD_BONUS * 100).toFixed(1)}% damage · ` : "이미 졸업한 단어예요 · already graduated before · "}총 · total +${((S.grad.length) * GRAD_BONUS * 100).toFixed(1)}% (${S.grad.length})</div>`;
+  card.hidden = false; card.classList.remove("on"); void card.offsetWidth; card.classList.add("on");
+  clearTimeout(graduate.t); graduate.t = setTimeout(() => { card.hidden = true; }, 7000); card.onclick = () => { card.hidden = true; };
+}
 function autoFillPlan(k) {
   const deck = deckCards(k), inD = new Set(deck.map(c => c.uid)), best = {};
   for (const c of [...deck, ...bagCards().filter(c => k === "basic" || !c.gift)]) { const b = best[c.id]; if (!b || c.rar > b.rar || c.rar === b.rar && inD.has(c.uid) && !inD.has(b.uid)) best[c.id] = c; }
@@ -1284,6 +1327,7 @@ function autoFillPlan(k) {
   return { uids: [...stay, ...add], changes: add.length };
 }
 function autoFill(k) { const p = autoFillPlan(k); if (!p.changes) return 0; S.skillDecks[k === "sleep" || k === "silence" ? "basic" : k] = p.uids; dropGifts(); return p.changes; }
+$("dvGrad").onclick = () => graduate();
 $("dvAuto").onclick = () => { if (dvTab === "coll" || dvTab === "battle") return; const n = autoFill(dvTab); dvSel = null; recalcMax(); save(); SFX.open(); toast(`⚡ ${n}장 바꿨어요 · ${n} ${n === 1 ? "card" : "cards"} in, the weakest went back to the bag`); drawDeckView(); };
 
 // ---- card drops (1 in 3 kills): half a copy of a word you own, half from this monster's own word list ----
@@ -1439,7 +1483,7 @@ function openStats() {
   const chs = bookChapters().map(c => { const ws = mine.filter(w => w.ch === c.id), n = ws.length || 1, own = ws.filter(w => owned.has(w.id)).length, mas = ws.filter(w => mastery(w.id).k === "mastered").length;
     return `<div class="stCh"><span class="t">${c.title}${c.theme ? " · " + esc(c.theme) : ""}${S.chapters.includes(c.id) ? "" : " 🔒"}</span><div class="stBar"><i class="own" style="width:${own / n * 100}%"></i><i class="mas" style="width:${mas / n * 100}%"></i></div><span class="n">${own} / ${ws.length} · 마스터 ${mas}</span></div>`; }).join("");
   $("stTitle").textContent = `${(BOOKS.find(b => b.id === S.book) || {}).title || ""} · ${S.prio ? "★ 시험 단어 · exam words" : "전체 · all words"}`;
-  $("stBody").innerHTML = `<div class="stSum"><span><b>${mine.length}</b> 단어 · words</span><span><b>${mine.length - kinds.new}</b> 본 단어 · seen</span><span><b>${kinds.learned}</b> 배움 · learned</span><span><b>${kinds.mastered}</b> 마스터 · mastered</span><span><b>${mine.reduce((a, w) => a + tries(w.id), 0)}</b> 답 · answers</span></div>`
+  $("stBody").innerHTML = `<div class="stSum"><span><b>${mine.length}</b> 단어 · words</span><span><b>${mine.length - kinds.new}</b> 본 단어 · seen</span><span><b>${kinds.learned}</b> 배움 · learned</span><span><b>${kinds.mastered}</b> 마스터 · mastered</span><span><b>${mine.reduce((a, w) => a + tries(w.id), 0)}</b> 답 · answers</span><span><b>${(S.grad || []).length}</b> 🎓 졸업 · graduated</span></div>`
     + `<h3>과별 · per chapter</h3><p class="fine">파란 막대 = 가진 카드, 금색 = 마스터 · blue bar = cards you own, gold = mastered</p><div class="stChs">${chs}</div>`
     + `<div class="stCols">${table("가장 많이 연습한 단어 · most practised", "답한 횟수 순 · by number of answers", most)}${table("어려운 단어 · weakest", "정답률이 낮은 순 · lowest share right first", weak)}${table("덜 연습한 내 단어 · least practised of yours", "가진 카드 중 · among the cards you own", least)}</div>`;
 }
@@ -1448,7 +1492,7 @@ function openCharView() {
   if (!S.cls) return;
   paused = true; showScreen("charView");
   const cd = classDef(), b = bonus();
-  const hit = BASE_ATTACK / CARDS_PER_ATTACK * cd.dmg * weaponMult() * lvlDmg() * (1 + b.dmg + gearStat("dmg")) * (buffOn("dmg") ? 1.05 : 1) * (S.hunger <= 0 ? HUNGRY_MULT : 1);
+  const hit = BASE_ATTACK / CARDS_PER_ATTACK * cd.dmg * weaponMult() * lvlDmg() * gradMul() * (1 + b.dmg + gearStat("dmg")) * (buffOn("dmg") ? 1.05 : 1) * (S.hunger <= 0 ? HUNGRY_MULT : 1);
   $("cvTitle").textContent = `${cd.ko} · ${cd.en} · Lv ${S.level}`;
   const looks = LOOKS[S.cls] || [];
   $("cvLook").innerHTML = peopleReady() && looks.length ? `<span>외모 · look</span>` + looks.map((l, i) => `<button class="chip" data-i="${i}" aria-pressed="${(S.look || 0) === i}">${i + 1} · ${l.ko} <small>${l.en}</small></button>`).join("") : "";
@@ -1464,6 +1508,7 @@ function openCharView() {
     ["공격력 · Damage per correct card", `${Math.round(hit)}` + (S.hunger <= 0 ? " (배고픔 ×0.75)" : "")],
     ["사거리 · Range", `${cd.range} m`],
     ...Object.keys(SLOTS).map(sl => { const it = itemBy(S.equip[sl]); return [SLOTS[sl], it ? `${itemName(it)} (${itemInfo(it)})` : "없음 · none"]; }),
+    ["🎓 졸업 · Graduated words", `${(S.grad || []).length}개 · +${((S.grad || []).length * GRAD_BONUS * 100).toFixed(1)}% damage on every attack (+0.5% per mastered word you graduate, K)`],
     ["레벨 보너스 · Level bonus", `health +${Math.round((lvlHp() - 1) * 100)}%, damage +${Math.round((lvlDmg() - 1) * 100)}%`],
     ["모드 · Mode", S.mode === "story" ? (() => { const n = storyNext(); return n.next ? `이야기 · story (${n.next.title} opens when ${n.cur.title} is 70% collected: now ${n.pct}%)` : "이야기 · story (every chapter open)"; })() : "연습 · practice (you choose the chapters, K)"],
     ["교재 · Textbook", `${(BOOKS.find(x => x.id === S.book) || BOOKS[0]).en} · ${S.chapters.map(id => DATA.chapters.find(c => c.id === id)?.title).filter(Boolean).join(", ")}`],
