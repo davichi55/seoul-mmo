@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf625xk";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf625xk";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf625xk";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf625xk";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf625xk";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf6k39q";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf6k39q";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf6k39q";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf6k39q";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf6k39q";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf625xk";
-import * as FX from "./fx.js?v=mvf625xk";
-import { LINES } from "./lines.js?v=mvf625xk";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf625xk";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf625xk";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf6k39q";
+import * as FX from "./fx.js?v=mvf6k39q";
+import { LINES } from "./lines.js?v=mvf6k39q";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf6k39q";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf6k39q";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -204,11 +204,12 @@ const ACTIONS = {
   chat: "채팅 · chat", wave: "손 흔들기 · wave", bow: "인사 · bow", sleep: "잠 부적 · sleep talisman", silence: "침묵 부적 · silence talisman", bike: "따릉이 타기 · bike on / off", book: "스킬 북 · skill book", friends: "친구 · friends",
   bar0: "칸 1 · slot 1", bar1: "칸 2 · slot 2", bar2: "칸 3 · slot 3", bar3: "칸 4 · slot 4", bar4: "칸 5 · slot 5", bar5: "칸 6 · slot 6", bar6: "칸 7 · slot 7", bar7: "칸 8 · slot 8", bar8: "칸 9 · slot 9", bar9: "칸 10 · slot 10",
 };
-const DEFAULT_KEYS = { basic: "1", s2: "2", s3: "3", interact: "e", food: "f", target: "tab", inv: "i", char: "c", deck: "k", quests: "l", map: "m", ach: "y", chat: "enter", wave: "g", bow: "b", sleep: "z", silence: "x", bike: "r", book: "p", friends: "o", bar0: "6", bar1: "7", bar2: "8", bar3: "9", bar4: "0", bar5: "q", bar6: "4", bar7: "5", bar8: "v", bar9: "t" };   /* Danny 2026-10-19: talismans 4/5 → Z/X */
+const DEFAULT_KEYS = { basic: "1", s2: "2", s3: "3", interact: "e", food: "f", target: "tab", inv: "i", char: "c", deck: "k", quests: "l", map: "m", ach: "y", chat: "enter", wave: "g", bow: "b", sleep: "z", silence: "x", bike: "r", book: "p", friends: "o", bar0: "4", bar1: "5", bar2: "6", bar3: "7", bar4: "8", bar5: "9", bar6: "0", bar7: "q", bar8: "v", bar9: "t" };   /* Danny 2026-10-19: talismans 4/5 → Z/X, then the bar runs 1-8 in a row */
 const SET = { keys: { ...DEFAULT_KEYS }, sens: 1, quality: "high", music: .35, musicV: 2 };   /* Danny 2026-10-18: the default music was too loud (.5 → .35) */
 try { const s = JSON.parse(localStorage.getItem(SET_KEY)); if (s) { Object.assign(SET, s); SET.keys = Object.assign({ ...DEFAULT_KEYS }, s.keys || {}); if (!s.musicV) { if (s.music === .5 || s.music == null) SET.music = .35; SET.musicV = 2; }
-  if (!s.keysV) { const K = SET.keys; if (K.sleep === "4" && K.silence === "5") { K.sleep = "z"; K.silence = "x"; if (K.bar6 === "z") K.bar6 = "4"; if (K.bar7 === "x") K.bar7 = "5"; } SET.keysV = 2; } } } catch (e) {}
-SET.keysV = 2;
+  if (!s.keysV) { const K = SET.keys; if (K.sleep === "4" && K.silence === "5") { K.sleep = "z"; K.silence = "x"; if (K.bar6 === "z") K.bar6 = "4"; if (K.bar7 === "x") K.bar7 = "5"; } SET.keysV = 2; }
+  if (SET.keysV < 3) { const K = SET.keys, OLD = ["6", "7", "8", "9", "0", "q", "4", "5", "v", "t"]; OLD.forEach((v, i) => { if (K["bar" + i] === v) K["bar" + i] = DEFAULT_KEYS["bar" + i]; }); SET.keysV = 3; } } } catch (e) {}
+SET.keysV = 3;
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(SET)); } catch (e) {} }
 const keyName = k => k === " " ? "Space" : k === "tab" ? "Tab" : k.length === 1 ? k.toUpperCase() : k[0].toUpperCase() + k.slice(1);
 const actionFor = k => Object.keys(SET.keys).find(a => SET.keys[a] === k);
