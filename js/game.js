@@ -6,18 +6,18 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mveoj8iu";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mveoj8iu";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mveoj8iu";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mveoj8iu";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvewonhp";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvewonhp";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvewonhp";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvewonhp";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls) : makeHero(cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mveoj8iu";
-import * as FX from "./fx.js?v=mveoj8iu";
-import { LINES } from "./lines.js?v=mveoj8iu";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mveoj8iu";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mveoj8iu";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvewonhp";
+import * as FX from "./fx.js?v=mvewonhp";
+import { LINES } from "./lines.js?v=mvewonhp";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvewonhp";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvewonhp";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -1206,12 +1206,12 @@ function drawCollection() {
   if (!collCh || !chs.some(c => c.id === collCh)) collCh = (chs.filter(c => S.chapters.includes(c.id)).slice(-1)[0] || chs[0]).id;
   const all = bookWords(), cur = chs.find(c => c.id === collCh), ws = wordsOf(cur), o = ownedN(ws), p = Math.round(o / Math.max(1, ws.length) * 100);
   const open = S.mode !== "story" || S.chapters.includes(cur.id), prev = chs[chs.indexOf(cur) - 1], sn = storyNext();
-  const shown = ws.filter(w => collFilter === "all" || (collFilter === "own") === !!copies[w.id]);
+  const shown = ws.filter(w => collFilter === "all" || (collFilter === "mastered" ? mastery(w.id).k === "mastered" : collFilter === "learning" ? mastery(w.id).k !== "mastered" : (collFilter === "own") === !!copies[w.id]));
   $("dvColl").innerHTML = `<div class="clChs">${chs.map(c => { const cw = wordsOf(c), cp = Math.round(ownedN(cw) / Math.max(1, cw.length) * 100), op = S.mode !== "story" || S.chapters.includes(c.id); return `<button class="chip" data-cc="${c.id}" aria-pressed="${c.id === collCh}">${op ? "" : "🔒 "}${c.title} · ${cp}%</button>`; }).join("")}</div>
     <div class="clHead"><div><b>${cur.title}${cur.theme ? " " + cur.theme : ""}</b> · ${o} / ${ws.length} 단어 · words owned (${p}%)${open ? "" : ` · <span class="warn">🔒 ${prev ? prev.title : ""}를 70% 모으면 열려요 · opens when ${prev ? prev.title : "the chapter before"} is 70% collected (now ${prev ? Math.round(chOwnedPct(prev) * 100) : 0}%)</span>`}${S.mode === "story" && open && sn.cur === cur && sn.next ? ` · <span class="okc">70%가 되면 ${sn.next.title}가 열려요 · ${sn.next.title} opens at 70%</span>` : ""}</div>
       <div class="bar xp clBar"><i style="width:${p}%"></i></div>
       <span class="fine">책 전체 · whole book: ${ownedN(all)} / ${all.length} (${Math.round(ownedN(all) / Math.max(1, all.length) * 100)}%) · 단어를 누르면 소리가 나요, 마우스를 올리면 예문이 보여요 · click a word to hear it, hover for an example</span></div>
-    <div class="clFilt">${[["all", "전체 · all"], ["own", "가진 것 · owned"], ["miss", "없는 것 · missing"]].map(([k, t]) => `<button class="chip" data-cf="${k}" aria-pressed="${collFilter === k}">${t}</button>`).join("")}</div>
+    <div class="clFilt">${[["all", "전체 · all"], ["own", "가진 것 · owned"], ["miss", "없는 것 · missing"], ["mastered", "🏅 마스터 · mastered"], ["learning", "📖 아직 · not mastered"]].map(([k, t]) => `<button class="chip" data-cf="${k}" aria-pressed="${collFilter === k}">${t}</button>`).join("")}</div>
     <div class="clGrid">${shown.map(w => { const n = copies[w.id], m = mastery(w.id); return `<button class="clTile ${n ? "own" : "miss"} m-${m.k}" data-id="${w.id}" data-tip="${esc(w.ex ? w.ex[0] + " · " + w.ex[1] : w.en)}"><b>${esc(w.kb || w.kr)}</b><span>${esc(w.en)}</span><small>${POSKO[w.pos] || ""} · ${m.ko}${n ? ` · ✓ ${n}장` : " · 없음 · not owned"}</small></button>`; }).join("") || '<p class="fine">없어요 · nothing here</p>'}</div>`;
   $("dvColl").querySelectorAll("[data-cc]").forEach(b => b.onclick = () => { collCh = b.dataset.cc; drawCollection(); });
   $("dvColl").querySelectorAll("[data-cf]").forEach(b => b.onclick = () => { collFilter = b.dataset.cf; drawCollection(); });
@@ -1401,6 +1401,10 @@ function cardShop(n) {
 // ---- inventory (I): what you wear, and your bag: gear, items, every card ----
 let invTab = "gear", sellAllArm = false;
 const invSort = { gear: "slot", cards: "rar" };
+let invMast = "all";   // the cards tab's mastery filter
+const inAnyDeck = id => skillKeys().some(k => deckIds(k).includes(id));
+const MAST_FILTERS = { all: ["전체 · all", () => true], mastered: ["🏅 마스터 · mastered", id => mastery(id).k === "mastered"],
+  grad: ["🎓 졸업 가능 · ready to graduate", id => mastery(id).k === "mastered" && inAnyDeck(id)], learning: ["📖 아직 · not mastered yet", id => mastery(id).k !== "mastered"] };
 const SORTS = {
   gear: { slot: ["종류 · slot", (a, b) => Object.keys(SLOTS).indexOf(GEAR[a.g].slot) - Object.keys(SLOTS).indexOf(GEAR[b.g].slot) || gearPrice(b.g) - gearPrice(a.g)],
           value: ["가격 · value", (a, b) => gearPrice(b.g) - gearPrice(a.g) || (b.up || 0) - (a.up || 0)],
@@ -1446,12 +1450,14 @@ function drawInventory() {
       + `<div class="ivItem"><span class="sl">재료 · materials</span><b>${mats.length ? mats.map(([k, c]) => MATS[k].ko + " ×" + c).join(", ") : "없음 · none"}</b><span>무기점 아저씨가 장비를 강화해 줘요 · the smith uses 3 to upgrade gear</span></div>`;
   } else {
     const where = {}; for (const k of skillKeys()) for (const u of S.skillDecks[k] || []) where[u] = skillDef(k).ko;
-    const list = S.cards.slice().sort(SORTS.cards[invSort.cards][1]);
-    box.innerHTML = sortBar("cards") + `<p class="fine">모든 카드 · every card you own. 덱을 바꾸려면 K · to change decks press K.</p>` + list.map(c => cardHTML(c, where[c.uid] ? "" : "loose").replace("</div>", `<span class="where">${where[c.uid] ? "📌 " + where[c.uid] : S.bank.cards.includes(c.uid) ? "🔒 보관함 · storage" : "가방 · bag"}</span>${remotes.size && !where[c.uid] && !c.gift && !S.bank.cards.includes(c.uid) ? `<button class="giftBtn" data-gift="${c.uid}">🎁 선물</button>` : ""}${S.rerollStones ? `<button class="giftBtn rrBtn" data-rr="${c.uid}" title="다시 굴리기 · reroll">🔮</button>` : ""}</div>`)).join("");
+    const list = S.cards.filter(c => MAST_FILTERS[invMast][1](c.id)).sort(SORTS.cards[invSort.cards][1]);
+    const mastBar = `<div class="ivTools"><span class="fine">보기 · show</span>${Object.entries(MAST_FILTERS).map(([k, [label, f]]) => `<button class="chip" data-mast="${k}" aria-pressed="${invMast === k}">${label} (${S.cards.filter(c => f(c.id)).length})</button>`).join("")}</div>`;
+    box.innerHTML = sortBar("cards") + mastBar + (list.length ? "" : `<p class="fine">이 보기에 카드가 없어요 · no cards here</p>`) + `<p class="fine">모든 카드 · every card you own. 덱을 바꾸려면 K · to change decks press K.</p>` + list.map(c => cardHTML(c, where[c.uid] ? "" : "loose").replace("</div>", `<span class="where">${where[c.uid] ? "📌 " + where[c.uid] : S.bank.cards.includes(c.uid) ? "🔒 보관함 · storage" : "가방 · bag"}</span>${remotes.size && !where[c.uid] && !c.gift && !S.bank.cards.includes(c.uid) ? `<button class="giftBtn" data-gift="${c.uid}">🎁 선물</button>` : ""}${S.rerollStones ? `<button class="giftBtn rrBtn" data-rr="${c.uid}" title="다시 굴리기 · reroll">🔮</button>` : ""}</div>`)).join("");
     box.querySelectorAll("[data-rr]").forEach(b => b.onclick = e => { e.stopPropagation(); openReroll(b.dataset.rr); });
     box.querySelectorAll("[data-gift]").forEach(b => b.onclick = e => { e.stopPropagation(); const c = cardBy(b.dataset.gift); giftTo({ cards: [{ id: c.id, rar: c.rar, mod: c.mod }] }, () => { S.cards = S.cards.filter(x => x !== c); }); drawInventory(); });
   }
   box.querySelectorAll("[data-sort]").forEach(b => b.onclick = () => { invSort[invTab] = b.dataset.sort; drawInventory(); });
+  box.querySelectorAll("[data-mast]").forEach(b => b.onclick = () => { invMast = b.dataset.mast; drawInventory(); });
   box.querySelectorAll(".ivItem button").forEach(b => b.onclick = () => {
     const uid = b.closest(".ivItem").dataset.uid, it = uid && itemBy(uid);
     if (b.dataset.act === "eat") { if (S.hunger >= 95) toast("배불러요 · you're full"); else if (S.gimbap) { S.gimbap--; eat(FOODS.gimbap); } }
