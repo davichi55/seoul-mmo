@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf488lb";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf488lb";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf488lb";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf488lb";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf488lb";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf4fbd3";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf4fbd3";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf4fbd3";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf4fbd3";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf4fbd3";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf488lb";
-import * as FX from "./fx.js?v=mvf488lb";
-import { LINES } from "./lines.js?v=mvf488lb";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf488lb";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf488lb";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf4fbd3";
+import * as FX from "./fx.js?v=mvf4fbd3";
+import { LINES } from "./lines.js?v=mvf4fbd3";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf4fbd3";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf4fbd3";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -1818,7 +1818,7 @@ function sideQuiz(id, n) {
   let items;
   if (q.quiz === "tourist") items = TOURIST_Q.map(([qq, en, a, wrong]) => ({ prompt: `<span class="qzKo">${esc(qq)}</span><span class="qzEn">${esc(en)} · 맞는 대답은? · the right reply?</span>`, a: { id: "x", noStat: true, kr: a }, wrong }));
   else if (q.quiz === "museum") items = MUSEUM_Q.map(([d, en, a, wrong]) => ({ prompt: `<span class="qzKo">${esc(d)}</span><span class="qzEn">${esc(en)} · 무슨 유물이에요? · which relic?</span>`, a: { id: "x", noStat: true, kr: a }, wrong }));
-  else { const ch = storyNext().cur, pool = shuffle(bookWords().filter(w => w.ch === ch.id)); items = pool.slice(0, 5).map((w, i) => ({ word: w, pool, koToEn: i % 2 === 0 })); }
+  else { const ch = storyNext().cur, pool = shuffle(bookWords().filter(w => w.ch === ch.id)); items = pool.slice(0, 5).map(w => ({ word: w, pool, koToEn: false }));   /* English on top, Korean answers (Danny 2026-10-19) */ }
   const queue = items.slice(); let right = 0, need = items.length;
   const next = () => {
     if (right >= need) { completeQuest(id); showLine(n, q.done, [{ plr: "p_yes", act: closeDialog }]); return; }
@@ -4333,7 +4333,7 @@ function duelNext() {
   if (!duel) return;
   duel.i++;
   if (duel.i >= duel.qs.length) { duelEnd(); return; }
-  const w = duel.qs[duel.i], koToEn = duel.i % 2 === 0, pool = duel.qs.filter(x => x !== w).concat(bookWords().filter(x => x.ch === duel.ch.id && x !== w));
+  const w = duel.qs[duel.i], koToEn = false,   /* Danny 2026-10-19: always English on top, Korean answers (like the level-up exam) */ pool = duel.qs.filter(x => x !== w).concat(bookWords().filter(x => x.ch === duel.ch.id && x !== w));
   const others = shuffle([...new Set(pool)]).filter(x => x !== w).slice(0, 3), opts = shuffle([w, ...others]);
   duel.cur = { w, opts, koToEn }; duel.open = true; stat(w.id).s++;
   const gb = duel.gobs[duel.i]; if (gb) gb.to.set(ARENA.x, 0, ARENA.z + 1.6);   /* the next goblin steps up */
