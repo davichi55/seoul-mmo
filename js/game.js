@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf3xjhs";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf3xjhs";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf3xjhs";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf3xjhs";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf3xjhs";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf488lb";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf488lb";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf488lb";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf488lb";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf488lb";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf3xjhs";
-import * as FX from "./fx.js?v=mvf3xjhs";
-import { LINES } from "./lines.js?v=mvf3xjhs";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf3xjhs";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf3xjhs";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf488lb";
+import * as FX from "./fx.js?v=mvf488lb";
+import { LINES } from "./lines.js?v=mvf488lb";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf488lb";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf488lb";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -1400,11 +1400,11 @@ function dropGear(m) {
 // ---- card trader in the station: 4 cards a day ----
 function shopOffers() {
   const day = dayNum();
-  if (!S.shop || S.shop.day !== day) {
-    const owned = [...new Set(S.cards.map(c => c.id))], pool = playWords().filter(w => S.chapters.includes(w.ch)).map(w => w.id);
-    const offers = [];
-    for (let i = 0; i < 4; i++) { const id = i < 2 && owned.length ? pick(owned) : pick(pool.length ? pool : owned); const rar = Math.min(2, rollRarity()); offers.push({ id, rar, mod: rollMod(rar), sold: false }); }
-    S.shop = { day, offers };
+  if (!S.shop || S.shop.day !== day || S.shop.v !== 2) {
+    const owned = new Set(S.cards.map(c => c.id)), open = bookWords().filter(w => S.chapters.includes(w.ch)), rest = bookWords().filter(w => !S.chapters.includes(w.ch));
+    const ids = [...shuffle(open.filter(w => !owned.has(w.id))), ...shuffle(rest.filter(w => !owned.has(w.id))), ...shuffle(open.filter(w => owned.has(w.id)))].map(w => w.id);
+    const offers = [...new Set(ids)].slice(0, 4).map(id => { const rar = Math.min(2, rollRarity()); return { id, rar, mod: rollMod(rar), sold: false }; });
+    S.shop = { day, offers, v: 2 };
   }
   return S.shop.offers;
 }
@@ -5158,7 +5158,7 @@ boot();
 window.__seoul = {
   get S() { return S; }, get world() { return world; }, player, monsters, renderer, scene, camera, cam, get target() { return target; }, get ritual() { return ritual; },
   setHour(h) { S.time = Math.floor(S.time / 1440) * 1440 + h * 60; },
-  give(n) { S.money += n; }, growBasic: a => growBasic(a), campVis: () => campParts.map(g => g.visible), get zoo() { return zoo; }, newestChapter: () => newestChapter(), ritualWeight: id => ritualWeight(id),
+  give(n) { S.money += n; }, growBasic: a => growBasic(a), campVis: () => campParts.map(g => g.visible), shopOffers: () => shopOffers(), get zoo() { return zoo; }, newestChapter: () => newestChapter(), ritualWeight: id => ritualWeight(id),
   step(sec) { for (let t = 0; t < sec; t += 1 / 30) step(1 / 30); render(1 / 30); },
   answer(right = true) { if (!ritual) return; const id = ritual.words[ritual.idx]; const i = ritual.opts.indexOf(id); pickCard(right ? i : (i + 1) % CHOICES); },
   attack: (k = "basic") => startRitual(k),
