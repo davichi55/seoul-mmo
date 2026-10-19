@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf37cpq";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf37cpq";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf37cpq";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf37cpq";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf37cpq";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf3rkvv";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf3rkvv";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf3rkvv";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf3rkvv";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf3rkvv";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf37cpq";
-import * as FX from "./fx.js?v=mvf37cpq";
-import { LINES } from "./lines.js?v=mvf37cpq";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf37cpq";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf37cpq";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf3rkvv";
+import * as FX from "./fx.js?v=mvf3rkvv";
+import { LINES } from "./lines.js?v=mvf3rkvv";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf3rkvv";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf3rkvv";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -142,8 +142,8 @@ const SKILLS = {
 };
 // skills 2 and 3 per class (Danny 2026-10-11: both options go in; A = key 2 at Lv 2, B = key 3 at Lv 3)
 const SKILL2 = {
-  mudang: { A: { ko: "화염 부적", en: "fire talisman", mult: 2.2, fire: true, info: "2 cards · 2.2× damage, counts as 불 fire" },
-            B: { ko: "치유 부적", en: "healing talisman", mult: 1, heal: .25, cd: 12, info: "2 cards · heals 25% health + 1× damage" } },
+  mudang: { A: { ko: "화염 부적", en: "fire talisman", mult: 2.8, fire: true, info: "2 cards · 2.8× damage, counts as 불 fire" },
+            B: { ko: "치유 부적", en: "healing talisman", mult: 2, heal: .25, cd: 12, info: "2 cards · heals 25% health + 2× damage" } },
   geomgaek: { A: { ko: "돌진 베기", en: "charging slash", mult: 2, range: 10, info: "2 cards · dash to a target up to 10 m away, 2× damage" },
               B: { ko: "철벽", en: "iron wall", mult: 1.6, guard: { red: .5, dur: 6 }, cd: 12, info: "2 cards · 1.6× damage, then take 50% less damage for 6 s" } },
   zoo: { A: { ko: "먹이 주기", en: "feeding", mult: 0, self: true, feed: { heal: .5, hits: 2 }, cd: 12, info: "2 cards · every animal of yours heals 50%; each animal gets 2 more attacks the first time it is fed" },
@@ -698,8 +698,10 @@ function castRitual() {
   if (sk.guard) { player.guardUntil = clock + sk.guard.dur; floater(player.pos, "철벽!", "#9ec8ff", false, 3); }
   const land = () => {
     if (t.dead) return;
+    if (sk.noHit && sk.spread) for (const m of monsters) if (m !== t && !m.dead && !m.caged && m.zone === t.zone && dist2(m.pos, t.pos) <= sk.spread) { addDot(m, calc(m).dmg, sk.burn.dur); FX.explosion(m.pos, FX.EL_COL.fire, .5); aggro(m); }
     if (sk.noHit) { addDot(t, dmg, sk.burn.dur); FX.explosion(t.pos, FX.EL_COL.fire, .8); if (dmg > 0) floater(t.pos, "🔥 " + sk.ko, "#ff8a3a", false, t.model.height); SFX.shotGood(); return; }
     if (dealDamage(t, dmg, sk.slow ? sk.slow.dur : 0) === false) return;
+    if (sk.splash) { FX.ring(t.pos, { color: "#ffd23d", r: sk.splash.r, life: .6 }); for (const m of monsters) if (m !== t && !m.dead && !m.caged && m.zone === t.zone && dist2(m.pos, t.pos) <= sk.splash.r) { const d3 = calc(m, sk.splash.mult).dmg; if (dealDamage(m, d3) !== false) { dmgNum(m, d3, false, false, fxPow * .7); aggro(m); } } }
     const cl = classDef().cleave;
     if (cl) for (const m of monsters) if (m !== t && !m.dead && m.zone === t.zone && dist2(m.pos, t.pos) <= cl.r) {
       const d2 = Math.max(1, Math.round(calc(m).dmg * cl.mult)); if (dealDamage(m, d2) !== false) { dmgNum(m, d2, false, false, fxPow * .6); aggro(m); }
@@ -3540,13 +3542,13 @@ function campTalk(n) {
 //      3 C = skill book (P) + a second row of keys, 4 = 2 cards up to Lv 11, 3 cards Lv 13-17, 4 cards Lv 19) ----
 const EXTRA = {
   mudang: [
-    { id: "m5", lvl: 5, ko: "회복의 북", en: "drum of renewal", icon: "🥁", cards: 2, cd: 15, mult: 0, self: true, fx: "hot", v: .04, dur: 8, info: "2 cards · heals 4% health every second for 8 s (you, or the most hurt teammate)" },
+    { id: "m5", lvl: 5, ko: "회복의 북", en: "drum of renewal", icon: "🥁", cards: 2, cd: 15, mult: 0, self: true, fx: "hot", v: .04, dur: 8, beat: .3, beatR: 6, info: "2 cards · heals 4% health every second for 8 s (you, or the most hurt teammate), and every beat hits monsters within 6 m of you for 0.3×" },
     { id: "m7", lvl: 7, ko: "굿", en: "gut ritual", icon: "🎎", cards: 2, cd: 25, mult: 0, self: true, fx: "group", v: .25, r: 15, info: "2 cards · heals you and every teammate within 15 m for 25%" },
-    { id: "m9", lvl: 9, ko: "귀신 쫓기", en: "exorcism", icon: "👻", cards: 2, cd: 10, mult: 2, noHit: true, fire: true, burn: { mult: 2, dur: 6 }, info: "2 cards · burns the target: 2× damage over 6 s, counts as 불" },
-    { id: "m11", lvl: 11, ko: "방울 소리", en: "bell of fear", icon: "🔔", cards: 2, cd: 30, mult: 0, self: true, fx: "fear", r: 8, dur: 3, info: "2 cards · monsters within 8 m run away for 3 s (not bosses)" },
+    { id: "m9", lvl: 9, ko: "귀신 쫓기", en: "exorcism", icon: "👻", cards: 2, cd: 10, mult: 3.5, noHit: true, fire: true, burn: { mult: 3.5, dur: 6 }, spread: 4, info: "2 cards · burns the target and every monster within 4 m of it: 3.5× damage over 6 s, counts as 불" },
+    { id: "m11", lvl: 11, ko: "방울 소리", en: "bell of fear", icon: "🔔", cards: 2, cd: 30, mult: 0, self: true, fx: "fear", r: 8, dur: 3, hit: 1.2, info: "2 cards · 1.2× damage to every monster within 8 m, and they run away for 3 s (bosses only take the damage)" },
     { id: "m13", lvl: 13, ko: "수호 부적", en: "guardian charm", icon: "🛡", cards: 3, cd: 20, mult: 0, self: true, fx: "absorb", v: .25, dur: 10, info: "3 cards · a shield that soaks up 25% of max health for 10 s (you, or the most hurt teammate)" },
     { id: "m15", lvl: 15, ko: "작두 타기", en: "walking the blades", icon: "🗡", cards: 3, cd: 90, mult: 0, self: true, fx: "invuln", dur: 4, v: .2, info: "3 cards · nothing can hurt you for 4 s, and you heal 20%" },
-    { id: "m17", lvl: 17, ko: "천신 강림", en: "descent of the sky god", icon: "☀", cards: 3, cd: 20, mult: 4.5, fire: true, info: "3 cards · a huge blast of holy fire: 4.5× damage, counts as 불" },
+    { id: "m17", lvl: 17, ko: "천신 강림", en: "descent of the sky god", icon: "☀", cards: 3, cd: 20, mult: 4.5, fire: true, splash: { r: 6, mult: 2 }, info: "3 cards · a huge blast of holy fire: 4.5× on the target and 2× to everything within 6 m, counts as 불" },
     { id: "m19", lvl: 19, ko: "혼 부르기", en: "calling the soul", icon: "🕯", cards: 4, cd: 300, mult: 0, self: true, fx: "revive", info: "4 cards · revive a downed teammate at 60%; alone: for 5 min a killing blow leaves you at 30%" },
   ],
   geomgaek: [
@@ -3637,9 +3639,11 @@ function extraFx(sk, t, calc, share) {
   const me = player.pos, near = (p, r) => monsters.filter(m => !m.dead && m.zone === player.zone && !m.caged && dist2(m.pos, p) < r);
   const face = () => { if (!t.self) player.yaw = Math.atan2(-(t.pos.x - me.x), -(t.pos.z - me.z)); player.attackAnim = 1; player.model.trigger?.("attack"); };
   switch (sk.fx) {
-    case "hot": { const a = hurtAlly(20); if (a) { sendAlly(a.id, "hot", sk.v * share, sk.dur); toast(`🥁 → ${a.nm}`); } else applyAlly({ fx: "hot", v: sk.v * share, dur: sk.dur }); SFX.heal(); return true; }
+    case "hot": { const a = hurtAlly(20); if (a) { sendAlly(a.id, "hot", sk.v * share, sk.dur); toast(`🥁 → ${a.nm}`); } else applyAlly({ fx: "hot", v: sk.v * share, dur: sk.dur }); SFX.heal();
+      if (sk.beat) player.drum = { until: clock + sk.dur, next: clock + 1, r: sk.beatR, hit: m => calc(m, sk.beat) };
+      return true; }
     case "group": { applyAlly({ fx: "heal", v: sk.v * share }); for (const r of remotes.values()) if (!r.dead && r.zone === player.zone && dist2(r.pos, me) < sk.r) sendAlly(r.id, "heal", sk.v * share); makeRing(me.clone(), sk.r, .5, "#7bdc86"); return true; }
-    case "fear": { face(); for (const m of near(me, sk.r)) applyCC(m, "fear", sk.dur * share); makeRing(me.clone(), sk.r, .4, "#ffd23d"); SFX.resist(); return true; }
+    case "fear": { face(); for (const m of near(me, sk.r)) { applyCC(m, "fear", sk.dur * share); if (sk.hit) { const { dmg } = calc(m, sk.hit); if (dealDamage(m, dmg) !== false) dmgNum(m, dmg, false, false, .8); } } makeRing(me.clone(), sk.r, .4, "#ffd23d"); SFX.resist(); return true; }
     case "absorb": { const a = hurtAlly(20); if (a) { sendAlly(a.id, "absorb", sk.v * share, sk.dur); toast(`🛡 → ${a.nm}`); } else applyAlly({ fx: "absorb", v: sk.v * share, dur: sk.dur }); SFX.heal(); return true; }
     case "invuln": { player.invulnUntil = clock + sk.dur; applyAlly({ fx: "heal", v: sk.v * share }); floater(player.pos, "작두 위에! · untouchable", "#ffd23d", false, 3.2); return true; }
     case "revive": {
@@ -3677,6 +3681,11 @@ function skillTick(dt) {
   for (let i = rains.length - 1; i >= 0; i--) { const r = rains[i]; if ((r.next -= dt) > 0) continue; r.next = 1; r.waves--; for (const m of monsters) if (!m.dead && m.zone === player.zone && dist2(m.pos, r.at) < r.r) hitT(m, r.calc(m).dmg); SFX.shotGood(); if (r.waves <= 0) rains.splice(i, 1); }
   if (player.storm) { const s = player.storm; if (clock > s.until || player.dead) player.storm = null; else if ((s.next -= dt) <= 0) { s.next = 1; for (const m of monsters) if (!m.dead && m.zone === player.zone && dist2(m.pos, player.pos) < s.r) hitT(m, s.calc(m).dmg); player.attackAnim = 1; SFX.dash(); } }
   if (player.hot) { if (clock > player.hot.until) player.hot = null; else player.hp = Math.min(player.maxHp, player.hp + player.maxHp * player.hot.v * dt); }
+  if (player.drum) {
+    if (clock > player.drum.until || player.dead) player.drum = null;
+    else if (clock >= player.drum.next) { player.drum.next += 1; FX.ring(player.pos, { color: "#9be6a5", r: player.drum.r, life: .45 }); snd("lowboom", .2, 1.3);
+      for (const m of monsters) if (!m.dead && !m.caged && m.zone === player.zone && dist2(m.pos, player.pos) <= player.drum.r) { const { dmg } = player.drum.hit(m); if (dealDamage(m, dmg) !== false) dmgNum(m, dmg, false, false, .6); } }
+  }
   if (player.absorb && clock > player.absorb.until) player.absorb = null;
   if (!!buffOn("vigor") !== !!player.vigorOn) { player.vigorOn = !!buffOn("vigor"); recalcMax(); }
   if ((player.lsUntil && clock > player.lsUntil) || (player.cryUntil && clock > player.cryUntil)) { if (clock > player.lsUntil) player.lsUntil = 0; if (clock > player.cryUntil) player.cryUntil = 0; recalcMax(); }
