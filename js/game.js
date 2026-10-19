@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf2ypms";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf2ypms";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf2ypms";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf2ypms";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf2ypms";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf31zrd";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf31zrd";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf31zrd";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf31zrd";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf31zrd";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf2ypms";
-import * as FX from "./fx.js?v=mvf2ypms";
-import { LINES } from "./lines.js?v=mvf2ypms";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf2ypms";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf2ypms";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf31zrd";
+import * as FX from "./fx.js?v=mvf31zrd";
+import { LINES } from "./lines.js?v=mvf31zrd";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf31zrd";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf31zrd";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -4918,6 +4918,7 @@ addEventListener("keydown", e => {
 // co-op: challenge a friend standing next to you; the challenger deals (a shared seed), both play the same rules, picks are swapped
 let cgAsk = null, cgAccepted = null;
 $("cgQuit").onclick = () => cgGiveUp();
+$("cgEnd").onclick = () => cgEndTurn(false);   /* Danny 2026-10-19: the button had no click handler, only Enter worked */
 function cgChallenge(r) {
   if (battleDeck().length < CG_DECK) { cgNeedDeck(); return; }
   cgAsk = { id: r.id, at: Date.now() }; netSend({ t: "cgReq", to: r.id, nm: myName() }); toast(`🃏 ${r.nm}에게 카드 배틀을 신청했어요 · challenge sent`);
