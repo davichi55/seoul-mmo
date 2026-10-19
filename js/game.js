@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf2hxjz";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf2hxjz";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf2hxjz";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf2hxjz";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf2hxjz";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf2nr74";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf2nr74";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf2nr74";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf2nr74";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf2nr74";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf2hxjz";
-import * as FX from "./fx.js?v=mvf2hxjz";
-import { LINES } from "./lines.js?v=mvf2hxjz";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf2hxjz";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf2hxjz";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf2nr74";
+import * as FX from "./fx.js?v=mvf2nr74";
+import { LINES } from "./lines.js?v=mvf2nr74";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf2nr74";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf2nr74";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -3184,13 +3184,13 @@ function toYeouido() {
   cancelRitual(); setTarget(null); closeDialog();
   populateYeouido(); player.zone = "yeouido"; player.pos.set(YEOUIDO.entry.x, 0, YEOUIDO.entry.z); player.yaw = Math.PI; cam.yaw = Math.PI;
   if (!S.reachedYd) { S.reachedYd = true; save(); }
-  toast("부서진 다리 · 무너진 곳을 건너야 해요. 떨어지는 돌을 피하세요! · climb across — dodge the falling rubble!");
+  toast("부서진 다리 · 무너진 곳을 건너야 해요 · climb across the broken span");
 }
 function toStreetBridge() {
   cancelRitual(); setTarget(null); closeDialog();
   populateStreet(); player.zone = "street"; player.pos.set(BRIDGE_FOOT.x, 0, BRIDGE_FOOT.z - 1); player.yaw = 0; cam.yaw = 0;
 }
-// rubble falls from the broken arch while you're on the bridge (faster on the fallen span); it aims a little ahead of you
+// rubble used to fall from the broken arch while you crossed the bridge; switched off (Danny 2026-10-19: "a bit useless"), rubbleTick isn't called
 const rubble = []; let rubbleT = 3;
 const rockGeo = new THREE.DodecahedronGeometry(.9, 0), rockMat = toon("#8d8a84");
 const onBridge = p => p.z < YD.z + 131 && Math.abs(p.x - YD.x) < 8;
@@ -5012,7 +5012,7 @@ function step(dt) {
     player.hp = Math.min(player.maxHp, player.hp + player.maxHp * rate * dt);
   }
   player.attackAnim = Math.max(0, player.attackAnim - dt * 3);
-  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); sqTick(dt); companionTick(dt); zooTick(dt); rubbleTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt); caveTick(dt);
+  updateMonsters(dt); updateProjectiles(dt); updateRings(dt); fishTick(dt); sqTick(dt); companionTick(dt); zooTick(dt); syncMike(); skillTick(dt); coldTick(dt); lineTick(dt); caveTick(dt);
   if (target && target.dead) setTarget(null);
   saveT += dt; if (saveT > 10) { saveT = 0; S.hp = player.hp; save(); }
 }
