@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf13etw";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf13etw";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf13etw";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf13etw";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf13etw";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf1kuj0";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf1kuj0";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf1kuj0";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf1kuj0";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf1kuj0";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf13etw";
-import * as FX from "./fx.js?v=mvf13etw";
-import { LINES } from "./lines.js?v=mvf13etw";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf13etw";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf13etw";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf1kuj0";
+import * as FX from "./fx.js?v=mvf1kuj0";
+import { LINES } from "./lines.js?v=mvf1kuj0";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf1kuj0";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf1kuj0";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -43,12 +43,12 @@ const HUNGRY_MULT = 0.75;              // Q8 A
 // basic attack = 1 card (Danny 2026-10-11: 3 cards made combat feel slow); stronger skills will ask for more words
 const CARDS_PER_ATTACK = 1, CHOICES = 4, BASE_ATTACK = 21, BACKFIRE = 3, BASE_CD = 1.5;
 const CLASSES = {
-  mudang:   { ko: "무당", en: "Shaman", hp: 100, dmg: 1.0, range: 15, heal: .03, solo: "가장 쉬움 · easiest solo",
+  zoo:      { ko: "사육사", en: "Zookeeper", hp: 110, dmg: 1.0, range: 15, solo: "가장 쉬움 · easiest: your animals fight while you learn", rec: true,
+              pass: "Fights only with animals he calls: each attacks every 2 s, at most 5 times, and has a share of your health; 5 of each kind at once. Call them before a fight, then walk in with your pack. Monsters attack them too.", weapons: ["호루라기", "은 호루라기", "황금 호루라기"] },
+  mudang:   { ko: "무당", en: "Shaman", hp: 100, dmg: 1.0, range: 15, heal: .03, solo: "쉬움 · easy",
               pass: "Each correct card heals you 3% of your health.", weapons: ["방울", "신령 방울", "천신 방울"] },
   geomgaek: { ko: "검객", en: "Swordsman", hp: 130, dmg: 1.3, range: 3.4, mitig: .2, unbreak: true, cleave: { r: 3, mult: .5 }, solo: "가장 어려움 · hardest solo",
               pass: "Takes 20% less damage. 베기 (cleave): every hit also does half damage to other monsters within 3 m. 불굴 (unbreakable): at full health one hit can never kill you, you always keep 1 HP. No healing.", weapons: ["목검", "강철 검", "환도"] },
-  zoo:      { ko: "사육사", en: "Zookeeper", hp: 110, dmg: 1.0, range: 15, solo: "보통 · medium",
-              pass: "Fights only with animals he calls: each attacks every 2 s, at most 5 times, and has a share of your health; 5 of each kind at once. Call them before a fight, then walk in with your pack. Monsters attack them too.", weapons: ["호루라기", "은 호루라기", "황금 호루라기"] },
   gungsu:   { ko: "궁수", en: "Archer", hp: 90, dmg: 1.2, range: 20, solo: "보통 · medium",
               pass: "Long range (20 m): you can finish a ritual before a monster reaches you.", weapons: ["나무 활", "각궁", "명궁의 활"] },
 };
@@ -1133,8 +1133,8 @@ function buildClassPick() {
   drawBookPick(); drawModePick(); drawPrioPick();
   $("classes").innerHTML = "";
   for (const [k, c] of Object.entries(CLASSES)) {
-    const b = document.createElement("button"); b.className = "cls";
-    b.innerHTML = `<h3>${c.ko}<small>${c.en}</small></h3><dl><dt>체력 · HP</dt><dd>${c.hp}</dd><dt>공격 · damage</dt><dd>×${c.dmg}</dd><dt>사거리 · range</dt><dd>${c.range} m</dd><dt>무기 · weapon</dt><dd>${c.weapons[0]}</dd></dl><div class="pass">${c.pass}</div><div class="solo">솔로: ${c.solo}</div>`;
+    const b = document.createElement("button"); b.className = "cls" + (c.rec ? " rec" : "");
+    b.innerHTML = (c.rec ? `<div class="recBadge">⭐ 초보자 추천 · beginner friendly</div>` : "") + `<h3>${c.ko}<small>${c.en}</small></h3><dl><dt>체력 · HP</dt><dd>${c.hp}</dd><dt>공격 · damage</dt><dd>×${c.dmg}</dd><dt>사거리 · range</dt><dd>${c.range} m</dd><dt>무기 · weapon</dt><dd>${c.weapons[0]}</dd></dl><div class="pass">${c.pass}</div><div class="solo">솔로: ${c.solo}</div>`;
     b.onclick = () => { initAudio(); unlockMusic(); newGame(k); };
     $("classes").appendChild(b);
   }

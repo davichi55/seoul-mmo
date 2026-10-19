@@ -696,3 +696,7 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 .stTable td:nth-child(1){width:29%;white-space:normal;overflow-wrap:anywhere}.stTable td:nth-child(2){width:29%}
 .stTable td:nth-child(3),.stTable td:nth-child(4){width:11%}.stTable td:nth-child(5){width:9%}.stTable td:nth-child(6){width:11%;white-space:normal;font-size:12px}
 .stTable td:nth-child(1){width:26%}.stTable td:nth-child(2){width:26%}.stTable td:nth-child(3){width:11%}.stTable td:nth-child(4){width:10%}.stTable td:nth-child(5){width:10%}.stTable td:nth-child(6){width:17%;white-space:nowrap}
+
+/* the class for beginners (2026-10-19) */
+.cls.rec{border:2px solid var(--gold);background:rgba(229,184,74,.08)}.recBadge{justify-self:start;background:var(--gold);color:#1a1408;font-weight:700;font-size:13px;border-radius:999px;padding:3px 10px}
+.classes{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}

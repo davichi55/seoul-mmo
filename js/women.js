@@ -6,7 +6,7 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { toon, outline } from "./world.js?v=mvf13etw";
+import { toon, outline } from "./world.js?v=mvf1kuj0";
 
 const BLACK = "#16141a", INK = "#232028", WINE = "#6a1a2a", GOLD = "#c9a43a", SILVER = "#c8ccd6";
 // hair: what the original hair material is (recoloured) or hides (hats, hoods, the mohawk: then `cap` builds a new crown);
