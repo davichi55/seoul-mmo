@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf4yr3m";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf4yr3m";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf4yr3m";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf4yr3m";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf4yr3m";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf5ogvn";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf5ogvn";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf5ogvn";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf5ogvn";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf5ogvn";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf4yr3m";
-import * as FX from "./fx.js?v=mvf4yr3m";
-import { LINES } from "./lines.js?v=mvf4yr3m";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf4yr3m";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf4yr3m";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf5ogvn";
+import * as FX from "./fx.js?v=mvf5ogvn";
+import { LINES } from "./lines.js?v=mvf5ogvn";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf5ogvn";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf5ogvn";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -1302,7 +1302,7 @@ function gradPlan() {
   for (const k of keys) {
     const deck = deckCards(k), ids = new Set(deck.map(c => c.id)), out = deck.filter(c => mastery(c.id).k === "mastered");
     if (!out.length) continue;
-    const bag = bagCards().filter(c => mastery(c.id).k !== "mastered" && inPlay(WORD[c.id]) && (k === "basic" || !c.gift)).sort((a, b) => (WORD[b.id].ch === nc) - (WORD[a.id].ch === nc) || b.rar - a.rar);
+    const qk = questKeepUids(), bag = bagCards().filter(c => !qk.has(c.uid) && mastery(c.id).k !== "mastered" && inPlay(WORD[c.id]) && (k === "basic" || !c.gift)).sort((a, b) => (WORD[b.id].ch === nc) - (WORD[a.id].ch === nc) || b.rar - a.rar);
     for (const c of out) {
       const r = bag.find(x => !used.has(x.uid) && !ids.has(x.id));
       if (r) { used.add(r.uid); ids.add(r.id); plan.push({ k, out: c, inn: r }); continue; }
@@ -1343,7 +1343,8 @@ function graduate() {
 }
 function autoFillPlan(k) {
   const deck = deckCards(k), inD = new Set(deck.map(c => c.uid)), best = {};
-  for (const c of [...deck, ...bagCards().filter(c => k === "basic" || !c.gift)]) { const b = best[c.id]; if (!b || c.rar > b.rar || c.rar === b.rar && inD.has(c.uid) && !inD.has(b.uid)) best[c.id] = c; }
+  const qk = questKeepUids();
+  for (const c of [...deck, ...bagCards().filter(c => !qk.has(c.uid) && (k === "basic" || !c.gift))]) { const b = best[c.id]; if (!b || c.rar > b.rar || c.rar === b.rar && inD.has(c.uid) && !inD.has(b.uid)) best[c.id] = c; }
   const pick = Object.values(best).sort((a, b) => b.rar - a.rar || inD.has(b.uid) - inD.has(a.uid) || !!a.gift - !!b.gift).slice(0, deckSize(k)), keep = new Set(pick.map(c => c.uid));
   const stay = deck.filter(c => keep.has(c.uid)).map(c => c.uid), add = pick.filter(c => !inD.has(c.uid)).map(c => c.uid);
   return { uids: [...stay, ...add], changes: add.length };
@@ -1376,7 +1377,10 @@ function dropChapters() {
   return Math.random() < .7 ? order.slice(-1) : order.slice(0, -1);
 }
 // the words an active card quest still needs loose in the bag
-function questWantWords() { const loose = new Set(bagCards().map(c => c.id)), out = []; for (const [id, st] of Object.entries(S.quests || {})) if (QUESTS[id]?.kind === "cards" && st?.st === "active") for (const w of st.words || []) if (WORD[w] && !loose.has(w)) out.push(w); return out; }
+function questWantWords() { const loose = new Set(bagCards().map(c => c.id)), out = []; for (const [id, st] of Object.entries(S.quests || {})) if (QUESTS[id]?.kind === "cards" && st?.st === "active") for (const w of st.words || []) if (WORD[w] && !loose.has(w) && !(st.dropped || []).includes(w)) out.push(w); return out; }
+// one loose copy of every word an active card quest asks for: auto-fill and graduation leave these in the bag
+function questKeepUids() { const keep = new Set(); for (const [id, st] of Object.entries(S.quests || {})) if (QUESTS[id]?.kind === "cards" && st?.st === "active") for (const w of st.words || []) { const c = bagCards().filter(x => x.id === w).sort((a, b) => a.rar - b.rar)[0]; if (c) keep.add(c.uid); } return keep; }
+function questDropped(w) { for (const [id, st] of Object.entries(S.quests || {})) if (QUESTS[id]?.kind === "cards" && st?.st === "active" && (st.words || []).includes(w)) { st.dropped = st.dropped || []; if (!st.dropped.includes(w)) st.dropped.push(w); } }
 function dropCard(m) {
   if (Math.random() >= (m.def?.alien || m.def?.boss ? 1 : .7)) return;   /* Danny 2026-10-18: 45% → 70% */
   const chs = dropChapters(), pool = bookWords().filter(w => chs.includes(w.ch)).map(w => w.id); if (!pool.length) return;
@@ -1384,6 +1388,7 @@ function dropCard(m) {
   const want = questWantWords();
   const id = want.length && Math.random() < .35 ? pick(want) : unowned.length && Math.random() < .9 ? pick(unowned) : pick(pool);
   if (!id || !WORD[id]) return;
+  questDropped(id);   /* a quest word that dropped is found: no more boost for it */
   // once you own every word of these chapters, duplicates come with better rarity
   let rar = m.def?.alien ? Math.max(rollRarity(), rollRarity()) : rollRarity(); if (!unowned.length) rar = Math.max(rar, rollRarity());
   const c = newCard(id, rar), R = RARITY[c.rar];
