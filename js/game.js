@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf3rkvv";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf3rkvv";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf3rkvv";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf3rkvv";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf3rkvv";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf3xjhs";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf3xjhs";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf3xjhs";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf3xjhs";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf3xjhs";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf3rkvv";
-import * as FX from "./fx.js?v=mvf3rkvv";
-import { LINES } from "./lines.js?v=mvf3rkvv";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf3rkvv";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf3rkvv";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf3xjhs";
+import * as FX from "./fx.js?v=mvf3xjhs";
+import { LINES } from "./lines.js?v=mvf3xjhs";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf3xjhs";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf3xjhs";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -665,7 +665,7 @@ function castRitual() {
   const b = bonus();
   cds[r.k] = clock + sk.cd * (perk("gangsa") ? .9 : 1) * Math.max(.5, 1 - sumMod("cd") - b.cd) * (r.k === "basic" && player.hawkUntil > clock ? .5 : 1);
   if (!correct.length) { cds[r.k] = clock + Math.min(sk.cd, 3); toast("주문 실패! · the attack fizzled"); SFX.empty(); floater(player.pos, "실패", "#aaa", true, 2.8); return; }
-  if (sk.summon || sk.feed || sk.rally) { player.model.trigger?.("attack"); zooCast(sk, r.k, correct.length / sk.cards); return; }
+  if (sk.summon || sk.feed || sk.rally || sk.treat) { player.model.trigger?.("attack"); zooCast(sk, r.k, correct.length / sk.cards); return; }
   const t = r.target, range = (sk.range || classDef().range) + (r.k === "basic" && player.hawkUntil > clock ? 5 : 0);
   if (t.dead || dist2(t.pos, player.pos) > range + 4) { toast("빗나갔어요 · it got away"); return; }
   if (sk.silence) { if (!t.def.alien) toast("외계인에게만 통해요 · it only works on aliens"); else applySilence(t, sk.silence * correct.length / sk.cards); return; }
@@ -2558,7 +2558,8 @@ function netLeave(quiet) {
 }
 function netStatus(t) { NET.status = t; if (!$("menu").hidden) drawCoop(); }
 const ZOO_KINDS = Object.keys(ANIMALS);
-const zooNet = () => zoo.filter(a => !a.dead && a.hits > 0).map(a => [a.id, ZOO_KINDS.indexOf(a.kind), +a.pos.x.toFixed(2), +a.pos.z.toFixed(2), +a.yaw.toFixed(2), a.mv ? 1 : 0, a.ak || 0]);
+const EL_KEYS = Object.keys(ELEMENTS);
+const zooNet = () => zoo.filter(a => !a.dead && a.hits > 0).map(a => [a.id, ZOO_KINDS.indexOf(a.kind), +a.pos.x.toFixed(2), +a.pos.z.toFixed(2), +a.yaw.toFixed(2), a.mv ? 1 : 0, a.ak || 0, a.el ? EL_KEYS.indexOf(a.el) : -1]);
 const myState = () => ({ zo: zooNet(), nm: S.name || classDef().ko, cls: S.cls, lk: S.look || 0, lvl: S.level, x: +player.pos.x.toFixed(2), z: +player.pos.z.toFixed(2), yaw: +player.yaw.toFixed(2), mv: player.moving ? 1 : 0, zone: player.zone, hp: Math.round(player.hp), mx: player.maxHp, dead: player.dead ? 1 : 0 });
 function upsertRemote(id, st) {
   if (id === myId()) return;
@@ -2662,12 +2663,13 @@ function drawRemoteZoo(r, dt, vis) {
   r.zoo = r.zoo || new Map();
   if ((r.zo || []).length && !zooReady()) { loadZoo(); return; }
   const seen = new Set();
-  for (const [id, ki, x, z, yaw, mv, ak] of r.zo || []) {
+  for (const [id, ki, x, z, yaw, mv, ak, ei] of r.zo || []) {
     const kind = ZOO_KINDS[ki]; if (!kind) continue; seen.add(id);
     let a = r.zoo.get(id);
     if (!a) { const model = makeAnimal(kind); scene.add(model.root); a = { model, pos: new THREE.Vector3(x, 0, z), yaw, ak }; r.zoo.set(id, a); if (vis) FX.burst(a.pos, { n: 12, color: ["#9be6a5", "#ffffff"], speed: 2, up: 1.5, size: .12, life: .7, grav: -1, shape: "star" }); }
     a.tpos = a.tpos || new THREE.Vector3(); a.tpos.set(x, 0, z); a.tyaw = yaw; a.mv = !!mv;
     if (ak > a.ak) { a.ak = ak; if (vis) a.model.trigger("attack"); }
+    { const el = ei >= 0 ? EL_KEYS[ei] : null; if ((a.model.el || null) !== el) elGlow(a.model, el); }
   }
   for (const [id, a] of r.zoo) if (!seen.has(id)) { if (vis) FX.burst(a.pos, { n: 10, color: ["#ffffff", "#9be6a5"], speed: 1.8, up: 1.5, size: .12, life: .6, grav: -1 }); scene.remove(a.model.root); r.zoo.delete(id); }
   for (const a of r.zoo.values()) {
@@ -3081,6 +3083,12 @@ function zooCast(sk, k, share) {
     for (const a of mine) { a.hp = Math.min(a.maxHp, a.hp + a.maxHp * sk.feed.heal * share); if (!a.fed) { a.fed = true; a.hits += Math.round(sk.feed.hits * share); extra++; } floater(a.pos, "🥕", "#9be6a5", false, a.model.height); }
     SFX.heal(); toast(`🥕 ${mine.length}마리에게 먹이를 줬어요 · fed ${mine.length}: healed` + (extra ? `, ${extra} of them +${Math.round(sk.feed.hits * share)} attacks (once per animal)` : " · 더 싸울 힘은 한 번만 · extra attacks only once per animal")); return;
   }
+  if (sk.treat) {
+    const mine = zoo.filter(a => !a.dead && a.hits > 0); if (!mine.length) { toast("간식을 줄 동물이 없어요 · no animals to treat"); return; }
+    const els = Object.keys(ELEMENTS), count = {};
+    for (const a of mine) { a.hp = Math.min(a.maxHp, a.hp + a.maxHp * sk.treat.heal * share); a.el = pick(els); count[a.el] = (count[a.el] || 0) + 1; elGlow(a.model, a.el); floater(a.pos, "🍖 " + ELEMENTS[a.el].ko, ELEMENTS[a.el].c, false, a.model.height); }
+    SFX.heal(); toast("🍖 원소 간식 · element treat: " + Object.entries(count).map(([e, n]) => `${ELEMENTS[e].ko} ×${n}`).join(", ")); return;
+  }
   if (sk.rally) { zooRallyUntil = clock + sk.rally.dur * share; SFX.charge(); FX.pillarFx(player.pos, "#ffd23d"); toast("📯 총공격! · all-out: your animals attack twice as fast"); return; }
   const kind = sk.summon, st = ZOO_STAT[kind], b = bonus();
   const dmg = BASE_ATTACK * st.hit * weaponMult() * lvlDmg() * gradMul() * (1 + b.dmg + gearStat("dmg")) * (.5 + .5 * share);
@@ -3090,6 +3098,12 @@ function zooCast(sk, k, share) {
   scene.add(model.root); model.root.position.copy(pos); zoo.push(a);
   FX.burst(pos, { n: 16, color: ["#9be6a5", "#ffffff"], speed: 2.5, up: 2, size: .14, life: .8, grav: -1, shape: "star" }); SFX.pickup();
   floater(pos, `${ANIMALS[kind].icon} ${ANIMALS[kind].ko}`, "#9be6a5", false, model.height);
+}
+function elGlow(model, el) {
+  if (model.glow) { model.root.remove(model.glow); model.glow = null; }
+  if (!el || !ELEMENTS[el]) return;
+  const m = new THREE.Mesh(new THREE.RingGeometry(.5, .78, 28), new THREE.MeshBasicMaterial({ color: ELEMENTS[el].c, transparent: true, opacity: .8, side: THREE.DoubleSide, toneMapped: false, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.y = .06; model.root.add(m); model.glow = m; model.el = el;
 }
 function hurtAnimal(a, dmg) {
   if (a.dead) return;
@@ -3125,11 +3139,11 @@ function zooTick(dt) {
     a.cd -= dt * (rally ? 2 : 1);
     if (a.tgt && dist2(a.pos, a.tgt.pos) <= a.range + .3 && a.cd <= 0) {
       a.cd = a.every; a.hits--; a.ak = (a.ak || 0) + 1; a.model.trigger("attack");
-      const m = a.tgt, dmg = Math.max(1, Math.round(a.dmg * rand(.9, 1.1)));
+      const m = a.tgt, em = a.el ? (m.def.weak === a.el ? 1.75 : m.def.immune === a.el ? .25 : 1) : 1, dmg = Math.max(1, Math.round(a.dmg * em * rand(.9, 1.1)));
       setTimeout(() => {
         if (m.dead) return;
         if (a.range > 3) FX.burst(m.pos, { n: 6, color: ["#ffffff", "#d8e4f0"], speed: 1.5, up: 1, size: .1, life: .4, grav: 0, y: 1.2 });   /* the alpaca spits */
-        if (dealDamage(m, dmg) !== false) { dmgNum(m, dmg, false, false, .7); if (!(m.tauntUntil > clock)) m.tgtId = "zoo:" + a.id; }
+        if (dealDamage(m, dmg) !== false) { dmgNum(m, dmg, em > 1, false, .7); if (em < 1) floater(m.pos, "저항 · resisted", "#aaa", true, m.model.height + .4); if (!(m.tauntUntil > clock)) m.tgtId = "zoo:" + a.id; }
       }, 280);
     }
     a.model.root.position.set(a.pos.x, 0, a.pos.z); a.model.root.rotation.y = a.yaw; a.mv = moving;
@@ -3572,7 +3586,7 @@ const EXTRA = {
     { id: "a19", lvl: 19, ko: "신궁의 한 발", en: "the divine shot", icon: "✴", cards: 4, cd: 45, mult: 6, range: 30, pierce: true, info: "4 cards · 6× damage from up to 30 m; ignores immunity" },
   ],
   zoo: [
-    { id: "z5", lvl: 5, ko: "여우 부르기", en: "call a fox", icon: "🦊", cards: 2, cd: 4, mult: 0, self: true, summon: "fox", info: "2 cards · a fox: quick, 5 bites of 0.5× every 1.6 s" },
+    { id: "z5", lvl: 5, ko: "원소 간식", en: "element treat", icon: "🍖", cards: 2, cd: 15, mult: 0, self: true, treat: { heal: .25 }, info: "2 cards · every animal heals 25% and takes a random element (불 물 나무 쇠 흙): ×1.75 against monsters weak to it, ×0.25 against ones immune to it, otherwise normal. Feed again to roll again." },   /* was the fox (Danny 2026-10-19: too like the dog and wolf) */
     { id: "z7", lvl: 7, ko: "늑대 부르기", en: "call a wolf", icon: "🐺", cards: 2, cd: 5, mult: 0, self: true, summon: "wolf", info: "2 cards · a wolf: 5 bites of 0.6×, 30% of your health" },
     { id: "z9", lvl: 9, ko: "얼룩말 부르기", en: "call a zebra", icon: "🦓", cards: 2, cd: 5, mult: 0, self: true, summon: "zebra", info: "2 cards · a zebra: 5 kicks of 0.7×, 35% of your health" },
     { id: "z11", lvl: 11, ko: "사슴 부르기", en: "call a deer", icon: "🦌", cards: 3, cd: 6, mult: 0, self: true, summon: "deer", info: "3 cards · a deer: 5 headbutts of 0.75×, 35% of your health" },
