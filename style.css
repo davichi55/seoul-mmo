@@ -700,3 +700,6 @@ details.settings summary{cursor:pointer;font-weight:700;margin-bottom:8px}
 /* the class for beginners (2026-10-19) */
 .cls.rec{border:2px solid var(--gold);background:rgba(229,184,74,.08)}.recBadge{justify-self:start;background:var(--gold);color:#1a1408;font-weight:700;font-size:13px;border-radius:999px;padding:3px 10px}
 .classes{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+
+/* card battle combos (Danny 2026-10-20) */
+.crHead .crCombo{font-size:13px;padding:2px 8px;border-radius:10px;background:rgba(53,227,255,.15);color:#7af0ff}

@@ -4,7 +4,7 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import * as SkeletonUtils from "three/addons/utils/SkeletonUtils.js";
-import { toon } from "./world.js?v=mvf6k39q";
+import { toon } from "./world.js?v=mvgq9z1t";
 
 // h = height in metres; move / attack = clip names (the sheep only has Idle and Jump, so it hops)
 export const ANIMALS = {

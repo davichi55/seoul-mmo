@@ -6,19 +6,19 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
-import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvf6k39q";
-import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvf6k39q";
-import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvf6k39q";
-import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvf6k39q";
-import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvf6k39q";
+import { buildWorld, STATION, STREET, ENTRANCE, SPAWNS, MAPSPOT, MAPSPOT_APT, MAPSPOT_RIVER, STREET_NPCS, DUNGEON, YD, YEOUIDO, TOWER, TW, MAPSPOT_YD, MAPSPOT_NR, MK, MARKET, MAPSPOT_YS, MU, MUSEUM, MAPSPOT_YN, MAPSPOT_SC, MAPSPOT_DI, MAPSPOT_SG, MAPSPOT_SY, MAPSPOT_SA, MAPSPOT_IT, toon } from "./world.js?v=mvgq9z1t";
+import { makeHero, makeNPC, makeMonster } from "./models.js?v=mvgq9z1t";
+import { loadKayKit, kayReady, makeKay as makeKay0 } from "./kaykit.js?v=mvgq9z1t";
+import { loadPeople, peopleReady, makeLook, makeMan, LOOKS, MEN } from "./people.js?v=mvgq9z1t";
+import { loadZoo, zooReady, makeAnimal, ANIMALS } from "./zoo.js?v=mvgq9z1t";
 // Danny 2026-10-19 (new models): every KayKit role that has a Quaternius man in people.js becomes him; the rest (people sitting down) stay KayKit
 const makeKay = (role, h) => (peopleReady() && (LOOKS[role] ? makeLook(role, 0) : MEN[role] ? makeMan(role) : null)) || makeKay0(role, h);
 const classModel = (cls, look) => makeLook(cls, look || 0) || (kayReady() ? makeKay0(cls === "zoo" ? "gungsu" : cls) : makeHero(cls === "zoo" ? "gungsu" : cls));
-import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvf6k39q";
-import * as FX from "./fx.js?v=mvf6k39q";
-import { LINES } from "./lines.js?v=mvf6k39q";
-import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvf6k39q";
-import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvf6k39q";
+import { loadWomen, womenReady, makeWoman } from "./women.js?v=mvgq9z1t";
+import * as FX from "./fx.js?v=mvgq9z1t";
+import { LINES } from "./lines.js?v=mvgq9z1t";
+import { unlockMusic, setMusicMood, setMusicVolume, musicTick } from "./music.js?v=mvgq9z1t";
+import { initAudio, SFX, say, wordClip, lineClip, exClip, setVolume, snd } from "./audio.js?v=mvgq9z1t";
 
 const DATA = window.SEOUL_DATA;
 const WORD = Object.fromEntries(DATA.words.map(w => [w.id, w]));
@@ -4571,6 +4571,7 @@ addEventListener("keydown", e => {
 // fewer slips at higher ranks, more slips when they lead, and some days they're just unlucky) or a friend in co-op (no prize, for fun).
 const CG_WRONG = -1;   /* Danny 2026-10-18: a card that doesn't fit the rule costs a point */
 const CG_PTS = [1, 2, 3, 4], CG_DECK = 40, CG_HAND = 10, CG_TIME = [12, 9, 7];
+const CG_FUSE = 1.5, CG_EVO = 2;   /* Danny 2026-10-20: 3+ counting cards of one type fuse ×1.5; with 3 different rarities they evolve ×2 */
 const CG_TYPE = { noun: { ko: "명사", en: "noun", mon: "dokkaebi", col: ["#ff7a5a", "#ffd23d"] }, verb: { ko: "동사", en: "verb", mon: "spark", col: ["#fff36a", "#7af0ff"] }, adjective: { ko: "형용사", en: "adjective", mon: "wisp", col: ["#3ad8c8", "#9ff8e8"] }, adverb: { ko: "부사", en: "adverb", mon: "magpie", col: ["#5a6aff", "#ffffff"] }, other: { ko: "기타", en: "expression", mon: "book", col: ["#c8402f", "#f6f0e0"] } };
 const CG_GLOW = [null, "#5aa8ff", "#b47aff", "#ffb03a"], CG_SIZE = [.55, .66, .8, .96];
 const CARENA = { x: 13000, z: 0 }, CG_CAM = { y: 20, z: 12.5, look: 1.9 };   /* Danny 2026-10-18: zoomed out so the opponent's field shows too */
@@ -4587,7 +4588,7 @@ function drawBattleDeck() {
   const shown = ids.filter(id => bdFilter === "all" || deck.has(id)), pts = [...deck].reduce((a, id) => a + CG_PTS[bestRar(id)], 0);
   $("dvColl").innerHTML = `<div class="clHead"><div><b>⚔ 배틀 덱 · battle deck</b> · ${deck.size} / ${CG_DECK} 단어 · words · 점수 · points ${pts} ${deck.size < CG_DECK ? `· <span class="warn">카드 배틀에는 ${CG_DECK}개가 필요해요 · card battles need ${CG_DECK}</span>` : `· <span class="okc">준비됨 · ready</span>`}</div>
     <div class="bar xp clBar"><i style="width:${deck.size / CG_DECK * 100}%"></i></div>
-    <span class="fine">단어마다 가장 좋은 카드로 싸워요 · each word plays as your best copy of it: 일반 +1, 희귀 +2, 영웅 +3, 전설 +4 · 스킬 덱의 단어도 넣을 수 있어요 · words from your skill decks can be here too · 명사·동사·형용사·부사만 · only nouns, verbs, adjectives and adverbs (기타 · grammar and expressions: ${all.length - ids.length} of yours stay out)</span></div>
+    <span class="fine">단어마다 가장 좋은 카드로 싸워요 · each word plays as your best copy of it: 일반 +1, 희귀 +2, 영웅 +3, 전설 +4 · 🔗 같은 품사 3장 이상 = 합체 · 3+ counting cards of one type fuse ×${CG_FUSE} · 🌟 등급 3가지 = 진화 · with 3 different rarities they evolve ×${CG_EVO} · 스킬 덱의 단어도 넣을 수 있어요 · words from your skill decks can be here too · 명사·동사·형용사·부사만 · only nouns, verbs, adjectives and adverbs (기타 · grammar and expressions: ${all.length - ids.length} of yours stay out)</span></div>
     <div class="clFilt"><button class="chip" data-bf="all" aria-pressed="${bdFilter === "all"}">전체 · all (${ids.length})</button><button class="chip" data-bf="in" aria-pressed="${bdFilter === "in"}">덱 · in the deck</button><button class="chip" id="bdAuto">✨ 자동 · best ${CG_DECK}</button><button class="chip" id="bdClear">비우기 · clear</button></div>
     <div class="clGrid">${shown.map(id => { const w = WORD[id], r = bestRar(id); return `<button class="clTile bd ${deck.has(id) ? "own" : "miss"}" data-id="${id}" style="--rc:${RARITY[r].c}"><b>${esc(w.kb || w.kr)}</b><span>${esc(w.en)}</span><small>${POSKO[w.pos] || "기타"} · ${RARITY[r].ko} +${CG_PTS[r]}${deck.has(id) ? " · ✓ 덱" : ""}</small></button>`; }).join("") || '<p class="fine">카드가 없어요 · no cards yet</p>'}</div>`;
   if ($("dvBattleTab")) $("dvBattleTab").textContent = `⚔ 배틀 덱 · battle deck (${deck.size}/${CG_DECK})`;
@@ -4620,8 +4621,15 @@ const ruleEn = r => "at most " + Object.entries(r.lim).map(([t, n]) => `${n} ${C
 function cgScore(cards, rule) {
   const by = {}, pts = cards.map(() => 0); cards.forEach((c, i) => (by[cgPos(c.id)] = by[cgPos(c.id)] || []).push(i));
   for (const [t, idx] of Object.entries(by)) { const over = Math.max(0, idx.length - (rule.lim[t] || 0)); idx.sort((a, b) => cards[b].rar - cards[a].rar).forEach((i, k) => { pts[i] = k < over ? CG_WRONG : CG_PTS[cards[i].rar]; }); }
-  return { total: pts.reduce((a, b) => a + b, 0), n: pts.filter(p => p > 0).length, pts };
+  const combos = [];
+  for (const [t, idx] of Object.entries(by)) {
+    const ok = idx.filter(i => pts[i] > 0); if (ok.length < 3) continue;
+    const evo = new Set(ok.map(i => cards[i].rar)).size >= 3, base = ok.reduce((a, i) => a + pts[i], 0), p = Math.round(base * (evo ? CG_EVO : CG_FUSE));
+    combos.push({ t, idx: ok, kind: evo ? "evo" : "fuse", base, pts: p, bonus: p - base });
+  }
+  return { total: pts.reduce((a, b) => a + b, 0) + combos.reduce((a, c) => a + c.bonus, 0), n: pts.filter(p => p > 0).length, pts, combos };
 }
+const comboName = c => c.kind === "evo" ? `🌟 진화 · evolution ×${CG_EVO}` : `🔗 합체 · fusion ×${CG_FUSE}`;
 // a student's deck and play: their chapter's words, better cards at higher ranks; they slip more at low ranks, when they lead, on bad days
 function cgNpcDeck(kind) {
   const c = CB[kind], ch = cbChapter(kind), rank = c.rank || Math.min(8, c.ch + 1 + (S.cbWins?.[kind] || 0));
@@ -4632,7 +4640,7 @@ function cgNpcDeck(kind) {
 }
 function cgAiPick(hand, rule, rank, leading, luck) {
   const slip = Math.min(.6, Math.max(.04, (.4 - rank * .04) * (leading ? 1.7 : 1) * luck));
-  let sel = []; for (const [t, n] of Object.entries(rule.lim)) sel.push(...hand.map((c, i) => i).filter(i => cgPos(hand[i].id) === t).sort((a, b) => hand[b].rar - hand[a].rar).slice(0, n));
+  let sel = Math.random() < Math.min(.9, .3 + rank * .08) ? cgBest(hand, rule) : cgGreedy(hand, rule);   /* Danny 2026-10-20: higher ranks find the combos more often */
   const rest = () => hand.map((c, j) => j).filter(j => !sel.includes(j));
   sel = sel.flatMap(i => { if (Math.random() >= slip) return [i]; const r = rest(); return Math.random() < .5 || !r.length ? [] : [pick(r)]; });   /* forgot one, or took another word for this type */
   if (Math.random() < slip * .6) { const r = rest(); if (r.length) sel.push(pick(r)); }   /* one card too many */
@@ -4686,7 +4694,7 @@ function cgNextRound() {
   cg.hand = cg.myOrder.slice(r * CG_HAND, (r + 1) * CG_HAND); cg.oppHand = cg.oppOrder.slice(r * CG_HAND, (r + 1) * CG_HAND);
   cg.rule = cg.rules[r]; cg.sel = []; cg.myPts = null; cg.time = CG_TIME[Math.min(r, 2)];
   cgPips(); $("cgScore").hidden = true; $("cgOppState").textContent = "고르는 중… · choosing";
-  $("cgRound").textContent = `라운드 ${r + 1} · round ${r + 1}${r === 2 ? " · 마지막! · last one!" : ""}`; $("cgRule").textContent = ruleKo(cg.rule); $("cgRuleEn").textContent = ruleEn(cg.rule);   /* Danny 2026-10-18: the −1 line only confused; the −1 shows on the cards after the round */
+  $("cgRound").textContent = `라운드 ${r + 1} · round ${r + 1}${r === 2 ? " · 마지막! · last one!" : ""}`; $("cgRule").textContent = ruleKo(cg.rule); $("cgRuleEn").textContent = ruleEn(cg.rule) + (Object.values(cg.rule.lim).some(n => n >= 3) ? ` · 🔗 3 of one type fuse ×${CG_FUSE}, 3 rarities evolve ×${CG_EVO}` : "");   /* Danny 2026-10-18: the −1 line only confused; the −1 shows on the cards after the round */
   cgBanner(`라운드 ${r + 1}`, ruleKo(cg.rule)); snd("bell", .5, 1 + r * .15);
   cg.phase = "intro"; cgDrawHand(false);
   if (cg.npc) { const sel = cgAiPick(cg.oppHand, cg.rule, cg.rank, cg.wins[1] > cg.wins[0], cg.luck); cg.picks[r] = { sel, t: +(cg.time * rand(.35, .9) * (1.1 - cg.rank * .06)).toFixed(2) }; }
@@ -4700,7 +4708,7 @@ function cgVs(ma, mb, win, why) {
 function cgBanner(big, small, cls = "") { const b = $("cgBanner"); b.innerHTML = `<b>${big}</b>${small ? `<span>${small}</span>` : ""}`; b.className = "cgBanner " + cls; b.hidden = false; void b.offsetWidth; b.classList.add("show"); clearTimeout(cgBanner.t); cgBanner.t = setTimeout(() => { b.hidden = true; }, 1600); }
 function cgDrawHand(reveal) {
   $("cgHand").innerHTML = cg.hand.map((c, i) => { const w = WORD[c.id], on = cg.sel.includes(i), p = reveal && on ? cg.myPts[cg.sel.indexOf(i)] : null;
-    return `<button class="cgCard r${c.rar}${on ? " on" : ""}${reveal ? " rev" : ""}${p === null ? "" : p > 0 ? " ok" : " no"}" data-i="${i}" ${reveal ? "disabled" : ""}><kbd>${(i + 1) % 10}</kbd><b style="font-size:${[...(w.kb || w.kr)].length > 6 ? "clamp(11px,1vw,17px)" : [...(w.kb || w.kr)].length > 4 ? "clamp(13px,1.35vw,22px)" : "clamp(16px,1.8vw,28px)"}">${esc(w.kb || w.kr)}</b><span class="pt">+${CG_PTS[c.rar]}</span>${reveal ? `<small>${CG_TYPE[cgPos(c.id)].ko}${on ? (p > 0 ? ` ✓ +${p}` : ` ✗ ${p}`) : cg.rmMine === i ? " 🗑" : ""}</small>` : ""}</button>`; }).join("");
+    return `<button class="cgCard r${c.rar}${on ? " on" : ""}${reveal ? " rev" : ""}${p === null ? "" : p > 0 ? " ok" : " no"}" data-i="${i}" ${reveal ? "disabled" : ""}><kbd>${(i + 1) % 10}</kbd><b style="font-size:${[...(w.kb || w.kr)].length > 6 ? "clamp(11px,1vw,17px)" : [...(w.kb || w.kr)].length > 4 ? "clamp(13px,1.35vw,22px)" : "clamp(16px,1.8vw,28px)"}">${esc(w.kb || w.kr)}</b><span class="pt">+${CG_PTS[c.rar]}</span>${reveal ? `<small>${CG_TYPE[cgPos(c.id)].ko}${on ? (p > 0 ? ` ✓ +${p}` : ` ✗ ${p}`) : cg.rmMine === i ? " 🗑" : ""}${on && cg.myCombo?.has(i) ? " 🔗" : ""}</small>` : ""}</button>`; }).join("");
   if (!reveal) $("cgHand").querySelectorAll(".cgCard").forEach(b => b.onclick = () => cgToggle(+b.dataset.i));
   $("cgEnd").disabled = reveal || cg.phase !== "pick"; $("cgCount").textContent = reveal ? "" : `${cg.sel.length}장 · cards`;
 }
@@ -4780,7 +4788,7 @@ function cgQzTry() {
     cgQzMsg(`⚡ ${cg.oppName} 승리 · they won the quiz (${o.c} ✓)`, "상대가 내 카드 1장을 고르고 있어요… · they're choosing one of your cards to remove", null);
     if (cg.npc) setTimeout(() => {   /* the student usually takes your best card that counts; low ranks often pick wrong */
       if (!cg || cg.phase !== "steal") return;
-      const mine = cg.sel.map(i => cg.hand[i]), sc = cgScore(mine, cg.rule), best = sc.pts.indexOf(Math.max(...sc.pts));
+      const mine = cg.sel.map(i => cg.hand[i]), full = cgScore(mine, cg.rule).total, loss = mine.map((c, k) => full - cgScore(mine.filter((x, j) => j !== k), cg.rule).total), best = loss.indexOf(Math.max(...loss));
       const k = Math.random() < Math.min(.9, .45 + cg.rank * .06) ? best : Math.floor(Math.random() * mine.length);
       cgStolen(cg.sel[k]);
     }, rand(1200, 2600));
@@ -4813,17 +4821,18 @@ function cgAfterSteal() {
 function cgResolve() {
   const r = cg.round, op = cg.picks[r]; if (cg.phase !== "wait") return; cg.phase = "reveal"; $("cgOppState").textContent = "✓";
   const my = cg.sel.map(i => cg.hand[i]), them = op.sel.filter(i => i >= 0 && i < cg.oppHand.length).map(i => cg.oppHand[i]);
-  const a = cgScore(my, cg.rule), b = cgScore(them, cg.rule); cg.myPts = a.pts;
+  const a = cgScore(my, cg.rule), b = cgScore(them, cg.rule); cg.myPts = a.pts; cg.myCombo = new Set(a.combos.flatMap(c => c.idx.map(k => cg.sel[k])));
   const win = a.total !== b.total ? a.total > b.total : a.n !== b.n ? a.n > b.n : cg.myEnd !== op.t ? cg.myEnd < op.t : !cg.challenger;
   const why = a.total !== b.total ? "" : a.n !== b.n ? "같은 점수 → 카드가 더 많은 쪽 · tie: more cards wins" : cg.myEnd !== op.t ? "같은 점수, 같은 장수 → 더 빨리 끝낸 쪽 · tie: the faster turn wins" : "완전히 같아요 → 도전한 쪽이 져요 · dead even: the challenger loses";
   my.forEach((c, k) => { if (a.pts[k] > 0) stat(c.id).c++; else stat(c.id).w++; });
-  (cg.hist = cg.hist || []).push({ r, rule: cg.rule, hand: cg.hand, sel: cg.sel.slice(), pts: a.pts, got: a.total, best: cgBest(cg.hand, cg.rule), rm: cg.rmMine });
+  (cg.hist = cg.hist || []).push({ r, rule: cg.rule, hand: cg.hand, sel: cg.sel.slice(), pts: a.pts, got: a.total, combos: a.combos, best: cgBest(cg.hand, cg.rule), rm: cg.rmMine });
   cgDrawHand(true); cg.wins[win ? 0 : 1]++;
   const now = performance.now();
-  cg.mons = [...cgSpawn(1, my, a.pts, now), ...cgSpawn(-1, them, b.pts, now)];
+  const mineM = cgSpawn(1, my, a.pts, now), theirM = cgSpawn(-1, them, b.pts, now); cg.mons = [...mineM, ...theirM];
+  const combos = [...a.combos.map(c => ({ ...c, side: 1, cards: my, mem: c.idx.map(k => mineM[k]) })), ...b.combos.map(c => ({ ...c, side: -1, cards: them, mem: c.idx.map(k => theirM[k]) }))];
   $("cgMyPts").textContent = "0"; $("cgOppPts").textContent = "0"; $("cgScore").hidden = false;
-  cgCount(a.total, b.total, now + 900);
-  const tScore = 900 + cg.mons.length * 110 + 350;   /* the points have counted up: show the score, then attack */
+  cgCount(a.total, b.total, now + 900, combos);
+  const tScore = 900 + cg.mons.length * 110 + 350 + combos.length * CG_FUSE_MS;   /* the points have counted up: show the score, then attack */
   setTimeout(() => { if (!cg || cg.phase === "end") return; cgPips(); cgVs(a.total, b.total, win, why); }, tScore);
   setTimeout(() => cgAttack(win), tScore + 1300);
   setTimeout(() => { if (!cg || cg.phase === "end") return; if (cg.wins[0] >= 2 || cg.wins[1] >= 2) cgFinish(); else cgNextRound(); }, tScore + 1300 + Math.max(2200, cg.mons.length * 260));
@@ -4838,8 +4847,25 @@ function cgSpawn(side, cards, pts, now) {
     return { m, s: CG_SIZE[c.rar], x, z, side, id: c.id, rar: c.rar, pts: pts[i], born: now + i * 140 + (side < 0 ? 70 : 0), shown: false, gone: false, t };
   });
 }
-function cgCount(ma, mb, at) {   /* the totals tick up while each monster's points pop over it */
+const CG_FUSE_MS = 1100;
+function cgCount(ma, mb, at, combos = []) {   /* the totals tick up while each monster's points pop over it */
   let a = 0, b = 0;
+  // then every combo: its cards run together, and one big monster with the bonus stands where they met
+  combos.forEach((c, j) => setTimeout(() => { if (!cg || cg.phase === "end") return;
+    const live = c.mem.filter(o => !o.gone); if (!live.length) return;
+    const cx = live.reduce((s, o) => s + o.x, 0) / live.length, z = live[0].z, t0 = performance.now();
+    for (const o of live) o.merge = { x: cx, t0 };
+    snd("field", .4, .8); setTimeout(() => snd("bell", .45, c.kind === "evo" ? 1.5 : 1.2), 380);
+    setTimeout(() => { if (!cg || cg.phase === "end") return;
+      const top = c.idx.reduce((m, k) => c.cards[k].rar > c.cards[m].rar ? k : m, c.idx[0]), card = c.cards[top];
+      const [o] = cgSpawn(c.side, [card], [c.pts], performance.now()); o.x = cx; o.z = z; o.m.root.position.set(cx, 0, z); o.s *= c.kind === "evo" ? 1.9 : 1.55; o.fused = c.kind;
+      const col = c.kind === "evo" ? "#ff5ad8" : "#35e3ff";
+      FX.glow({ x: cx, z }, { color: col, pillar: true, r: 1, h: 9, life: .7, opacity: .7 }); FX.ring({ x: cx, z }, { color: col, r: 3.2 }); FX.burst(o.m.root.position, { n: 40, color: [col, "#ffffff", ...CG_TYPE[c.t].col], speed: 8, up: 1.5, size: .22, life: .9, grav: 8, additive: true, y: 1.2 }); FX.shake(.18);
+      cg.mons.push(o);
+      floater({ x: cx, z }, `${comboName(c)} +${c.bonus}`, col, true, o.m.height * o.s + 1.4);
+      if (c.side > 0) a += c.bonus; else b += c.bonus; $("cgMyPts").textContent = a; $("cgOppPts").textContent = b; snd("coins", .45, 1.6);
+    }, 480);
+  }, at - performance.now() + cg.mons.length * 110 + 300 + j * CG_FUSE_MS));
   cg.mons.forEach((o, k) => setTimeout(() => { if (!cg || o.gone) return;
     floater({ x: o.x, z: o.z }, `${WORD[o.id].kb || WORD[o.id].kr} ${o.pts > 0 ? "+" + o.pts : "✗ " + o.pts}`, o.pts > 0 ? (o.side > 0 ? "#ffd23d" : "#d8b8ff") : "#9a9a9a", false, o.m.height * o.s + .6 + (k % 2) * 1.1);   /* every second one higher: neighbours don't overlap */
     if (o.pts > 0) { if (o.side > 0) a += o.pts; else b += o.pts; $("cgMyPts").textContent = a; $("cgOppPts").textContent = b; snd("coins", .25, 1 + o.pts * .1); }
@@ -4859,7 +4885,16 @@ function cgKill(v) {
   snd("boom", .55, 1.2 - v.rar * .1); snd("glass", .3, 1.4); scene.remove(v.m.root);
 }
 // the best hand of a round: for every type the rule names, its highest cards up to the limit
-function cgBest(hand, rule) { const sel = []; for (const [t, n] of Object.entries(rule.lim)) sel.push(...hand.map((c, i) => i).filter(i => cgPos(hand[i].id) === t).sort((a, b) => hand[b].rar - hand[a].rar).slice(0, n)); return sel; }
+function cgGreedy(hand, rule) { const sel = []; for (const [t, n] of Object.entries(rule.lim)) sel.push(...hand.map((c, i) => i).filter(i => cgPos(hand[i].id) === t).sort((a, b) => hand[b].rar - hand[a].rar).slice(0, n)); return sel; }
+function cgBest(hand, rule) {
+  const ix = hand.map((c, i) => i).filter(i => rule.lim[cgPos(hand[i].id)]);   /* cards of a type the rule doesn't name never help */
+  let best = [], bt = -1, bn = 0;
+  for (let m = 1; m < 1 << ix.length; m++) {
+    const sel = ix.filter((i, k) => m >> k & 1), sc = cgScore(sel.map(i => hand[i]), rule);
+    if (sc.total > bt || sc.total === bt && (sc.n > bn || sc.n === bn && sel.length < best.length)) { best = sel; bt = sc.total; bn = sc.n; }
+  }
+  return best;
+}
 function cgFinish() {
   if (!cg || cg.phase === "end") return;
   cg.phase = "end"; $("cg").hidden = true; $("cgVs").hidden = true; $("cgQz").hidden = true;
@@ -4868,8 +4903,9 @@ function cgFinish() {
 function cgReview(then) {
   const box = $("cgReview"), h0 = cg.hist;
   box.innerHTML = `<div class="crIn"><h2>📖 복습 · the best hand you could have played</h2><p class="fine">★ 최고의 패 · the best hand · ✓ 낸 카드 · you played it (✗ = 0 points) · 단어를 누르면 소리가 나요 · click a word to hear it</p>` +
-    h0.map(h => { const bp = cgScore(h.best.map(i => h.hand[i]), h.rule).total, perfect = h.got >= bp;
-      return `<section><div class="crHead"><b>라운드 ${h.r + 1}</b><span>${ruleKo(h.rule)} · ${ruleEn(h.rule)}</span><span class="${perfect ? "okc" : "warn"}">내 점수 · yours ${h.got} / 최고 · best ${bp}${perfect ? " · 완벽! · perfect" : ""}</span></div>
+    h0.map(h => { const bs = cgScore(h.best.map(i => h.hand[i]), h.rule), bp = bs.total, perfect = h.got >= bp;
+      const cTxt = (cs, who) => (cs || []).map(c => `<span class="crCombo">${who} ${comboName(c)} · ${CG_TYPE[c.t].ko} ${c.idx.length}장 +${c.bonus}</span>`).join("");
+      return `<section><div class="crHead"><b>라운드 ${h.r + 1}</b><span>${ruleKo(h.rule)} · ${ruleEn(h.rule)}</span><span class="${perfect ? "okc" : "warn"}">내 점수 · yours ${h.got} / 최고 · best ${bp}${perfect ? " · 완벽! · perfect" : ""}</span>${cTxt(h.combos, "✓")}${perfect ? "" : cTxt(bs.combos, "★")}</div>
         <div class="crGrid">${h.hand.map((c, i) => { const w = WORD[c.id], t = CG_TYPE[cgPos(c.id)], b = h.best.includes(i), p = h.sel.includes(i), ok = p && h.pts[h.sel.indexOf(i)] > 0;
           return `<button class="crCard r${c.rar}${b ? " best" : ""}${p ? (ok ? " ok" : " no") : ""}" data-id="${c.id}"><b>${esc(w.kb || w.kr)}</b><span class="ty">${t.ko} · ${t.en}</span><small>${esc(w.en)}</small><i>+${CG_PTS[c.rar]}${b ? " ★" : ""}${p ? (ok ? " ✓" : " ✗ " + h.pts[h.sel.indexOf(i)]) : h.rm === i ? " 🗑 removed" : ""}</i></button>`; }).join("")}</div></section>`; }).join("") +
     `<button class="crGo" id="crGo">계속 · continue <kbd>Enter</kbd></button></div>`;
@@ -4921,6 +4957,7 @@ function cgRender(dt) {
     const age = (now - o.born) / 1000; if (age < 0) continue;
     if (!o.shown) { o.shown = true; if (o.rar) FX.glow({ x: o.x, z: o.z }, { color: CG_GLOW[o.rar], pillar: true, r: .4 + o.rar * .15, h: 3 + o.rar * 2.5, life: .45, opacity: .55 }); FX.ring({ x: o.x, z: o.z }, { color: CG_GLOW[o.rar] || "#ffffff", r: 1.4 }); snd("field", .25, 1.4 + o.rar * .15); }
     let sc = age < .35 ? o.s * (1 - Math.pow(1 - age / .35, 3)) * 1.15 : o.s;
+    if (o.merge) { const k = Math.min(1, (now - o.merge.t0) / 450); o.m.root.position.set(o.x + (o.merge.x - o.x) * k, Math.sin(k * Math.PI) * .8, o.z); sc = o.s * (1 - k * .75); o.m.root.scale.setScalar(Math.max(.01, sc)); o.m.anim(dt, { moving: true }); if (k >= 1) { o.gone = true; scene.remove(o.m.root); } continue; }
     if (o.fizzle) { const f = (now - o.fizzle) / 1000; sc = o.s * Math.max(0, 1 - f * 1.6); if (f > .62) { o.gone = true; FX.deathPoof(o.m.root.position, false); scene.remove(o.m.root); continue; } }
     o.m.root.scale.setScalar(Math.max(.01, sc)); if (o.ring) o.ring.material.opacity = .45 + Math.sin(now / 180 + o.x) * .3;
     let moving = false;
